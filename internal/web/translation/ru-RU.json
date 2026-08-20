@@ -113,7 +113,8 @@
     "openMenu": "Открыть меню",
     "pinSidebar": "Закрепить боковую панель",
     "unpinSidebar": "Открепить боковую панель",
-    "subFormats": "Форматы подписки"
+    "subFormats": "Форматы подписки",
+    "peers": "Пиры"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "Доверенные адреса для лимита",
       "ipLimitAllowlistDesc": "Адреса и подсети, которые лимит не считает и не банит: общий офисный или студенческий адрес не израсходует лимит клиента. Через запятую, адрес или подсеть.",
       "eventPeerDown": "Пир недоступен",
-      "eventPeerUp": "Пир доступен"
+      "eventPeerUp": "Пир доступен",
+      "subClusterTab": "Кластер",
+      "subFallbackEnable": "Отдавать резервные панели",
+      "subFallbackEnableDesc": "Добавлять в каждый ответ подписки заголовки X-Subscription-Fallback-Domains/IPs со списком доступных панелей-пиров.",
+      "subSignEnable": "Подписывать подписки",
+      "subSignEnableDesc": "Добавлять ed25519-подпись X-Subscription-Signature по телу ответа. Публичный ключ отдаётся по адресу /sub/pubkey.",
+      "subEmergencyUrl": "Аварийная ссылка",
+      "subEmergencyUrlDesc": "Публикуется в payload ?format=meta как последний источник свежих адресов.",
+      "subManagePeers": "Управление пирами"
     },
     "xray": {
       "importRules": "Импорт правил",
@@ -1921,7 +1930,55 @@
         "obtain": "Не удалось загрузить пир",
         "add": "Добавить пир",
         "update": "Обновить пир",
-        "delete": "Удалить пир"
+        "delete": "Удалить пир",
+        "deleted": "Пир удалён",
+        "probeFailed": "Пир недоступен",
+        "fillRequired": "Имя, домен и порт обязательны"
+      },
+      "title": "Панели-пиры",
+      "add": "Добавить пир",
+      "addPeer": "Добавить пир",
+      "editPeer": "Изменить пир",
+      "empty": "Пиров пока нет",
+      "name": "Имя",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Примечание",
+      "scheme": "Схема",
+      "domain": "Домен",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Порт",
+      "subPath": "Путь подписки",
+      "subPathHint": "Путь сервера подписок пира, а не его админ-панели.",
+      "basePath": "Базовый путь",
+      "ips": "Статические IP",
+      "ipsHint": "По одному в строке. Отдаются как есть клиентам, которым нужно обойти DNS.",
+      "isSelf": "Эта панель",
+      "isSelfHint": "Никогда не предлагается как резерв самой себе. Определяется автоматически по ключу подписи.",
+      "allowPrivateAddress": "Разрешить приватный адрес",
+      "self": "Эта панель",
+      "probe": "Проверить",
+      "probeOk": "Пир доступен ({ms} мс)",
+      "statusOnline": "В сети",
+      "statusOffline": "Недоступен",
+      "statusUnknown": "Не проверялся",
+      "advertisedYes": "Отдаётся",
+      "advertisedNo": "Не отдаётся",
+      "advertisingOff": "Выдача резервных панелей выключена: пиры проверяются, но клиентам ничего не уходит. Включите в «Настройки → Подписка → Кластер».",
+      "identityTitle": "Ключ подписи этой панели",
+      "identityHint": "По этому ключу клиенты проверяют X-Subscription-Signature, а пиры узнают эту панель.",
+      "totalPeers": "Пиры",
+      "onlinePeers": "В сети",
+      "advertisedPeers": "Отдаются",
+      "deleteConfirmTitle": "Удалить пир «{name}»?",
+      "deleteConfirmContent": "При следующем запросе подписки клиенты перестанут получать этот пир.",
+      "columns": {
+        "name": "Имя",
+        "endpoint": "Адрес подписки",
+        "ips": "Статические IP",
+        "status": "Статус",
+        "advertised": "Отдаётся",
+        "enable": "Включён",
+        "actions": "Действия"
       }
     }
   },

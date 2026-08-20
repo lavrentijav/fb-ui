@@ -113,7 +113,8 @@
     "openMenu": "Mở menu",
     "pinSidebar": "Ghim thanh bên",
     "unpinSidebar": "Bỏ ghim thanh bên",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "Máy ngang hàng"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "Danh sách cho phép của giới hạn IP",
       "ipLimitAllowlistDesc": "Các địa chỉ và mạng mà giới hạn IP không bao giờ tính và không bao giờ chặn, để một địa chỉ dùng chung của văn phòng hoặc trường học không dùng hết giới hạn của người dùng. IPs/CIDRs cách nhau bằng dấu phẩy.",
       "eventPeerDown": "Ngoại tuyến",
-      "eventPeerUp": "Trực tuyến"
+      "eventPeerUp": "Trực tuyến",
+      "subClusterTab": "Cụm",
+      "subFallbackEnable": "Quảng bá bảng dự phòng",
+      "subFallbackEnableDesc": "Thêm X-Subscription-Fallback-Domains/IPs vào mọi phản hồi đăng ký, liệt kê các bảng ngang hàng đang truy cập được.",
+      "subSignEnable": "Ký nội dung đăng ký",
+      "subSignEnableDesc": "Thêm chữ ký ed25519 trong X-Subscription-Signature trên phần thân phản hồi. Khóa công khai được phục vụ tại /sub/pubkey.",
+      "subEmergencyUrl": "URL khẩn cấp",
+      "subEmergencyUrlDesc": "Được công bố trong payload ?format=meta như nguồn địa chỉ mới cuối cùng.",
+      "subManagePeers": "Quản lý bảng ngang hàng"
     },
     "xray": {
       "importRules": "Nhập quy tắc",
@@ -1921,7 +1930,55 @@
         "obtain": "Không tải được máy ngang hàng",
         "add": "Thêm máy ngang hàng",
         "update": "Cập nhật máy ngang hàng",
-        "delete": "Xóa máy ngang hàng"
+        "delete": "Xóa máy ngang hàng",
+        "deleted": "Đã xóa máy ngang hàng",
+        "probeFailed": "Không kết nối được máy ngang hàng",
+        "fillRequired": "Tên, tên miền và cổng là bắt buộc"
+      },
+      "title": "Bảng ngang hàng",
+      "add": "Thêm máy ngang hàng",
+      "addPeer": "Thêm máy ngang hàng",
+      "editPeer": "Sửa máy ngang hàng",
+      "empty": "Chưa có bảng ngang hàng nào",
+      "name": "Tên",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Ghi chú",
+      "scheme": "Giao thức",
+      "domain": "Tên miền",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Cổng",
+      "subPath": "Đường dẫn đăng ký",
+      "subPathHint": "Đường dẫn máy chủ đăng ký của bên kia, không phải bảng quản trị.",
+      "basePath": "Đường dẫn gốc",
+      "ips": "IP tĩnh",
+      "ipsHint": "Mỗi dòng một địa chỉ. Gửi nguyên vẹn cho client cần bỏ qua DNS.",
+      "isSelf": "Bảng này",
+      "isSelfHint": "Không bao giờ tự quảng bá làm dự phòng của chính nó. Được nhận diện tự động qua khóa ký.",
+      "allowPrivateAddress": "Cho phép địa chỉ nội bộ",
+      "self": "Bảng này",
+      "probe": "Kiểm tra",
+      "probeOk": "Kết nối được ({ms} ms)",
+      "statusOnline": "Trực tuyến",
+      "statusOffline": "Ngoại tuyến",
+      "statusUnknown": "Chưa kiểm tra",
+      "advertisedYes": "Đang quảng bá",
+      "advertisedNo": "Không quảng bá",
+      "advertisingOff": "Quảng bá dự phòng đang tắt: các máy ngang hàng vẫn được kiểm tra nhưng client không nhận được gì. Bật trong Cài đặt → Đăng ký → Cụm.",
+      "identityTitle": "Khóa ký của bảng này",
+      "identityHint": "Client dùng khóa này để xác minh X-Subscription-Signature, và các máy ngang hàng nhận diện bảng này qua nó.",
+      "totalPeers": "Máy ngang hàng",
+      "onlinePeers": "Trực tuyến",
+      "advertisedPeers": "Đang quảng bá",
+      "deleteConfirmTitle": "Xóa máy ngang hàng \"{name}\"?",
+      "deleteConfirmContent": "Client sẽ không còn nhận địa chỉ này ở lần lấy đăng ký kế tiếp.",
+      "columns": {
+        "name": "Tên",
+        "endpoint": "Địa chỉ đăng ký",
+        "ips": "IP tĩnh",
+        "status": "Trạng thái",
+        "advertised": "Đang quảng bá",
+        "enable": "Bật",
+        "actions": "Thao tác"
       }
     }
   },

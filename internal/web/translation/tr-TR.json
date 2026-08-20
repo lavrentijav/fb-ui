@@ -113,7 +113,8 @@
     "openMenu": "Menüyü aç",
     "pinSidebar": "Kenar çubuğunu sabitle",
     "unpinSidebar": "Kenar çubuğu sabitlemesini kaldır",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "Eşler"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "IP limiti izin listesi",
       "ipLimitAllowlistDesc": "IP limitinin asla saymadığı ve engellemediği adresler ve ağlar; böylece ortak bir ofis veya kampüs adresi kullanıcının limitini tüketmez. IP'ler/CIDR'ler (virgülle ayrılmış).",
       "eventPeerDown": "Çevrimdışı",
-      "eventPeerUp": "Çevrimiçi"
+      "eventPeerUp": "Çevrimiçi",
+      "subClusterTab": "Küme",
+      "subFallbackEnable": "Yedek panelleri duyur",
+      "subFallbackEnableDesc": "Ulaşılabilir eş panelleri listeleyen X-Subscription-Fallback-Domains/IPs başlıklarını her abonelik yanıtına ekler.",
+      "subSignEnable": "Abonelikleri imzala",
+      "subSignEnableDesc": "Yanıt gövdesi üzerine ed25519 X-Subscription-Signature ekler. Genel anahtar /sub/pubkey adresinde sunulur.",
+      "subEmergencyUrl": "Acil durum bağlantısı",
+      "subEmergencyUrlDesc": "Güncel adreslere son çare olarak ulaşmak için ?format=meta yükünde yayımlanır.",
+      "subManagePeers": "Eş panelleri yönet"
     },
     "xray": {
       "save": "Kaydet",
@@ -1921,7 +1930,55 @@
         "obtain": "Eş yüklenemedi",
         "add": "Eş ekle",
         "update": "Eşi güncelle",
-        "delete": "Eşi sil"
+        "delete": "Eşi sil",
+        "deleted": "Eş silindi",
+        "probeFailed": "Eşe ulaşılamıyor",
+        "fillRequired": "Ad, alan adı ve port zorunludur"
+      },
+      "title": "Eş paneller",
+      "add": "Eş ekle",
+      "addPeer": "Eş ekle",
+      "editPeer": "Eşi düzenle",
+      "empty": "Henüz eş panel yok",
+      "name": "Ad",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Not",
+      "scheme": "Şema",
+      "domain": "Alan adı",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Port",
+      "subPath": "Abonelik yolu",
+      "subPathHint": "Eşin yönetim paneli değil, abonelik sunucusunun yolu.",
+      "basePath": "Temel yol",
+      "ips": "Sabit IP'ler",
+      "ipsHint": "Her satıra bir tane. DNS'i atlaması gereken istemcilere olduğu gibi gönderilir.",
+      "isSelf": "Bu panel",
+      "isSelfHint": "Kendi yedeği olarak asla duyurulmaz. İmza anahtarından otomatik algılanır.",
+      "allowPrivateAddress": "Özel adrese izin ver",
+      "self": "Bu panel",
+      "probe": "Yokla",
+      "probeOk": "Eşe ulaşıldı ({ms} ms)",
+      "statusOnline": "Çevrimiçi",
+      "statusOffline": "Çevrimdışı",
+      "statusUnknown": "Yoklanmadı",
+      "advertisedYes": "Duyuruluyor",
+      "advertisedNo": "Duyurulmuyor",
+      "advertisingOff": "Yedek panel duyurusu kapalı: eşler yoklanıyor ama istemcilere hiçbir şey gitmiyor. Ayarlar → Abonelik → Küme bölümünden açın.",
+      "identityTitle": "Bu panelin imza anahtarı",
+      "identityHint": "İstemciler X-Subscription-Signature'ı bu anahtarla doğrular, eşler de bu paneli bununla tanır.",
+      "totalPeers": "Eşler",
+      "onlinePeers": "Çevrimiçi",
+      "advertisedPeers": "Duyurulan",
+      "deleteConfirmTitle": "\"{name}\" eşi silinsin mi?",
+      "deleteConfirmContent": "İstemciler bir sonraki abonelik isteğinde bu eşi almayacak.",
+      "columns": {
+        "name": "Ad",
+        "endpoint": "Abonelik adresi",
+        "ips": "Sabit IP'ler",
+        "status": "Durum",
+        "advertised": "Duyurulan",
+        "enable": "Etkin",
+        "actions": "İşlemler"
       }
     }
   },

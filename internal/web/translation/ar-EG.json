@@ -113,7 +113,8 @@
     "openMenu": "فتح القائمة",
     "pinSidebar": "تثبيت الشريط الجانبي",
     "unpinSidebar": "إلغاء تثبيت الشريط الجانبي",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "النظائر"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "قائمة سماح حد IP",
       "ipLimitAllowlistDesc": "عناوين وشبكات لا يحسبها حد IP ولا يحظرها، حتى لا يستهلك عنوان مكتب أو حرم جامعي مشترك حد العميل. IPs/CIDRs مفصولة بفواصل.",
       "eventPeerDown": "غير متصل",
-      "eventPeerUp": "متصل"
+      "eventPeerUp": "متصل",
+      "subClusterTab": "العنقود",
+      "subFallbackEnable": "إعلان اللوحات البديلة",
+      "subFallbackEnableDesc": "إضافة X-Subscription-Fallback-Domains/IPs إلى كل استجابة اشتراك، مع قائمة اللوحات النظيرة المتاحة.",
+      "subSignEnable": "توقيع الاشتراكات",
+      "subSignEnableDesc": "إضافة توقيع ed25519 في X-Subscription-Signature على محتوى الاستجابة. المفتاح العام متاح على /sub/pubkey.",
+      "subEmergencyUrl": "رابط الطوارئ",
+      "subEmergencyUrlDesc": "يُنشر ضمن حمولة ?format=meta كمصدر أخير للعناوين الحديثة.",
+      "subManagePeers": "إدارة اللوحات النظيرة"
     },
     "xray": {
       "save": "احفظ",
@@ -1921,7 +1930,55 @@
         "obtain": "فشل تحميل النظير",
         "add": "إضافة نظير",
         "update": "تحديث النظير",
-        "delete": "حذف النظير"
+        "delete": "حذف النظير",
+        "deleted": "تم حذف النظير",
+        "probeFailed": "النظير غير متاح",
+        "fillRequired": "الاسم والنطاق والمنفذ مطلوبة"
+      },
+      "title": "لوحات نظيرة",
+      "add": "إضافة نظير",
+      "addPeer": "إضافة نظير",
+      "editPeer": "تعديل النظير",
+      "empty": "لا توجد لوحات نظيرة بعد",
+      "name": "الاسم",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "ملاحظة",
+      "scheme": "البروتوكول",
+      "domain": "النطاق",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "المنفذ",
+      "subPath": "مسار الاشتراك",
+      "subPathHint": "مسار خادم الاشتراك لدى النظير، وليس لوحة الإدارة.",
+      "basePath": "المسار الأساسي",
+      "ips": "عناوين IP ثابتة",
+      "ipsHint": "عنوان في كل سطر. تُرسل كما هي للعملاء الذين يحتاجون لتجاوز DNS.",
+      "isSelf": "هذه اللوحة",
+      "isSelfHint": "لا تُعلن أبدًا كبديل عن نفسها. يتم التعرف عليها تلقائيًا من مفتاح التوقيع.",
+      "allowPrivateAddress": "السماح بعنوان خاص",
+      "self": "هذه اللوحة",
+      "probe": "فحص",
+      "probeOk": "النظير متاح ({ms} مللي ثانية)",
+      "statusOnline": "متصل",
+      "statusOffline": "غير متصل",
+      "statusUnknown": "لم يُفحص",
+      "advertisedYes": "مُعلن",
+      "advertisedNo": "غير مُعلن",
+      "advertisingOff": "إعلان اللوحات البديلة متوقف: يتم فحص النظائر لكن لا يصل شيء إلى العملاء. فعّله من «الإعدادات ← الاشتراك ← العنقود».",
+      "identityTitle": "مفتاح توقيع هذه اللوحة",
+      "identityHint": "يتحقق العملاء من X-Subscription-Signature بهذا المفتاح، وتتعرف به النظائر على هذه اللوحة.",
+      "totalPeers": "النظائر",
+      "onlinePeers": "متصل",
+      "advertisedPeers": "مُعلن",
+      "deleteConfirmTitle": "حذف النظير «{name}»؟",
+      "deleteConfirmContent": "لن يحصل العملاء على هذا النظير عند جلب الاشتراك القادم.",
+      "columns": {
+        "name": "الاسم",
+        "endpoint": "عنوان الاشتراك",
+        "ips": "عناوين IP ثابتة",
+        "status": "الحالة",
+        "advertised": "مُعلن",
+        "enable": "مُفعّل",
+        "actions": "إجراءات"
       }
     }
   },

@@ -113,7 +113,8 @@
     "openMenu": "Відкрити меню",
     "pinSidebar": "Закріпити бічну панель",
     "unpinSidebar": "Відкріпити бічну панель",
-    "subFormats": "Формати підписки"
+    "subFormats": "Формати підписки",
+    "peers": "Піри"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "Довірені адреси для ліміту",
       "ipLimitAllowlistDesc": "Адреси та підмережі, які ліміт не рахує і не банить: спільна офісна чи студентська адреса не витратить ліміт клієнта. Через кому, адреса або підмережа.",
       "eventPeerDown": "Пір недоступний",
-      "eventPeerUp": "Пір доступний"
+      "eventPeerUp": "Пір доступний",
+      "subClusterTab": "Кластер",
+      "subFallbackEnable": "Надавати резервні панелі",
+      "subFallbackEnableDesc": "Додавати до кожної відповіді підписки заголовки X-Subscription-Fallback-Domains/IPs зі списком доступних панелей-пірів.",
+      "subSignEnable": "Підписувати підписки",
+      "subSignEnableDesc": "Додавати ed25519-підпис X-Subscription-Signature за тілом відповіді. Публічний ключ надається за адресою /sub/pubkey.",
+      "subEmergencyUrl": "Аварійне посилання",
+      "subEmergencyUrlDesc": "Публікується в payload ?format=meta як останнє джерело свіжих адрес.",
+      "subManagePeers": "Керування пірами"
     },
     "xray": {
       "save": "Зберегти",
@@ -1921,7 +1930,55 @@
         "obtain": "Не вдалося завантажити пір",
         "add": "Додати пір",
         "update": "Оновити пір",
-        "delete": "Видалити пір"
+        "delete": "Видалити пір",
+        "deleted": "Пір видалено",
+        "probeFailed": "Пір недоступний",
+        "fillRequired": "Ім'я, домен і порт обов'язкові"
+      },
+      "title": "Панелі-піри",
+      "add": "Додати пір",
+      "addPeer": "Додати пір",
+      "editPeer": "Змінити пір",
+      "empty": "Пірів ще немає",
+      "name": "Ім'я",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Примітка",
+      "scheme": "Схема",
+      "domain": "Домен",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Порт",
+      "subPath": "Шлях підписки",
+      "subPathHint": "Шлях сервера підписок піра, а не його адмін-панелі.",
+      "basePath": "Базовий шлях",
+      "ips": "Статичні IP",
+      "ipsHint": "По одному в рядку. Надсилаються як є клієнтам, яким треба обійти DNS.",
+      "isSelf": "Ця панель",
+      "isSelfHint": "Ніколи не пропонується як резерв самій собі. Визначається автоматично за ключем підпису.",
+      "allowPrivateAddress": "Дозволити приватну адресу",
+      "self": "Ця панель",
+      "probe": "Перевірити",
+      "probeOk": "Пір доступний ({ms} мс)",
+      "statusOnline": "У мережі",
+      "statusOffline": "Недоступний",
+      "statusUnknown": "Не перевірявся",
+      "advertisedYes": "Надається",
+      "advertisedNo": "Не надається",
+      "advertisingOff": "Видача резервних панелей вимкнена: піри перевіряються, але клієнтам нічого не надходить. Увімкніть у «Налаштування → Підписка → Кластер».",
+      "identityTitle": "Ключ підпису цієї панелі",
+      "identityHint": "За цим ключем клієнти перевіряють X-Subscription-Signature, а піри впізнають цю панель.",
+      "totalPeers": "Піри",
+      "onlinePeers": "У мережі",
+      "advertisedPeers": "Надаються",
+      "deleteConfirmTitle": "Видалити пір «{name}»?",
+      "deleteConfirmContent": "З наступним запитом підписки клієнти перестануть отримувати цей пір.",
+      "columns": {
+        "name": "Ім'я",
+        "endpoint": "Адреса підписки",
+        "ips": "Статичні IP",
+        "status": "Статус",
+        "advertised": "Надається",
+        "enable": "Увімкнено",
+        "actions": "Дії"
       }
     }
   },

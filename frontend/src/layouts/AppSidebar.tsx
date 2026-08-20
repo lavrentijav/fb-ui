@@ -12,6 +12,7 @@ import {
   CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
+  DeploymentUnitOutlined,
   ExportOutlined,
   GithubOutlined,
   GlobalOutlined,
@@ -59,6 +60,7 @@ type IconName =
   | 'setting'
   | 'tool'
   | 'cluster'
+  | 'peers'
   | 'hosts'
   | 'logout'
   | 'apidocs'
@@ -73,6 +75,7 @@ const iconByName: Record<IconName, ComponentType> = {
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
+  peers: DeploymentUnitOutlined,
   hosts: GlobalOutlined,
   logout: LogoutOutlined,
   apidocs: ApiOutlined,
@@ -217,6 +220,7 @@ export default function AppSidebar() {
       { key: '/clients', icon: 'team', title: t('menu.clients') },
       { key: '/groups', icon: 'groups', title: t('menu.groups') },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
+      { key: '/peers', icon: 'peers', title: t('menu.peers') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
       { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing', title: t('menu.routing') },

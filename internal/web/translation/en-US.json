@@ -113,7 +113,8 @@
     "openMenu": "Open menu",
     "pinSidebar": "Pin sidebar",
     "unpinSidebar": "Unpin sidebar",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "Peers"
   },
   "pages": {
     "login": {
@@ -1502,7 +1503,15 @@
       "ipLimitAllowlist": "IP limit allowlist",
       "ipLimitAllowlistDesc": "Addresses and networks that the IP limit never counts and never bans, so a shared office or campus address cannot use up a client's limit. Comma-separated, IP or CIDR.",
       "eventPeerDown": "Peer down",
-      "eventPeerUp": "Peer up"
+      "eventPeerUp": "Peer up",
+      "subClusterTab": "Cluster",
+      "subFallbackEnable": "Advertise fallback panels",
+      "subFallbackEnableDesc": "Add X-Subscription-Fallback-Domains/IPs to every subscription response, listing the reachable peer panels.",
+      "subSignEnable": "Sign subscriptions",
+      "subSignEnableDesc": "Add an ed25519 X-Subscription-Signature over the response body. The public key is served at /sub/pubkey.",
+      "subEmergencyUrl": "Emergency URL",
+      "subEmergencyUrlDesc": "Published in the ?format=meta payload as a last-resort source of fresh endpoints.",
+      "subManagePeers": "Manage peer panels"
     },
     "xray": {
       "save": "Save",
@@ -1921,7 +1930,55 @@
         "obtain": "Failed to load peer",
         "add": "Add peer",
         "update": "Update peer",
-        "delete": "Delete peer"
+        "delete": "Delete peer",
+        "deleted": "Peer deleted",
+        "probeFailed": "Peer is unreachable",
+        "fillRequired": "Name, domain and port are required"
+      },
+      "title": "Peer panels",
+      "add": "Add peer",
+      "addPeer": "Add peer",
+      "editPeer": "Edit peer",
+      "empty": "No peer panels yet",
+      "name": "Name",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Remark",
+      "scheme": "Scheme",
+      "domain": "Domain",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Port",
+      "subPath": "Subscription path",
+      "subPathHint": "Path of the peer's subscription server, not its admin panel.",
+      "basePath": "Base path",
+      "ips": "Static IPs",
+      "ipsHint": "One per line. Sent as-is to clients that have to bypass DNS.",
+      "isSelf": "This panel",
+      "isSelfHint": "Never advertised as its own fallback. Detected automatically from the signing key.",
+      "allowPrivateAddress": "Allow private address",
+      "self": "This panel",
+      "probe": "Probe",
+      "probeOk": "Peer reachable ({ms} ms)",
+      "statusOnline": "Online",
+      "statusOffline": "Offline",
+      "statusUnknown": "Not probed",
+      "advertisedYes": "Advertised",
+      "advertisedNo": "Not advertised",
+      "advertisingOff": "Fallback advertising is off: peers are probed, but nothing reaches clients. Turn it on in Settings → Subscription → Cluster.",
+      "identityTitle": "This panel's signing key",
+      "identityHint": "Clients verify X-Subscription-Signature against this key, and peers recognise this panel by it.",
+      "totalPeers": "Peers",
+      "onlinePeers": "Online",
+      "advertisedPeers": "Advertised",
+      "deleteConfirmTitle": "Delete peer \"{name}\"?",
+      "deleteConfirmContent": "Clients stop being offered this peer on their next subscription fetch.",
+      "columns": {
+        "name": "Name",
+        "endpoint": "Subscription endpoint",
+        "ips": "Static IPs",
+        "status": "Status",
+        "advertised": "Advertised",
+        "enable": "Enabled",
+        "actions": "Actions"
       }
     }
   },

@@ -113,7 +113,8 @@
     "openMenu": "打开菜单",
     "pinSidebar": "固定侧边栏",
     "unpinSidebar": "取消固定侧边栏",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "对等面板"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "IP 限制白名单",
       "ipLimitAllowlistDesc": "IP 限制永远不会计入也不会封禁的地址和网段，避免办公室或校园的共享地址耗尽客户端的限额。IP/CIDR(逗号分隔)。",
       "eventPeerDown": "离线",
-      "eventPeerUp": "上线"
+      "eventPeerUp": "上线",
+      "subClusterTab": "集群",
+      "subFallbackEnable": "下发备用面板",
+      "subFallbackEnableDesc": "在每个订阅响应中加入 X-Subscription-Fallback-Domains/IPs，列出可达的对等面板。",
+      "subSignEnable": "为订阅签名",
+      "subSignEnableDesc": "对响应正文添加 ed25519 的 X-Subscription-Signature。公钥可在 /sub/pubkey 获取。",
+      "subEmergencyUrl": "应急地址",
+      "subEmergencyUrlDesc": "发布在 ?format=meta 载荷中，作为获取最新地址的最后手段。",
+      "subManagePeers": "管理对等面板"
     },
     "xray": {
       "importRules": "导入规则",
@@ -1921,7 +1930,55 @@
         "obtain": "加载对等面板失败",
         "add": "添加对等面板",
         "update": "更新对等面板",
-        "delete": "删除对等面板"
+        "delete": "删除对等面板",
+        "deleted": "对等面板已删除",
+        "probeFailed": "对等面板不可达",
+        "fillRequired": "名称、域名和端口为必填项"
+      },
+      "title": "对等面板",
+      "add": "添加对等面板",
+      "addPeer": "添加对等面板",
+      "editPeer": "编辑对等面板",
+      "empty": "暂无对等面板",
+      "name": "名称",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "备注",
+      "scheme": "协议",
+      "domain": "域名",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "端口",
+      "subPath": "订阅路径",
+      "subPathHint": "填写对方订阅服务器的路径，而不是管理面板的路径。",
+      "basePath": "基础路径",
+      "ips": "静态 IP",
+      "ipsHint": "每行一个。原样下发给需要绕过 DNS 的客户端。",
+      "isSelf": "本面板",
+      "isSelfHint": "本面板不会把自己作为备用地址下发。可通过签名密钥自动识别。",
+      "allowPrivateAddress": "允许内网地址",
+      "self": "本面板",
+      "probe": "探测",
+      "probeOk": "对等面板可达（{ms} 毫秒）",
+      "statusOnline": "在线",
+      "statusOffline": "离线",
+      "statusUnknown": "未探测",
+      "advertisedYes": "已下发",
+      "advertisedNo": "未下发",
+      "advertisingOff": "备用地址下发已关闭：仍会探测对等面板，但不会发送给客户端。请在「设置 → 订阅 → 集群」中开启。",
+      "identityTitle": "本面板的签名密钥",
+      "identityHint": "客户端用此密钥校验 X-Subscription-Signature，对等面板也据此识别本面板。",
+      "totalPeers": "对等面板",
+      "onlinePeers": "在线",
+      "advertisedPeers": "已下发",
+      "deleteConfirmTitle": "删除对等面板“{name}”？",
+      "deleteConfirmContent": "客户端下次拉取订阅时将不再收到该地址。",
+      "columns": {
+        "name": "名称",
+        "endpoint": "订阅地址",
+        "ips": "静态 IP",
+        "status": "状态",
+        "advertised": "已下发",
+        "enable": "启用",
+        "actions": "操作"
       }
     }
   },

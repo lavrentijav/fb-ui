@@ -113,7 +113,8 @@
     "openMenu": "メニューを開く",
     "pinSidebar": "サイドバーを固定",
     "unpinSidebar": "サイドバーの固定を解除",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "ピア"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "IP 制限の許可リスト",
       "ipLimitAllowlistDesc": "IP 制限がカウントもブロックもしないアドレスとネットワーク。オフィスや学内の共有アドレスがクライアントの上限を使い切らないようにします。IP/CIDR (カンマ区切り)。",
       "eventPeerDown": "オフライン",
-      "eventPeerUp": "オンライン"
+      "eventPeerUp": "オンライン",
+      "subClusterTab": "クラスター",
+      "subFallbackEnable": "フォールバックパネルを配信",
+      "subFallbackEnableDesc": "到達可能なピアパネルを列挙した X-Subscription-Fallback-Domains/IPs を、すべてのサブスクリプション応答に付与します。",
+      "subSignEnable": "サブスクリプションに署名",
+      "subSignEnableDesc": "応答本文に対する ed25519 の X-Subscription-Signature を付与します。公開鍵は /sub/pubkey で配信されます。",
+      "subEmergencyUrl": "緊急用 URL",
+      "subEmergencyUrlDesc": "?format=meta のペイロードに公開され、最新アドレスを得る最後の手段になります。",
+      "subManagePeers": "ピアパネルを管理"
     },
     "xray": {
       "importRules": "ルールをインポート",
@@ -1921,7 +1930,55 @@
         "obtain": "ピアの読み込みに失敗しました",
         "add": "ピアを追加",
         "update": "ピアを更新",
-        "delete": "ピアを削除"
+        "delete": "ピアを削除",
+        "deleted": "ピアを削除しました",
+        "probeFailed": "ピアに到達できません",
+        "fillRequired": "名前・ドメイン・ポートは必須です"
+      },
+      "title": "ピアパネル",
+      "add": "ピアを追加",
+      "addPeer": "ピアを追加",
+      "editPeer": "ピアを編集",
+      "empty": "ピアパネルはまだありません",
+      "name": "名前",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "備考",
+      "scheme": "スキーム",
+      "domain": "ドメイン",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "ポート",
+      "subPath": "サブスクリプションパス",
+      "subPathHint": "管理パネルではなく、相手のサブスクリプションサーバーのパスを指定します。",
+      "basePath": "ベースパス",
+      "ips": "静的 IP",
+      "ipsHint": "1 行に 1 つ。DNS を回避する必要があるクライアントへそのまま配信されます。",
+      "isSelf": "このパネル",
+      "isSelfHint": "自分自身をフォールバックとして配信することはありません。署名鍵から自動判定されます。",
+      "allowPrivateAddress": "プライベートアドレスを許可",
+      "self": "このパネル",
+      "probe": "接続確認",
+      "probeOk": "ピアに到達しました（{ms} ミリ秒）",
+      "statusOnline": "オンライン",
+      "statusOffline": "オフライン",
+      "statusUnknown": "未確認",
+      "advertisedYes": "配信中",
+      "advertisedNo": "未配信",
+      "advertisingOff": "フォールバックの配信が無効です。ピアの監視は行われますが、クライアントには何も送られません。「設定 → サブスクリプション → クラスター」で有効にしてください。",
+      "identityTitle": "このパネルの署名鍵",
+      "identityHint": "クライアントはこの鍵で X-Subscription-Signature を検証し、ピアはこの鍵でこのパネルを識別します。",
+      "totalPeers": "ピア",
+      "onlinePeers": "オンライン",
+      "advertisedPeers": "配信中",
+      "deleteConfirmTitle": "ピア「{name}」を削除しますか？",
+      "deleteConfirmContent": "次回のサブスクリプション取得から、このピアはクライアントに配信されなくなります。",
+      "columns": {
+        "name": "名前",
+        "endpoint": "サブスクリプションのアドレス",
+        "ips": "静的 IP",
+        "status": "状態",
+        "advertised": "配信中",
+        "enable": "有効",
+        "actions": "操作"
       }
     }
   },

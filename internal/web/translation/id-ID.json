@@ -113,7 +113,8 @@
     "openMenu": "Buka menu",
     "pinSidebar": "Sematkan bilah sisi",
     "unpinSidebar": "Lepas sematan bilah sisi",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "Peer"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "Daftar izin batas IP",
       "ipLimitAllowlistDesc": "Alamat dan jaringan yang tidak pernah dihitung maupun diblokir oleh batas IP, sehingga alamat kantor atau kampus bersama tidak menghabiskan batas klien. IP/CIDR (dipisahkan koma).",
       "eventPeerDown": "Mati",
-      "eventPeerUp": "Hidup"
+      "eventPeerUp": "Hidup",
+      "subClusterTab": "Klaster",
+      "subFallbackEnable": "Iklankan panel cadangan",
+      "subFallbackEnableDesc": "Menambahkan X-Subscription-Fallback-Domains/IPs ke setiap respons langganan, berisi daftar panel peer yang dapat dijangkau.",
+      "subSignEnable": "Tanda tangani langganan",
+      "subSignEnableDesc": "Menambahkan tanda tangan ed25519 pada X-Subscription-Signature atas isi respons. Kunci publik disajikan di /sub/pubkey.",
+      "subEmergencyUrl": "URL darurat",
+      "subEmergencyUrlDesc": "Dipublikasikan dalam payload ?format=meta sebagai sumber terakhir untuk alamat terbaru.",
+      "subManagePeers": "Kelola panel peer"
     },
     "xray": {
       "save": "Simpan",
@@ -1921,7 +1930,55 @@
         "obtain": "Gagal memuat peer",
         "add": "Tambah peer",
         "update": "Perbarui peer",
-        "delete": "Hapus peer"
+        "delete": "Hapus peer",
+        "deleted": "Peer dihapus",
+        "probeFailed": "Peer tidak dapat dijangkau",
+        "fillRequired": "Nama, domain, dan port wajib diisi"
+      },
+      "title": "Panel peer",
+      "add": "Tambah peer",
+      "addPeer": "Tambah peer",
+      "editPeer": "Ubah peer",
+      "empty": "Belum ada panel peer",
+      "name": "Nama",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Catatan",
+      "scheme": "Skema",
+      "domain": "Domain",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Port",
+      "subPath": "Jalur langganan",
+      "subPathHint": "Jalur server langganan peer, bukan panel adminnya.",
+      "basePath": "Jalur dasar",
+      "ips": "IP statis",
+      "ipsHint": "Satu per baris. Dikirim apa adanya ke klien yang harus melewati DNS.",
+      "isSelf": "Panel ini",
+      "isSelfHint": "Tidak pernah diiklankan sebagai cadangan dirinya sendiri. Dideteksi otomatis dari kunci tanda tangan.",
+      "allowPrivateAddress": "Izinkan alamat privat",
+      "self": "Panel ini",
+      "probe": "Uji",
+      "probeOk": "Peer dapat dijangkau ({ms} ms)",
+      "statusOnline": "Online",
+      "statusOffline": "Mati",
+      "statusUnknown": "Belum diuji",
+      "advertisedYes": "Diiklankan",
+      "advertisedNo": "Tidak diiklankan",
+      "advertisingOff": "Pengiklanan cadangan mati: peer tetap diuji, tetapi tidak ada yang dikirim ke klien. Aktifkan di Pengaturan → Langganan → Klaster.",
+      "identityTitle": "Kunci tanda tangan panel ini",
+      "identityHint": "Klien memverifikasi X-Subscription-Signature dengan kunci ini, dan peer mengenali panel ini lewat kunci tersebut.",
+      "totalPeers": "Peer",
+      "onlinePeers": "Online",
+      "advertisedPeers": "Diiklankan",
+      "deleteConfirmTitle": "Hapus peer \"{name}\"?",
+      "deleteConfirmContent": "Klien tidak akan lagi menerima peer ini pada pengambilan langganan berikutnya.",
+      "columns": {
+        "name": "Nama",
+        "endpoint": "Alamat langganan",
+        "ips": "IP statis",
+        "status": "Status",
+        "advertised": "Diiklankan",
+        "enable": "Aktif",
+        "actions": "Aksi"
       }
     }
   },

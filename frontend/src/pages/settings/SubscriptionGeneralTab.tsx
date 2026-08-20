@@ -2,6 +2,7 @@ import { Alert, Button, Input, InputNumber, Switch, Tabs, Tag } from 'antd';
 import {
   BranchesOutlined,
   CompassOutlined,
+  DeploymentUnitOutlined,
   IdcardOutlined,
   InfoCircleOutlined,
   NodeIndexOutlined,
@@ -405,6 +406,52 @@ export default function SubscriptionGeneralTab({
                   onChange={(e) => updateSetting({ subIncyRoutingRules: e.target.value })}
                 />
               </SettingListItem>
+            </>
+          ),
+        },
+        {
+          key: '8',
+          label: catTabLabel(
+            <DeploymentUnitOutlined />,
+            t('pages.settings.subClusterTab'),
+            isMobile,
+          ),
+          children: (
+            <>
+              <SettingListItem
+                paddings="small"
+                title={t('pages.settings.subFallbackEnable')}
+                description={t('pages.settings.subFallbackEnableDesc')}
+              >
+                <Switch
+                  checked={allSetting.subFallbackEnable}
+                  onChange={(v) => updateSetting({ subFallbackEnable: v })}
+                />
+              </SettingListItem>
+              <SettingListItem
+                paddings="small"
+                title={t('pages.settings.subSignEnable')}
+                description={t('pages.settings.subSignEnableDesc')}
+              >
+                <Switch
+                  checked={allSetting.subSignEnable}
+                  onChange={(v) => updateSetting({ subSignEnable: v })}
+                />
+              </SettingListItem>
+              <SettingListItem
+                paddings="small"
+                title={t('pages.settings.subEmergencyUrl')}
+                description={t('pages.settings.subEmergencyUrlDesc')}
+              >
+                <Input
+                  value={allSetting.subEmergencyUrl}
+                  placeholder="https://raw.githubusercontent.com/..."
+                  onChange={(e) => updateSetting({ subEmergencyUrl: e.target.value })}
+                />
+              </SettingListItem>
+              <Button type="link" onClick={() => navigate('/peers')} style={{ paddingInline: 0 }}>
+                {t('pages.settings.subManagePeers')}
+              </Button>
             </>
           ),
         },

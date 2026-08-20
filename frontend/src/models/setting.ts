@@ -68,6 +68,9 @@ export class AllSetting {
   subJsonFinalMask = '';
   subThemeDir = '';
   subHideSettings = false;
+  subFallbackEnable = false;
+  subSignEnable = false;
+  subEmergencyUrl = '';
 
   timeLocation = 'Local';
 

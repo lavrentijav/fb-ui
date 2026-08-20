@@ -107,6 +107,9 @@ type AllSetting struct {
 	SubJsonFinalMask            string `json:"subJsonFinalMask" form:"subJsonFinalMask"`
 	SubThemeDir                 string `json:"subThemeDir" form:"subThemeDir"`
 	SubHideSettings             bool   `json:"subHideSettings" form:"subHideSettings"`
+	SubFallbackEnable           bool   `json:"subFallbackEnable" form:"subFallbackEnable"`
+	SubSignEnable               bool   `json:"subSignEnable" form:"subSignEnable"`
+	SubEmergencyUrl             string `json:"subEmergencyUrl" form:"subEmergencyUrl"`
 
 	LdapEnable             bool   `json:"ldapEnable" form:"ldapEnable"`
 	LdapHost               string `json:"ldapHost" form:"ldapHost"`

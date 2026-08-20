@@ -113,7 +113,8 @@
     "openMenu": "Abrir menú",
     "pinSidebar": "Fijar barra lateral",
     "unpinSidebar": "Desfijar barra lateral",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "Pares"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "Lista de permitidos del límite de IP",
       "ipLimitAllowlistDesc": "Direcciones y redes que el límite de IP nunca cuenta ni banea, para que una dirección compartida de oficina o campus no agote el límite de un cliente. IP/CIDR separados por coma.",
       "eventPeerDown": "Caído",
-      "eventPeerUp": "En línea"
+      "eventPeerUp": "En línea",
+      "subClusterTab": "Clúster",
+      "subFallbackEnable": "Anunciar paneles de respaldo",
+      "subFallbackEnableDesc": "Añade X-Subscription-Fallback-Domains/IPs a cada respuesta de suscripción con los paneles pares accesibles.",
+      "subSignEnable": "Firmar suscripciones",
+      "subSignEnableDesc": "Añade una firma ed25519 en X-Subscription-Signature sobre el cuerpo de la respuesta. La clave pública se sirve en /sub/pubkey.",
+      "subEmergencyUrl": "URL de emergencia",
+      "subEmergencyUrlDesc": "Se publica en el payload de ?format=meta como último recurso para obtener direcciones actualizadas.",
+      "subManagePeers": "Gestionar paneles pares"
     },
     "xray": {
       "save": "Guardar configuración",
@@ -1921,7 +1930,55 @@
         "obtain": "No se pudo cargar el par",
         "add": "Añadir par",
         "update": "Actualizar par",
-        "delete": "Eliminar par"
+        "delete": "Eliminar par",
+        "deleted": "Par eliminado",
+        "probeFailed": "El par no está accesible",
+        "fillRequired": "El nombre, el dominio y el puerto son obligatorios"
+      },
+      "title": "Paneles pares",
+      "add": "Añadir par",
+      "addPeer": "Añadir par",
+      "editPeer": "Editar par",
+      "empty": "Todavía no hay paneles pares",
+      "name": "Nombre",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "Comentario",
+      "scheme": "Esquema",
+      "domain": "Dominio",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "Puerto",
+      "subPath": "Ruta de suscripción",
+      "subPathHint": "Ruta del servidor de suscripciones del par, no de su panel de administración.",
+      "basePath": "Ruta base",
+      "ips": "IP estáticas",
+      "ipsHint": "Una por línea. Se envían tal cual a los clientes que deben evitar el DNS.",
+      "isSelf": "Este panel",
+      "isSelfHint": "Nunca se anuncia como respaldo de sí mismo. Se detecta automáticamente por la clave de firma.",
+      "allowPrivateAddress": "Permitir dirección privada",
+      "self": "Este panel",
+      "probe": "Comprobar",
+      "probeOk": "Par accesible ({ms} ms)",
+      "statusOnline": "En línea",
+      "statusOffline": "Caído",
+      "statusUnknown": "Sin comprobar",
+      "advertisedYes": "Anunciado",
+      "advertisedNo": "No anunciado",
+      "advertisingOff": "El anuncio de respaldos está desactivado: los pares se comprueban, pero no llega nada a los clientes. Actívalo en Ajustes → Suscripción → Clúster.",
+      "identityTitle": "Clave de firma de este panel",
+      "identityHint": "Los clientes verifican X-Subscription-Signature con esta clave y los pares reconocen este panel por ella.",
+      "totalPeers": "Pares",
+      "onlinePeers": "En línea",
+      "advertisedPeers": "Anunciados",
+      "deleteConfirmTitle": "¿Eliminar el par «{name}»?",
+      "deleteConfirmContent": "Los clientes dejarán de recibir este par en su próxima descarga de la suscripción.",
+      "columns": {
+        "name": "Nombre",
+        "endpoint": "Dirección de suscripción",
+        "ips": "IP estáticas",
+        "status": "Estado",
+        "advertised": "Anunciado",
+        "enable": "Activado",
+        "actions": "Acciones"
       }
     }
   },

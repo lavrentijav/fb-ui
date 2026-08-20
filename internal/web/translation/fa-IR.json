@@ -113,7 +113,8 @@
     "openMenu": "باز کردن منو",
     "pinSidebar": "ثابت کردن نوار کناری",
     "unpinSidebar": "برداشتن تثبیت نوار کناری",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "peers": "همتاها"
   },
   "pages": {
     "login": {
@@ -1384,7 +1385,15 @@
       "ipLimitAllowlist": "فهرست مجاز محدودیت IP",
       "ipLimitAllowlistDesc": "نشانی‌ها و شبکه‌هایی که محدودیت IP هرگز آن‌ها را نمی‌شمارد و مسدود نمی‌کند، تا نشانی مشترک یک اداره یا دانشگاه محدودیت کاربر را مصرف نکند. IPها/CIDRها (با کاما).",
       "eventPeerDown": "قطع",
-      "eventPeerUp": "وصل"
+      "eventPeerUp": "وصل",
+      "subClusterTab": "خوشه",
+      "subFallbackEnable": "اعلام پنل‌های جایگزین",
+      "subFallbackEnableDesc": "افزودن هدرهای X-Subscription-Fallback-Domains/IPs به هر پاسخ اشتراک، شامل فهرست پنل‌های همتای در دسترس.",
+      "subSignEnable": "امضای اشتراک‌ها",
+      "subSignEnableDesc": "افزودن امضای ed25519 با هدر X-Subscription-Signature روی بدنه پاسخ. کلید عمومی در /sub/pubkey ارائه می‌شود.",
+      "subEmergencyUrl": "نشانی اضطراری",
+      "subEmergencyUrlDesc": "در payload آدرس ?format=meta منتشر می‌شود؛ آخرین راه دریافت نشانی‌های تازه.",
+      "subManagePeers": "مدیریت پنل‌های همتا"
     },
     "xray": {
       "save": "ذخیره",
@@ -1921,7 +1930,55 @@
         "obtain": "بارگذاری همتا ناموفق بود",
         "add": "افزودن همتا",
         "update": "به‌روزرسانی همتا",
-        "delete": "حذف همتا"
+        "delete": "حذف همتا",
+        "deleted": "همتا حذف شد",
+        "probeFailed": "همتا در دسترس نیست",
+        "fillRequired": "نام، دامنه و پورت الزامی است"
+      },
+      "title": "پنل‌های همتا",
+      "add": "افزودن همتا",
+      "addPeer": "افزودن همتا",
+      "editPeer": "ویرایش همتا",
+      "empty": "هنوز همتایی ثبت نشده است",
+      "name": "نام",
+      "namePlaceholder": "eu-sub-2",
+      "remark": "توضیح",
+      "scheme": "پروتکل",
+      "domain": "دامنه",
+      "domainPlaceholder": "sub2.example.com",
+      "port": "پورت",
+      "subPath": "مسیر اشتراک",
+      "subPathHint": "مسیر سرور اشتراک همتا، نه پنل مدیریت آن.",
+      "basePath": "مسیر پایه",
+      "ips": "آی‌پی‌های ثابت",
+      "ipsHint": "هر خط یک مورد. بدون تغییر برای کلاینت‌هایی که باید DNS را دور بزنند ارسال می‌شود.",
+      "isSelf": "همین پنل",
+      "isSelfHint": "هرگز به‌عنوان جایگزین خودش اعلام نمی‌شود. از روی کلید امضا به‌صورت خودکار تشخیص داده می‌شود.",
+      "allowPrivateAddress": "اجازه آدرس خصوصی",
+      "self": "همین پنل",
+      "probe": "بررسی",
+      "probeOk": "همتا در دسترس است ({ms} میلی‌ثانیه)",
+      "statusOnline": "آنلاین",
+      "statusOffline": "قطع",
+      "statusUnknown": "بررسی نشده",
+      "advertisedYes": "اعلام می‌شود",
+      "advertisedNo": "اعلام نمی‌شود",
+      "advertisingOff": "اعلام پنل‌های جایگزین خاموش است: همتاها بررسی می‌شوند اما چیزی به کلاینت‌ها نمی‌رسد. از «تنظیمات ← اشتراک ← خوشه» فعالش کنید.",
+      "identityTitle": "کلید امضای این پنل",
+      "identityHint": "کلاینت‌ها با این کلید X-Subscription-Signature را بررسی می‌کنند و همتاها این پنل را با آن می‌شناسند.",
+      "totalPeers": "همتاها",
+      "onlinePeers": "آنلاین",
+      "advertisedPeers": "اعلام‌شده",
+      "deleteConfirmTitle": "همتای «{name}» حذف شود؟",
+      "deleteConfirmContent": "از درخواست بعدی اشتراک، این همتا دیگر به کلاینت‌ها داده نمی‌شود.",
+      "columns": {
+        "name": "نام",
+        "endpoint": "نشانی اشتراک",
+        "ips": "آی‌پی‌های ثابت",
+        "status": "وضعیت",
+        "advertised": "اعلام‌شده",
+        "enable": "فعال",
+        "actions": "عملیات"
       }
     }
   },
