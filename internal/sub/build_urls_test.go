@@ -17,6 +17,8 @@ func initSubDB(t *testing.T) {
 	// Close the handle before t.TempDir cleanup so Windows doesn't refuse to
 	// remove the still-open sqlite file.
 	t.Cleanup(func() { _ = database.CloseDB() })
+	resetSubMetaCache()
+	t.Cleanup(resetSubMetaCache)
 }
 
 // The subscription page's Copy URL must be built from the same host the

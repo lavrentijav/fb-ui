@@ -19,6 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/cluster"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 )
@@ -282,6 +283,9 @@ func NewSUBController(g *gin.RouterGroup, options ...SUBControllerOption) *SUBCo
 // on the provided router group.
 func (a *SUBController) initRouter(g *gin.RouterGroup) {
 	gLink := g.Group(a.subPath)
+	// Static sibling of ":subid": a subscription whose id is literally "pubkey"
+	// is shadowed by this peer identity endpoint.
+	gLink.GET(cluster.IdentityPath, a.identity)
 	gLink.GET(":subid", a.subs)
 	gLink.HEAD(":subid", a.subs)
 	if a.jsonEnabled {
@@ -390,6 +394,11 @@ func (a *SUBController) subs(c *gin.Context) {
 	if !a.enforceHwid(c) {
 		return
 	}
+	if a.maybeServeSubMeta(c) {
+		a.recordSubscriptionFetch(c)
+		logSubscriptionRoute(userAgent, "meta")
+		return
+	}
 	if shouldAutoServeClash(a.subClashAutoDetect, a.clashEnabled, false, userAgent, a.clashUserAgent) && a.serveClashBody(c, false) {
 		a.recordSubscriptionFetch(c)
 		logSubscriptionRoute(userAgent, "clash")
@@ -429,11 +438,12 @@ func (a *SUBController) subs(c *gin.Context) {
 			}
 		}
 
+		body := result.String()
 		if a.subEncrypt {
-			c.String(200, base64.StdEncoding.EncodeToString([]byte(result.String())))
-		} else {
-			c.String(200, result.String())
+			body = base64.StdEncoding.EncodeToString([]byte(body))
 		}
+		applyClusterHeaders(c, []byte(body))
+		c.String(200, body)
 		a.recordSubscriptionFetch(c)
 	}
 }
@@ -747,6 +757,7 @@ func (a *SUBController) serveJsonBody(c *gin.Context, alwaysReturnArray bool, co
 		c.Writer.Header().Set("Content-Disposition", `attachment; filename="subscription.json"`)
 	}
 
+	applyClusterHeaders(c, []byte(jsonSub))
 	c.Data(200, contentType, []byte(jsonSub))
 	return true
 }
@@ -797,6 +808,7 @@ func (a *SUBController) serveClashBody(c *gin.Context, rawDownload bool) bool {
 		// Clash clients commonly use Content-Disposition to choose the imported profile name.
 		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.PathEscape(metadata.Title)))
 	}
+	applyClusterHeaders(c, []byte(clashSub))
 	c.Data(200, "application/yaml; charset=utf-8", []byte(clashSub))
 	return true
 }

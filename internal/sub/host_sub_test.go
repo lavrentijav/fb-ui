@@ -19,6 +19,8 @@ func seedSubDB(t *testing.T) {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
+	resetSubMetaCache()
+	t.Cleanup(resetSubMetaCache)
 }
 
 // seedSubInbound creates a VLESS inbound with one client wired into the
