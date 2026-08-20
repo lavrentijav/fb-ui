@@ -1914,6 +1914,15 @@
         "badTag": "Etiqueta no válida",
         "badVlessRoute": "Introduce un único número entre 0 y 65535"
       }
+    },
+    "peers": {
+      "toasts": {
+        "list": "No se pudieron cargar los pares",
+        "obtain": "No se pudo cargar el par",
+        "add": "Añadir par",
+        "update": "Actualizar par",
+        "delete": "Eliminar par"
+      }
     }
   },
   "tgbot": {

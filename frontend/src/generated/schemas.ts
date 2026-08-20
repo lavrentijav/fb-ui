@@ -182,6 +182,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "subDomain": {
         "type": "string"
       },
+      "subEmergencyUrl": {
+        "type": "string"
+      },
       "subEnable": {
         "type": "boolean"
       },
@@ -189,6 +192,9 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "boolean"
       },
       "subEncrypt": {
+        "type": "boolean"
+      },
+      "subFallbackEnable": {
         "type": "boolean"
       },
       "subHideSettings": {
@@ -248,6 +254,9 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "string"
       },
       "subShowIdentityOnAllLinks": {
+        "type": "boolean"
+      },
+      "subSignEnable": {
         "type": "boolean"
       },
       "subSupportUrl": {
@@ -401,9 +410,11 @@ export const SCHEMAS: Record<string, unknown> = {
       "subClashURI",
       "subClashUserAgentRegex",
       "subDomain",
+      "subEmergencyUrl",
       "subEnable",
       "subEnableRouting",
       "subEncrypt",
+      "subFallbackEnable",
       "subHideSettings",
       "subIncyEnableRouting",
       "subIncyRoutingRules",
@@ -423,6 +434,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "subProfileUrl",
       "subRoutingRules",
       "subShowIdentityOnAllLinks",
+      "subSignEnable",
       "subSupportUrl",
       "subThemeDir",
       "subTitle",
@@ -657,6 +669,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "subDomain": {
         "type": "string"
       },
+      "subEmergencyUrl": {
+        "type": "string"
+      },
       "subEnable": {
         "type": "boolean"
       },
@@ -664,6 +679,9 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "boolean"
       },
       "subEncrypt": {
+        "type": "boolean"
+      },
+      "subFallbackEnable": {
         "type": "boolean"
       },
       "subHideSettings": {
@@ -723,6 +741,9 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "string"
       },
       "subShowIdentityOnAllLinks": {
+        "type": "boolean"
+      },
+      "subSignEnable": {
         "type": "boolean"
       },
       "subSupportUrl": {
@@ -883,9 +904,11 @@ export const SCHEMAS: Record<string, unknown> = {
       "subClashURI",
       "subClashUserAgentRegex",
       "subDomain",
+      "subEmergencyUrl",
       "subEnable",
       "subEnableRouting",
       "subEncrypt",
+      "subFallbackEnable",
       "subHideSettings",
       "subIncyEnableRouting",
       "subIncyRoutingRules",
@@ -905,6 +928,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "subProfileUrl",
       "subRoutingRules",
       "subShowIdentityOnAllLinks",
+      "subSignEnable",
       "subSupportUrl",
       "subThemeDir",
       "subTitle",
@@ -2268,6 +2292,120 @@ export const SCHEMAS: Record<string, unknown> = {
       "ssMethod",
       "tag",
       "tlsFlowCapable"
+    ],
+    "type": "object"
+  },
+  "MasterPeer": {
+    "description": "MasterPeer is another panel that serves the same subscriptions as this one.\nPeers are advertised to clients as fallback endpoints, so a client whose\nprimary subscription host is blocked can retry elsewhere without a new link.",
+    "properties": {
+      "allowPrivateAddress": {
+        "description": "AllowPrivateAddress opens the SSRF guard for lab setups where peers sit on\na private network; off by default, exactly like Node.",
+        "type": "boolean"
+      },
+      "basePath": {
+        "example": "/",
+        "type": "string"
+      },
+      "createdAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
+      "domain": {
+        "example": "sub2.example.com",
+        "type": "string"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "ips": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "isSelf": {
+        "description": "IsSelf marks the row describing this very panel. Set automatically when a\nprobe returns our own subscription signing key, and never advertised as a\nfallback of itself. Admins can also set it by hand for an unsigned peer.",
+        "type": "boolean"
+      },
+      "lastError": {
+        "type": "string"
+      },
+      "lastHeartbeat": {
+        "description": "unix seconds, 0 = never",
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
+      "latencyMs": {
+        "example": 42,
+        "type": "integer"
+      },
+      "name": {
+        "example": "eu-sub-2",
+        "type": "string"
+      },
+      "port": {
+        "example": 2096,
+        "maximum": 65535,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "publicKey": {
+        "description": "PublicKey is the peer's ed25519 subscription-signing key as learned from\nits probe. Observed state — never user-edited.",
+        "type": "string"
+      },
+      "remark": {
+        "type": "string"
+      },
+      "scheme": {
+        "enum": [
+          "http",
+          "https"
+        ],
+        "example": "https",
+        "type": "string"
+      },
+      "status": {
+        "description": "online|offline|unknown",
+        "example": "online",
+        "type": "string"
+      },
+      "subPath": {
+        "example": "/sub/",
+        "type": "string"
+      },
+      "updatedAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "allowPrivateAddress",
+      "basePath",
+      "createdAt",
+      "domain",
+      "enable",
+      "id",
+      "ips",
+      "isSelf",
+      "lastError",
+      "lastHeartbeat",
+      "latencyMs",
+      "name",
+      "port",
+      "publicKey",
+      "remark",
+      "scheme",
+      "status",
+      "subPath",
+      "updatedAt"
     ],
     "type": "object"
   },

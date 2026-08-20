@@ -1914,6 +1914,15 @@
       },
       "defaultOutbound": "Default Outbound",
       "defaultOutboundDesc": "Traffic that does not match any routing rule uses this outbound (Xray uses the first outbound in the list)."
+    },
+    "peers": {
+      "toasts": {
+        "list": "Failed to load peers",
+        "obtain": "Failed to load peer",
+        "add": "Add peer",
+        "update": "Update peer",
+        "delete": "Delete peer"
+      }
     }
   },
   "tgbot": {

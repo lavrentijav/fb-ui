@@ -1914,6 +1914,15 @@
         "badTag": "Tag không hợp lệ",
         "badVlessRoute": "Nhập một số duy nhất từ 0 đến 65535"
       }
+    },
+    "peers": {
+      "toasts": {
+        "list": "Không tải được danh sách máy ngang hàng",
+        "obtain": "Không tải được máy ngang hàng",
+        "add": "Thêm máy ngang hàng",
+        "update": "Cập nhật máy ngang hàng",
+        "delete": "Xóa máy ngang hàng"
+      }
     }
   },
   "tgbot": {

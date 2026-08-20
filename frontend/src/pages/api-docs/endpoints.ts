@@ -1409,6 +1409,75 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'peers',
+    title: 'Peers',
+    description:
+      'Sibling panels that serve the same subscriptions as this one. Live peers are advertised to clients through the X-Subscription-Fallback-* headers and the ?format=meta payload, so a blocked subscription host can be replaced without reissuing links. A background job probes each peer every 30 seconds. All endpoints under /panel/api/peers.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/peers/list',
+        summary: 'List every configured peer panel with its addressing and last probe result.',
+        responseSchema: 'MasterPeer',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/peers/identity',
+        summary:
+          "This panel's own ed25519 subscription-signing public key. Peers recognise this panel by it, and it is the key clients verify X-Subscription-Signature against. Generated on first call.",
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "alg": "ed25519",\n    "key": "3d40..."\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/peers/get/:id',
+        summary: 'Fetch a single peer by ID.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
+        responseSchema: 'MasterPeer',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/peers/add',
+        summary:
+          'Register a peer panel. Point domain/port/subPath at its subscription server, not its admin panel. Static ips are optional and are advertised verbatim in X-Subscription-Fallback-IPs.',
+        body: '{\n  "name": "eu-sub-2",\n  "remark": "",\n  "scheme": "https",\n  "domain": "sub2.example.com",\n  "port": 2096,\n  "subPath": "/sub/",\n  "basePath": "/",\n  "ips": ["185.51.100.2"],\n  "enable": true,\n  "allowPrivateAddress": false,\n  "isSelf": false\n}',
+        responseSchema: 'MasterPeer',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/peers/update/:id',
+        summary:
+          'Replace a peer\u2019s addressing. Observed state (status, latency, learned public key) is owned by the health job and is not writable here.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
+        body: '{\n  "name": "eu-sub-2",\n  "remark": "",\n  "scheme": "https",\n  "domain": "sub2.example.com",\n  "port": 2096,\n  "subPath": "/sub/",\n  "basePath": "/",\n  "ips": ["185.51.100.2"],\n  "enable": true,\n  "allowPrivateAddress": false,\n  "isSelf": false\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/peers/del/:id',
+        summary: 'Delete a peer. Clients stop being offered it on the next subscription fetch.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/peers/setEnable/:id',
+        summary: 'Pause or resume advertising this peer without deleting it.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
+        body: '{\n  "enable": true\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/peers/probe/:id',
+        summary:
+          'Probe a peer now and persist the result, instead of waiting for the next health tick. Returns the stored patch.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "status": "online",\n    "lastHeartbeat": 1700000000,\n    "latencyMs": 42,\n    "publicKey": "3d40...",\n    "isSelf": false,\n    "lastError": ""\n  }\n}',
+      },
+    ],
+  },
+
+  {
     id: 'hosts',
     title: 'Hosts',
     description:
@@ -2164,6 +2233,18 @@ export const sections: readonly Section[] = [
         name: 'Routing',
         desc: 'Global routing rules for client apps that support them (e.g. Happ)',
       },
+      {
+        name: 'X-Subscription-Fallback-Domains',
+        desc: 'Comma-separated domains of reachable peer panels serving the same subscription. Only when Settings \u2192 Subscription \u2192 fallback advertising is on.',
+      },
+      {
+        name: 'X-Subscription-Fallback-IPs',
+        desc: 'Comma-separated IP literals for those peers, for clients that have to bypass DNS.',
+      },
+      {
+        name: 'X-Subscription-Signature',
+        desc: 'Hex ed25519 signature over the exact response body. Verify against the key from <code>/{subPath}pubkey</code>. Only when subscription signing is on.',
+      },
     ],
     endpoints: [
       {
@@ -2178,9 +2259,15 @@ export const sections: readonly Section[] = [
             in: 'query',
             type: 'string',
             optional: true,
-            desc: 'Set to "info" to get the subscription status view-model as JSON instead of the links.',
+            desc: 'Set to "info" for the subscription status view-model as JSON (no links), or "meta" for the cluster-aware document: {version, updated_at, meta:{masters, emergency_url}, outbounds}. The master list is populated only while fallback advertising is enabled.',
           },
         ],
+      },
+      {
+        method: 'GET',
+        path: '/{subPath}pubkey',
+        summary:
+          'This panel\'s ed25519 subscription-signing public key, as {"alg":"ed25519","key":"<hex>"}. Unauthenticated: peers probe it for health, and clients use it to verify X-Subscription-Signature. The key is generated on first request. Shadows a subscription whose id is literally "pubkey".',
       },
       {
         method: 'GET',

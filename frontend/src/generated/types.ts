@@ -63,9 +63,11 @@ export interface AllSetting {
   subClashURI: string;
   subClashUserAgentRegex: string;
   subDomain: string;
+  subEmergencyUrl: string;
   subEnable: boolean;
   subEnableRouting: boolean;
   subEncrypt: boolean;
+  subFallbackEnable: boolean;
   subHideSettings: boolean;
   subIncyEnableRouting: boolean;
   subIncyRoutingRules: string;
@@ -85,6 +87,7 @@ export interface AllSetting {
   subProfileUrl: string;
   subRoutingRules: string;
   subShowIdentityOnAllLinks: boolean;
+  subSignEnable: boolean;
   subSupportUrl: string;
   subThemeDir: string;
   subTitle: string;
@@ -177,9 +180,11 @@ export interface AllSettingView {
   subClashURI: string;
   subClashUserAgentRegex: string;
   subDomain: string;
+  subEmergencyUrl: string;
   subEnable: boolean;
   subEnableRouting: boolean;
   subEncrypt: boolean;
+  subFallbackEnable: boolean;
   subHideSettings: boolean;
   subIncyEnableRouting: boolean;
   subIncyRoutingRules: string;
@@ -199,6 +204,7 @@ export interface AllSettingView {
   subProfileUrl: string;
   subRoutingRules: string;
   subShowIdentityOnAllLinks: boolean;
+  subSignEnable: boolean;
   subSupportUrl: string;
   subThemeDir: string;
   subTitle: string;
@@ -527,6 +533,28 @@ export interface InboundOption {
   wgDns?: string;
   wgMtu?: number;
   wgPublicKey?: string;
+}
+
+export interface MasterPeer {
+  allowPrivateAddress: boolean;
+  basePath: string;
+  createdAt: number;
+  domain: string;
+  enable: boolean;
+  id: number;
+  ips: string[];
+  isSelf: boolean;
+  lastError: string;
+  lastHeartbeat: number;
+  latencyMs: number;
+  name: string;
+  port: number;
+  publicKey: string;
+  remark: string;
+  scheme: string;
+  status: string;
+  subPath: string;
+  updatedAt: number;
 }
 
 export interface Msg {

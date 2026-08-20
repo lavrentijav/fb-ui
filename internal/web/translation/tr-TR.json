@@ -1914,6 +1914,15 @@
         "badTag": "Geçersiz etiket",
         "badVlessRoute": "0 ile 65535 arasında tek bir sayı girin"
       }
+    },
+    "peers": {
+      "toasts": {
+        "list": "Eşler yüklenemedi",
+        "obtain": "Eş yüklenemedi",
+        "add": "Eş ekle",
+        "update": "Eşi güncelle",
+        "delete": "Eşi sil"
+      }
     }
   },
   "tgbot": {

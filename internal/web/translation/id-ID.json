@@ -1914,6 +1914,15 @@
         "badTag": "Tag tidak valid",
         "badVlessRoute": "Masukkan satu angka antara 0 dan 65535"
       }
+    },
+    "peers": {
+      "toasts": {
+        "list": "Gagal memuat peer",
+        "obtain": "Gagal memuat peer",
+        "add": "Tambah peer",
+        "update": "Perbarui peer",
+        "delete": "Hapus peer"
+      }
     }
   },
   "tgbot": {
