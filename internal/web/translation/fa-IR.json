@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "فهرست مجاز محدودیت IP",
-      "ipLimitAllowlistDesc": "نشانی‌ها و شبکه‌هایی که محدودیت IP هرگز آن‌ها را نمی‌شمارد و مسدود نمی‌کند، تا نشانی مشترک یک اداره یا دانشگاه محدودیت کاربر را مصرف نکند. IPها/CIDRها (با کاما)."
+      "ipLimitAllowlistDesc": "نشانی‌ها و شبکه‌هایی که محدودیت IP هرگز آن‌ها را نمی‌شمارد و مسدود نمی‌کند، تا نشانی مشترک یک اداره یا دانشگاه محدودیت کاربر را مصرف نکند. IPها/CIDRها (با کاما).",
+      "eventPeerDown": "قطع",
+      "eventPeerUp": "وصل"
     },
     "xray": {
       "save": "ذخیره",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "نود {{ .Name }} قطع است",
       "eventNodeUp": "نود {{ .Name }} وصل است",
       "eventLoginFallback": "ورود ناموفق از {{ .Source }}",
-      "memoryThreshold": "مصرف حافظه {{ .Percent }}% از حد آستانه {{ .Threshold }}% فراتر رفته است"
+      "memoryThreshold": "مصرف حافظه {{ .Percent }}% از حد آستانه {{ .Threshold }}% فراتر رفته است",
+      "eventPeerDown": "همتای {{ .Name }} قطع است",
+      "eventPeerUp": "همتای {{ .Name }} وصل شد"
     },
     "buttons": {
       "closeKeyboard": "❌ بستن کیبورد",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "موفق",
     "statusFailed": "ناموفق",
     "statusDown": "قطع",
-    "statusUp": "وصل"
+    "statusUp": "وصل",
+    "labelPeer": "همتا"
   }
 }

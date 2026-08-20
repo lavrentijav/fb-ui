@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "قائمة سماح حد IP",
-      "ipLimitAllowlistDesc": "عناوين وشبكات لا يحسبها حد IP ولا يحظرها، حتى لا يستهلك عنوان مكتب أو حرم جامعي مشترك حد العميل. IPs/CIDRs مفصولة بفواصل."
+      "ipLimitAllowlistDesc": "عناوين وشبكات لا يحسبها حد IP ولا يحظرها، حتى لا يستهلك عنوان مكتب أو حرم جامعي مشترك حد العميل. IPs/CIDRs مفصولة بفواصل.",
+      "eventPeerDown": "غير متصل",
+      "eventPeerUp": "متصل"
     },
     "xray": {
       "save": "احفظ",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "العقدة {{ .Name }} غير متصلة",
       "eventNodeUp": "العقدة {{ .Name }} متصلة",
       "eventLoginFallback": "فشل تسجيل الدخول من {{ .Source }}",
-      "memoryThreshold": "استخدام الذاكرة {{ .Percent }}% يتجاوز الحد {{ .Threshold }}%"
+      "memoryThreshold": "استخدام الذاكرة {{ .Percent }}% يتجاوز الحد {{ .Threshold }}%",
+      "eventPeerDown": "النظير {{ .Name }} غير متصل",
+      "eventPeerUp": "النظير {{ .Name }} متصل"
     },
     "buttons": {
       "closeKeyboard": "❌ اقفل الكيبورد",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "نجاح",
     "statusFailed": "فشل",
     "statusDown": "غير متصل",
-    "statusUp": "متصل"
+    "statusUp": "متصل",
+    "labelPeer": "النظير"
   }
 }

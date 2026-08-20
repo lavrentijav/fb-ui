@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "Danh sách cho phép của giới hạn IP",
-      "ipLimitAllowlistDesc": "Các địa chỉ và mạng mà giới hạn IP không bao giờ tính và không bao giờ chặn, để một địa chỉ dùng chung của văn phòng hoặc trường học không dùng hết giới hạn của người dùng. IPs/CIDRs cách nhau bằng dấu phẩy."
+      "ipLimitAllowlistDesc": "Các địa chỉ và mạng mà giới hạn IP không bao giờ tính và không bao giờ chặn, để một địa chỉ dùng chung của văn phòng hoặc trường học không dùng hết giới hạn của người dùng. IPs/CIDRs cách nhau bằng dấu phẩy.",
+      "eventPeerDown": "Ngoại tuyến",
+      "eventPeerUp": "Trực tuyến"
     },
     "xray": {
       "importRules": "Nhập quy tắc",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "Node {{ .Name }} đã NGỪNG HOẠT ĐỘNG",
       "eventNodeUp": "Node {{ .Name }} đã HOẠT ĐỘNG",
       "eventLoginFallback": "Đăng nhập thất bại từ {{ .Source }}",
-      "memoryThreshold": "Sử dụng bộ nhớ {{ .Percent }}% vượt quá ngưỡng {{ .Threshold }}%"
+      "memoryThreshold": "Sử dụng bộ nhớ {{ .Percent }}% vượt quá ngưỡng {{ .Threshold }}%",
+      "eventPeerDown": "Máy ngang hàng {{ .Name }} đã NGỪNG HOẠT ĐỘNG",
+      "eventPeerUp": "Máy ngang hàng {{ .Name }} đã HOẠT ĐỘNG"
     },
     "buttons": {
       "closeKeyboard": "❌ Đóng Bàn Phím",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "THÀNH CÔNG",
     "statusFailed": "THẤT BẠI",
     "statusDown": "NGỪNG HOẠT ĐỘNG",
-    "statusUp": "HOẠT ĐỘNG"
+    "statusUp": "HOẠT ĐỘNG",
+    "labelPeer": "Máy ngang hàng"
   }
 }

@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Григорианский (обычный)",
       "calendarJalalian": "Джалали (شمسی)",
       "ipLimitAllowlist": "Доверенные адреса для лимита",
-      "ipLimitAllowlistDesc": "Адреса и подсети, которые лимит не считает и не банит: общий офисный или студенческий адрес не израсходует лимит клиента. Через запятую, адрес или подсеть."
+      "ipLimitAllowlistDesc": "Адреса и подсети, которые лимит не считает и не банит: общий офисный или студенческий адрес не израсходует лимит клиента. Через запятую, адрес или подсеть.",
+      "eventPeerDown": "Пир недоступен",
+      "eventPeerUp": "Пир доступен"
     },
     "xray": {
       "importRules": "Импорт правил",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "Узел {{ .Name }} НЕДОСТУПЕН",
       "eventNodeUp": "Узел {{ .Name }} В СЕТИ",
       "eventLoginFallback": "Неудачный вход с {{ .Source }}",
-      "memoryThreshold": "🔴 Использование памяти {{ .Percent }}% превышает пороговое значение {{ .Threshold }}%"
+      "memoryThreshold": "🔴 Использование памяти {{ .Percent }}% превышает пороговое значение {{ .Threshold }}%",
+      "eventPeerDown": "Пир {{ .Name }} НЕДОСТУПЕН",
+      "eventPeerUp": "Пир {{ .Name }} ДОСТУПЕН"
     },
     "buttons": {
       "closeKeyboard": "❌ Закрыть клавиатуру",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "УСПЕШНО",
     "statusFailed": "НЕУДАЧНО",
     "statusDown": "НЕДОСТУПЕН",
-    "statusUp": "РАБОТАЕТ"
+    "statusUp": "РАБОТАЕТ",
+    "labelPeer": "Пир"
   }
 }

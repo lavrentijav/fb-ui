@@ -138,6 +138,24 @@ func (s *Subscriber) formatMessage(e eventbus.Event) (subject, body string) {
 		}
 		body = wrap(i18n("tgbot.messages.eventNodeUp", "Name=="+e.Source), content)
 
+	case eventbus.EventPeerDown:
+		subject = host + " " + i18n("tgbot.messages.eventPeerDown", "Name=="+e.Source)
+		content := kv(i18n("email.labelStatus"), `<span style="color:red">`+i18n("email.statusDown")+`</span>`)
+		content += kv(i18n("email.labelPeer"), e.Source)
+		if data, ok := e.Data.(*eventbus.PeerHealthData); ok && data.Error != "" {
+			content += kv(i18n("email.labelError"), data.Error)
+		}
+		body = wrap(i18n("tgbot.messages.eventPeerDown", "Name=="+e.Source), content)
+
+	case eventbus.EventPeerUp:
+		subject = host + " " + i18n("tgbot.messages.eventPeerUp", "Name=="+e.Source)
+		content := kv(i18n("email.labelStatus"), `<span style="color:green">`+i18n("email.statusUp")+`</span>`)
+		content += kv(i18n("email.labelPeer"), e.Source)
+		if data, ok := e.Data.(*eventbus.PeerHealthData); ok && data.LatencyMs > 0 {
+			content += kv(i18n("email.labelDelay"), fmt.Sprintf("%dms", data.LatencyMs))
+		}
+		body = wrap(i18n("tgbot.messages.eventPeerUp", "Name=="+e.Source), content)
+
 	case eventbus.EventCPUHigh:
 		if data, ok := e.Data.(*eventbus.SystemMetricData); ok {
 			smtpCpu, err := s.settingService.GetSmtpCpu()

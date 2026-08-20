@@ -17,6 +17,10 @@ const (
 	EventNodeDown EventType = "node.down"
 	EventNodeUp   EventType = "node.up"
 
+	// Peer panel health (subscription fallback peers)
+	EventPeerDown EventType = "peer.down"
+	EventPeerUp   EventType = "peer.up"
+
 	// System health
 	EventCPUHigh    EventType = "cpu.high"
 	EventMemoryHigh EventType = "memory.high"
@@ -47,6 +51,14 @@ type NodeHealthData struct {
 	MemPct    float64
 	XrayState string // "running", "stopped", etc.
 	XrayError string
+}
+
+// PeerHealthData carries probe details for peer events.
+type PeerHealthData struct {
+	PeerId    int
+	Domain    string
+	LatencyMs int
+	Error     string
 }
 
 // LoginEventData carries login attempt details.

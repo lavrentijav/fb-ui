@@ -42,7 +42,9 @@ file locations when it can answer in one hop.
   category index + paged entries) and `geosite:`/`geoip:`/`ext:` token parsing.
 - `internal/mtproto/` — MTProto inbounds via the bundled `mtg-multi` binary.
 - `internal/sub/` — subscription server (raw / JSON / Clash).
-- `internal/eventbus/` — in-process pub/sub (outbound/node health, xray.crash,
+- `internal/cluster/` — leaf helpers for cooperating with sibling panels
+  ("peers"): ed25519 subscription signing, fallback header assembly, peer probing.
+- `internal/eventbus/` — in-process pub/sub (outbound/node/peer health, xray.crash,
   cpu.high, memory.high, login.attempt).
 - `internal/logger/`, `internal/util/` (link, crypto, sys, ldap, …),
   `internal/tunnelmonitor/` — shared infrastructure.
@@ -50,8 +52,8 @@ file locations when it can answer in one hop.
   - `controller/` — panel + REST API handlers; OpenAPI at /panel/api/openapi.json.
   - `service/` — business logic (InboundService, SettingService, XrayService,
     node sync); subpackages tgbot/, email/, outbound/, panel/, integration/.
-  - `job/` — 17 cron jobs (traffic, fail2ban IP-limit, node heartbeat/sync, LDAP,
-    CPU/memory watchdogs, …); full table in `docs/architecture.md` §5.4.
+  - `job/` — 18 cron jobs (traffic, fail2ban IP-limit, node heartbeat/sync, peer
+    health, LDAP, CPU/memory watchdogs, …); full table in `docs/architecture.md` §5.4.
   - `middleware/`, `entity/`, `global/`, `session/` (CSRF), `network/`,
     `runtime/` (master/sub-node over mTLS), `websocket/`.
   - `locale/` + `translation/` — i18n, 13 embedded locale JSON files.

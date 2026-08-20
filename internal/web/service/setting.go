@@ -12,12 +12,14 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/xlzd/gotp"
 	"gorm.io/gorm"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/cluster"
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
@@ -119,6 +121,11 @@ var defaultValueMap = map[string]string{
 	"subJsonRules":                "",
 	"subJsonFinalMask":            "",
 	"subThemeDir":                 "",
+	"subFallbackEnable":           "false",
+	"subSignEnable":               "false",
+	"subSignPrivateKey":           "",
+	"subSignPublicKey":            "",
+	"subEmergencyUrl":             "",
 	"datepicker":                  "gregorian",
 	"warp":                        "",
 	"warpUpdateInterval":          "0",
@@ -846,6 +853,56 @@ func (s *SettingService) GetSubUpdates() (string, error) {
 
 func (s *SettingService) GetSubEncrypt() (bool, error) {
 	return s.getBool("subEncrypt")
+}
+
+func (s *SettingService) GetSubFallbackEnable() (bool, error) {
+	return s.getBool("subFallbackEnable")
+}
+
+func (s *SettingService) GetSubSignEnable() (bool, error) {
+	return s.getBool("subSignEnable")
+}
+
+func (s *SettingService) GetSubEmergencyUrl() (string, error) {
+	return s.getString("subEmergencyUrl")
+}
+
+func (s *SettingService) GetSubSignPublicKey() (string, error) {
+	return s.getString("subSignPublicKey")
+}
+
+// subSignKeyMu serializes first-use generation so two concurrent peer probes
+// cannot each persist a different keypair.
+var subSignKeyMu sync.Mutex
+
+// SubSignKeypair returns the panel's subscription signing keypair, generating
+// and persisting it on first use. The seed is never exposed through the
+// settings API — only the public half is.
+func (s *SettingService) SubSignKeypair() (seed string, public string, err error) {
+	subSignKeyMu.Lock()
+	defer subSignKeyMu.Unlock()
+	seed, err = s.getString("subSignPrivateKey")
+	if err != nil {
+		return "", "", err
+	}
+	public, err = s.getString("subSignPublicKey")
+	if err != nil {
+		return "", "", err
+	}
+	if seed != "" && public != "" {
+		return seed, public, nil
+	}
+	seed, public, err = cluster.GenerateKey()
+	if err != nil {
+		return "", "", err
+	}
+	if err = s.setString("subSignPrivateKey", seed); err != nil {
+		return "", "", err
+	}
+	if err = s.setString("subSignPublicKey", public); err != nil {
+		return "", "", err
+	}
+	return seed, public, nil
 }
 
 func (s *SettingService) GetPageSize() (int, error) {

@@ -1500,7 +1500,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "IP limit allowlist",
-      "ipLimitAllowlistDesc": "Addresses and networks that the IP limit never counts and never bans, so a shared office or campus address cannot use up a client's limit. Comma-separated, IP or CIDR."
+      "ipLimitAllowlistDesc": "Addresses and networks that the IP limit never counts and never bans, so a shared office or campus address cannot use up a client's limit. Comma-separated, IP or CIDR.",
+      "eventPeerDown": "Peer down",
+      "eventPeerUp": "Peer up"
     },
     "xray": {
       "save": "Save",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "Node {{ .Name }} is DOWN",
       "eventNodeUp": "Node {{ .Name }} is UP",
       "eventLoginFallback": "Login failed from {{ .Source }}",
-      "memoryThreshold": "Memory Load {{ .Percent }}% exceeds the threshold of {{ .Threshold }}%"
+      "memoryThreshold": "Memory Load {{ .Percent }}% exceeds the threshold of {{ .Threshold }}%",
+      "eventPeerDown": "Peer {{ .Name }} is DOWN",
+      "eventPeerUp": "Peer {{ .Name }} is UP"
     },
     "buttons": {
       "closeKeyboard": "❌ Close Keyboard",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "SUCCESS",
     "statusFailed": "FAILED",
     "statusDown": "DOWN",
-    "statusUp": "UP"
+    "statusUp": "UP",
+    "labelPeer": "Peer"
   }
 }

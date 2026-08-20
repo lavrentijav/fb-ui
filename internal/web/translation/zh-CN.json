@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "IP 限制白名单",
-      "ipLimitAllowlistDesc": "IP 限制永远不会计入也不会封禁的地址和网段，避免办公室或校园的共享地址耗尽客户端的限额。IP/CIDR(逗号分隔)。"
+      "ipLimitAllowlistDesc": "IP 限制永远不会计入也不会封禁的地址和网段，避免办公室或校园的共享地址耗尽客户端的限额。IP/CIDR(逗号分隔)。",
+      "eventPeerDown": "离线",
+      "eventPeerUp": "上线"
     },
     "xray": {
       "importRules": "导入规则",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "节点 {{ .Name }} 已离线",
       "eventNodeUp": "节点 {{ .Name }} 已上线",
       "eventLoginFallback": "来自 {{ .Source }} 的登录失败",
-      "memoryThreshold": "内存使用率 {{ .Percent }}% 超过阈值 {{ .Threshold }}%"
+      "memoryThreshold": "内存使用率 {{ .Percent }}% 超过阈值 {{ .Threshold }}%",
+      "eventPeerDown": "对等面板 {{ .Name }} 已离线",
+      "eventPeerUp": "对等面板 {{ .Name }} 已上线"
     },
     "buttons": {
       "closeKeyboard": "❌ 关闭键盘",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "成功",
     "statusFailed": "失败",
     "statusDown": "断开",
-    "statusUp": "恢复"
+    "statusUp": "恢复",
+    "labelPeer": "对等面板"
   }
 }

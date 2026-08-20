@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "Lista de permitidos del límite de IP",
-      "ipLimitAllowlistDesc": "Direcciones y redes que el límite de IP nunca cuenta ni banea, para que una dirección compartida de oficina o campus no agote el límite de un cliente. IP/CIDR separados por coma."
+      "ipLimitAllowlistDesc": "Direcciones y redes que el límite de IP nunca cuenta ni banea, para que una dirección compartida de oficina o campus no agote el límite de un cliente. IP/CIDR separados por coma.",
+      "eventPeerDown": "Caído",
+      "eventPeerUp": "En línea"
     },
     "xray": {
       "save": "Guardar configuración",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "El nodo {{ .Name }} está CAÍDO",
       "eventNodeUp": "El nodo {{ .Name }} está ACTIVO",
       "eventLoginFallback": "Inicio de sesión fallido desde {{ .Source }}",
-      "memoryThreshold": "Uso de memoria {{ .Percent }}% supera el umbral de {{ .Threshold }}%"
+      "memoryThreshold": "Uso de memoria {{ .Percent }}% supera el umbral de {{ .Threshold }}%",
+      "eventPeerDown": "El par {{ .Name }} está CAÍDO",
+      "eventPeerUp": "El par {{ .Name }} está EN LÍNEA"
     },
     "buttons": {
       "closeKeyboard": "❌ Cerrar Teclado",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "CORRECTO",
     "statusFailed": "FALLIDO",
     "statusDown": "CAÍDO",
-    "statusUp": "ACTIVO"
+    "statusUp": "ACTIVO",
+    "labelPeer": "Par"
   }
 }

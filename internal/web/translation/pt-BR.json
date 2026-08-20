@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "Lista de permissões do limite de IP",
-      "ipLimitAllowlistDesc": "Endereços e redes que o limite de IP nunca conta nem bane, para que um endereço compartilhado de escritório ou campus não esgote o limite de um cliente. IPs/CIDRs separados por vírgula."
+      "ipLimitAllowlistDesc": "Endereços e redes que o limite de IP nunca conta nem bane, para que um endereço compartilhado de escritório ou campus não esgote o limite de um cliente. IPs/CIDRs separados por vírgula.",
+      "eventPeerDown": "Inativo",
+      "eventPeerUp": "Online"
     },
     "xray": {
       "importRules": "Importar regras",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "O nó {{ .Name }} está INATIVO",
       "eventNodeUp": "O nó {{ .Name }} está ATIVO",
       "eventLoginFallback": "Falha de login a partir de {{ .Source }}",
-      "memoryThreshold": "Uso de memória {{ .Percent }}% excede o limite de {{ .Threshold }}%"
+      "memoryThreshold": "Uso de memória {{ .Percent }}% excede o limite de {{ .Threshold }}%",
+      "eventPeerDown": "O par {{ .Name }} está INATIVO",
+      "eventPeerUp": "O par {{ .Name }} está ATIVO"
     },
     "buttons": {
       "closeKeyboard": "❌ Fechar teclado",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "SUCESSO",
     "statusFailed": "FALHOU",
     "statusDown": "INATIVO",
-    "statusUp": "ATIVO"
+    "statusUp": "ATIVO",
+    "labelPeer": "Par"
   }
 }

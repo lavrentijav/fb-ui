@@ -135,9 +135,14 @@ node heartbeat every 5s, periodic traffic resets (hourly/daily/weekly/monthly). 
 │   │   ├── dump_sqlite.go      # DB export/backup
 │   │   └── model/              # **ALL GORM models** (model.go ~1.1k lines + siblings:
 │   │                           #   node_client_traffic.go, node_client_ip.go,
-│   │                           #   client_global_traffic.go). ⭐ Start here for data shape.
+│   │                           #   client_global_traffic.go, master_peer.go).
+│   │                           #   ⭐ Start here for data shape.
+│   ├── cluster/                # Leaf helpers for cooperating with sibling panels ("peers"):
+│   │                           #   ed25519 subscription signing, fallback header assembly,
+│   │                           #   peer probing. No service/controller/database imports.
 │   ├── eventbus/               # In-process pub/sub (buffered channel): outbound.down|up,
-│   │                           #   xray.crash, node.down|up, cpu.high, memory.high, login.attempt
+│   │                           #   xray.crash, node.down|up, peer.down|up, cpu.high,
+│   │                           #   memory.high, login.attempt
 │   ├── tunnelmonitor/          # Optional tunnel health probe (XUI_TUNNEL_HEALTH_* env vars):
 │   │                           #   HTTP probe (default Cloudflare trace); repeated failures
 │   │                           #   trigger an Xray restart hook. Independent of panel settings.
@@ -371,6 +376,7 @@ All registered in `web.go` → `startTask()`. Each is a struct with a `Run()` me
 | `@every 5s`         | `node_heartbeat_job`                                                                             | Probe child nodes (online/offline)                                              |
 | `@every 5s`         | `node_traffic_sync_job`                                                                          | Pull + merge node traffic; push reconciliation                                  |
 | `@every 10s`        | `check_client_ip_job`                                                                            | Enforce per-client IP limits                                                    |
+| `@every 30s`        | `peer_health_job`                                                                                | Probe peer panels advertised as subscription fallbacks                          |
 | `@every 10s`        | `mtproto_job`                                                                                    | Reconcile `mtg` sidecars against enabled MTProto inbounds                       |
 | `@every 5m`         | `outbound_subscription_job`                                                                      | Refresh outbound provider configs                                               |
 | `@every 10m`        | `clear_logs_job` (`PruneXrayLogsJob`)                                                            | Truncate Xray access/error logs once either exceeds 64 MiB                      |

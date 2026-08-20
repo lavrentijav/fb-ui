@@ -1382,7 +1382,9 @@
       "calendarGregorian": "Gregorian (Standard)",
       "calendarJalalian": "Jalalian (شمسی)",
       "ipLimitAllowlist": "IP 制限の許可リスト",
-      "ipLimitAllowlistDesc": "IP 制限がカウントもブロックもしないアドレスとネットワーク。オフィスや学内の共有アドレスがクライアントの上限を使い切らないようにします。IP/CIDR (カンマ区切り)。"
+      "ipLimitAllowlistDesc": "IP 制限がカウントもブロックもしないアドレスとネットワーク。オフィスや学内の共有アドレスがクライアントの上限を使い切らないようにします。IP/CIDR (カンマ区切り)。",
+      "eventPeerDown": "オフライン",
+      "eventPeerUp": "オンライン"
     },
     "xray": {
       "importRules": "ルールをインポート",
@@ -2024,7 +2026,9 @@
       "eventNodeDown": "ノード {{ .Name }} がダウンしています",
       "eventNodeUp": "ノード {{ .Name }} が復旧しました",
       "eventLoginFallback": "{{ .Source }} からのログインに失敗しました",
-      "memoryThreshold": "メモリ使用率 {{ .Percent }}% がしきい値 {{ .Threshold }}% を超えました"
+      "memoryThreshold": "メモリ使用率 {{ .Percent }}% がしきい値 {{ .Threshold }}% を超えました",
+      "eventPeerDown": "ピア {{ .Name }} がダウンしています",
+      "eventPeerUp": "ピア {{ .Name }} が復旧しました"
     },
     "buttons": {
       "closeKeyboard": "❌ キーボードを閉じる",
@@ -2107,6 +2111,7 @@
     "statusSuccess": "成功",
     "statusFailed": "失敗",
     "statusDown": "ダウン",
-    "statusUp": "アップ"
+    "statusUp": "アップ",
+    "labelPeer": "ピア"
   }
 }
