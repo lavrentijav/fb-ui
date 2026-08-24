@@ -418,9 +418,17 @@ func (s *SubJsonService) genVless(subReq *SubService, inbound *model.Inbound, st
 	}
 	outbound.StreamSettings = streamSettings
 
-	// Add encryption for VLESS outbound from inbound settings
+	// A VLESS inbound stores the peer value under "decryption"; an outbound must
+	// carry a non-empty encryption or Xray refuses to load the config at all.
 	inboundSettings := subReq.linkSettings(inbound)
 	encryption, _ := inboundSettings["encryption"].(string)
+	if encryption == "" {
+		if decryption, ok := inboundSettings["decryption"].(string); ok && decryption != "" {
+			encryption = decryption
+		} else {
+			encryption = "none"
+		}
+	}
 
 	settings := map[string]any{
 		"address":    inbound.Listen,
