@@ -15,6 +15,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	xuilogger "github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 )
 
 func newPeerTestDB(t *testing.T) {
@@ -90,5 +91,48 @@ func TestPeerController_AddAndUpdateTakeAMasterShapedBody(t *testing.T) {
 	}
 	if len(peers) != 1 || len(peers[0].SubIps) != 2 {
 		t.Fatalf("peers = %+v, want the updated static IPs stored", peers)
+	}
+}
+
+// A filter write only takes effect when the config is regenerated, so the
+// endpoints have to ask for the restart the pending-restart job performs.
+func TestFilterController_WritesRequestAConfigRegeneration(t *testing.T) {
+	newPeerTestDB(t)
+	engine := gin.New()
+	NewFilterController(engine.Group("/panel/api/filters"))
+	xray := service.XrayService{}
+	xray.IsNeedRestartAndSetFalse()
+
+	add := doPeerReq(t, engine, http.MethodPost, "/panel/api/filters/lists/add", map[string]any{
+		"name": "ads", "kind": "domain", "entries": []string{"ads.example.com"}, "enable": true,
+	})
+	if !add.Success {
+		t.Fatalf("add list: %s", add.Msg)
+	}
+	if !xray.IsNeedRestartAndSetFalse() {
+		t.Fatal("adding a list did not ask for a config regeneration")
+	}
+
+	var list model.FilterList
+	if err := json.Unmarshal(add.Obj, &list); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	rule := doPeerReq(t, engine, http.MethodPost, "/panel/api/filters/rules/add", map[string]any{
+		"name": "block ads", "panelId": 0, "listIds": []int{list.Id}, "action": "block", "enable": true,
+	})
+	if !rule.Success {
+		t.Fatalf("add rule: %s", rule.Msg)
+	}
+	if !xray.IsNeedRestartAndSetFalse() {
+		t.Fatal("adding a rule did not ask for a config regeneration")
+	}
+
+	upd := doPeerReq(t, engine, http.MethodPost, "/panel/api/filters/lists/update/"+strconv.Itoa(list.Id),
+		map[string]any{"name": "ads", "kind": "domain", "entries": []string{"ads.example.com"}, "enable": false})
+	if !upd.Success {
+		t.Fatalf("update list: %s", upd.Msg)
+	}
+	if !xray.IsNeedRestartAndSetFalse() {
+		t.Fatal("editing a list did not ask for a config regeneration")
 	}
 }

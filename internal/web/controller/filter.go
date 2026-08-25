@@ -12,6 +12,7 @@ import (
 
 type FilterController struct {
 	filterService service.FilterService
+	xrayService   service.XrayService
 }
 
 func NewFilterController(g *gin.RouterGroup) *FilterController {
@@ -68,6 +69,7 @@ func (a *FilterController) addList(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.addList"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsgObj(c, I18nWeb(c, "pages.filters.toasts.addList"), list, nil)
 }
 
@@ -85,6 +87,7 @@ func (a *FilterController) updateList(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateList"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateList"), nil)
 }
 
@@ -98,6 +101,7 @@ func (a *FilterController) delList(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.deleteList"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.deleteList"), nil)
 }
 
@@ -133,6 +137,7 @@ func (a *FilterController) addRule(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.addRule"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsgObj(c, I18nWeb(c, "pages.filters.toasts.addRule"), rule, nil)
 }
 
@@ -150,6 +155,7 @@ func (a *FilterController) updateRule(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), nil)
 }
 
@@ -163,6 +169,7 @@ func (a *FilterController) delRule(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.deleteRule"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.deleteRule"), nil)
 }
 
@@ -180,6 +187,7 @@ func (a *FilterController) reorderRules(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), nil)
 }
 
@@ -200,5 +208,6 @@ func (a *FilterController) setRuleEnable(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), nil)
 }

@@ -12,6 +12,7 @@ import (
 
 type NetworkController struct {
 	networkService service.NetworkService
+	xrayService    service.XrayService
 }
 
 func NewNetworkController(g *gin.RouterGroup) *NetworkController {
@@ -46,6 +47,7 @@ func (a *NetworkController) addLink(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.network.toasts.link"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsgObj(c, I18nWeb(c, "pages.network.toasts.link"), link, nil)
 }
 
@@ -59,6 +61,7 @@ func (a *NetworkController) delLink(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.network.toasts.unlink"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.network.toasts.unlink"), nil)
 }
 
@@ -79,5 +82,6 @@ func (a *NetworkController) setLinkEnable(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.network.toasts.link"), err)
 		return
 	}
+	a.xrayService.SetToNeedRestart()
 	jsonMsg(c, I18nWeb(c, "pages.network.toasts.link"), nil)
 }
