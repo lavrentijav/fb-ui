@@ -173,14 +173,14 @@ func (a *FilterController) reorderRules(c *gin.Context) {
 		Ids []int `json:"ids" form:"ids"`
 	}{}
 	if err := c.ShouldBind(&body); err != nil {
-		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.update"), err)
+		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), err)
 		return
 	}
 	if err := a.filterService.ReorderRules(body.Ids); err != nil {
-		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.update"), err)
+		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), err)
 		return
 	}
-	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.update"), nil)
+	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateRule"), nil)
 }
 
 func (a *FilterController) setRuleEnable(c *gin.Context) {
