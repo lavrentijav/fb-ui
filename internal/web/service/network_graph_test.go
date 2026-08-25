@@ -90,6 +90,46 @@ func TestNetworkGraphGroupsInboundsByOwningPanel(t *testing.T) {
 	}
 }
 
+// A cluster registers every master including this one; drawing that row as a
+// separate vertex would show one machine twice on the canvas.
+func TestNetworkGraphFoldsTheSelfMasterRow(t *testing.T) {
+	initNetworkTestDB(t)
+	selfRow := seedGraphNode(t, "fi2-helsinki", model.NodeRoleMaster)
+	if err := database.GetDB().Model(model.Node{}).Where("id = ?", selfRow.Id).
+		Update("is_self", true).Error; err != nil {
+		t.Fatalf("mark self: %v", err)
+	}
+	seedGraphNode(t, "sibling", model.NodeRoleMaster)
+	seedGraphInbound(t, "local-in", 39101, nil)
+
+	graph, err := (&NetworkService{}).Graph()
+	if err != nil {
+		t.Fatalf("Graph: %v", err)
+	}
+	if len(graph.Panels) != 2 {
+		names := make([]string, 0, len(graph.Panels))
+		for _, p := range graph.Panels {
+			names = append(names, p.Name)
+		}
+		t.Fatalf("panels = %v, want this panel once plus the sibling", names)
+	}
+	self := graph.Panels[0]
+	if !self.Self || self.Id != SelfPanelId {
+		t.Fatalf("first panel = %+v, want this panel", self)
+	}
+	if self.Name != "fi2-helsinki" || self.Role != model.NodeRoleMaster {
+		t.Fatalf("self vertex = %q/%q, want the registered master identity", self.Name, self.Role)
+	}
+	if len(self.Inbounds) != 1 || self.Inbounds[0].Tag != "local-in" {
+		t.Fatalf("self inbounds = %+v, want local-in", self.Inbounds)
+	}
+	for _, p := range graph.Panels[1:] {
+		if p.Self {
+			t.Fatalf("panel %q is still flagged as this panel", p.Name)
+		}
+	}
+}
+
 // Every rejection here is an edge that would otherwise be stored and then fail
 // silently when the source panel's config is generated.
 func TestNetworkAddLinkRejectsImpossibleEdges(t *testing.T) {

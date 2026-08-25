@@ -72,21 +72,36 @@ func (s *NetworkService) Graph() (*NetworkGraph, error) {
 		})
 	}
 
-	selfName, _ := (&SettingService{}).GetSubDomain()
-	if strings.TrimSpace(selfName) == "" {
-		selfName = "this panel"
-	}
-	panels := []GraphPanel{{
-		Id: SelfPanelId, Name: selfName, Role: model.NodeRoleNode, Status: "online",
+	// A cluster registers every master including this one, so the row flagged
+	// IsSelf describes the same panel as SelfPanelId. Fold it in rather than
+	// drawing one machine as two vertices.
+	self := GraphPanel{
+		Id: SelfPanelId, Role: model.NodeRoleNode, Status: "online",
 		Self: true, Enable: true, Inbounds: byPanel[SelfPanelId],
-	}}
+	}
+	panels := make([]GraphPanel, 0, len(nodes)+1)
 	for _, n := range nodes {
+		if n.IsSelf {
+			self.Name = n.Name
+			self.Role = n.Role
+			self.Address = n.Address
+			self.Inbounds = append(self.Inbounds, byPanel[n.Id]...)
+			continue
+		}
 		panels = append(panels, GraphPanel{
 			Id: n.Id, Name: n.Name, Role: n.Role, Status: n.Status,
-			Address: n.Address, Self: n.IsSelf, Enable: n.Enable,
+			Address: n.Address, Self: false, Enable: n.Enable,
 			Inbounds: byPanel[n.Id],
 		})
 	}
+	if strings.TrimSpace(self.Name) == "" {
+		if subDomain, _ := (&SettingService{}).GetSubDomain(); strings.TrimSpace(subDomain) != "" {
+			self.Name = subDomain
+		} else {
+			self.Name = "this panel"
+		}
+	}
+	panels = append([]GraphPanel{self}, panels...)
 
 	var links []*model.CascadeLink
 	if err := db.Model(model.CascadeLink{}).Order("id asc").Find(&links).Error; err != nil {
