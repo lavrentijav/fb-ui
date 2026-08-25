@@ -114,7 +114,8 @@
     "pinSidebar": "固定側邊欄",
     "unpinSidebar": "取消固定側邊欄",
     "subFormats": "Sub Formats",
-    "peers": "對等面板"
+    "peers": "對等面板",
+    "network": "網路"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "已下發",
         "enable": "啟用",
         "actions": "操作"
+      }
+    },
+    "network": {
+      "title": "網路拓撲",
+      "hint": "每個入站都是一個連接埠：從一個面板的入站拖到另一個面板的入站，即可把流量轉送過去。點擊連線可刪除串接。",
+      "thisPanel": "本面板",
+      "roleMaster": "主控",
+      "roleNode": "節點",
+      "noInbounds": "尚無入站",
+      "unlinkConfirmTitle": "刪除此串接？",
+      "unlinkConfirmContent": "來源入站的流量將恢復為從本面板直接出站。",
+      "toasts": {
+        "graph": "載入拓撲失敗",
+        "link": "建立串接",
+        "unlink": "刪除串接",
+        "linked": "串接已建立",
+        "unlinked": "串接已刪除",
+        "dragHint": "請從入站拖到入站",
+        "samePanel": "串接必須連接兩個不同的面板"
       }
     }
   },

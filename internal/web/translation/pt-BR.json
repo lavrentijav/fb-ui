@@ -114,7 +114,8 @@
     "pinSidebar": "Fixar barra lateral",
     "unpinSidebar": "Desafixar barra lateral",
     "subFormats": "Sub Formats",
-    "peers": "Pares"
+    "peers": "Pares",
+    "network": "Rede"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "Anunciado",
         "enable": "Ativado",
         "actions": "Ações"
+      }
+    },
+    "network": {
+      "title": "Topologia da rede",
+      "hint": "Cada entrada é uma porta: arraste de uma entrada de um painel até uma entrada de outro para encaminhar o tráfego. Clique em uma ligação para remover a cascata.",
+      "thisPanel": "Este painel",
+      "roleMaster": "Mestre",
+      "roleNode": "Nó",
+      "noInbounds": "Ainda não há entradas",
+      "unlinkConfirmTitle": "Remover esta cascata?",
+      "unlinkConfirmContent": "O tráfego da entrada de origem volta a sair pelo próprio painel.",
+      "toasts": {
+        "graph": "Falha ao carregar a topologia",
+        "link": "Criar cascata",
+        "unlink": "Remover cascata",
+        "linked": "Cascata criada",
+        "unlinked": "Cascata removida",
+        "dragHint": "Arraste de uma entrada para outra entrada",
+        "samePanel": "Uma cascata deve unir dois painéis diferentes"
       }
     }
   },

@@ -1067,6 +1067,69 @@
         ],
         "type": "object"
       },
+      "CascadeLink": {
+        "description": "CascadeLink is one edge of the network graph: traffic arriving on the source\npanel's inbound is forwarded to an inbound on the target panel instead of\nleaving there. It is the stored form of what an operator otherwise assembles\nby hand — an outbound plus a routing rule on the source panel.\n\nPanels are referenced by node id, with 0 meaning this panel itself, matching\nhow Inbound.NodeID marks ownership (nil = local).",
+        "properties": {
+          "applied": {
+            "description": "Applied records the last time the link was materialized into the source\npanel's Xray config; 0 means it is still pending.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "sourceInboundTag": {
+            "example": "in-39101-tcp",
+            "type": "string"
+          },
+          "sourcePanelId": {
+            "example": 2,
+            "type": "integer"
+          },
+          "targetClientEmail": {
+            "description": "TargetClientEmail picks which credential the generated outbound dials\nwith. Empty means the first enabled client on the target inbound.",
+            "type": "string"
+          },
+          "targetInboundId": {
+            "example": 7,
+            "type": "integer"
+          },
+          "targetPanelId": {
+            "example": 0,
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "applied",
+          "createdAt",
+          "enable",
+          "id",
+          "remark",
+          "sourceInboundTag",
+          "sourcePanelId",
+          "targetClientEmail",
+          "targetInboundId",
+          "targetPanelId",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "Client": {
         "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
         "properties": {
@@ -3210,6 +3273,10 @@
     {
       "name": "Peers",
       "description": "Sibling panels that serve the same subscriptions as this one. A peer and a node are the same entity — a registered panel — and differ only by role: these endpoints operate on rows with role=master, /panel/api/nodes on role=node. Live masters are advertised to clients through the X-Subscription-Fallback-* headers and the ?format=meta payload, so a blocked subscription host can be replaced without reissuing links. A background job probes each master every 30 seconds. All endpoints under /panel/api/peers."
+    },
+    {
+      "name": "Network",
+      "description": "The topology graph and the cascade links drawn on it. The graph is a projection, not a second source of truth: vertices are registered panels (this one plus every row in the node registry) and each panel carries the inbounds whose ownership column points at it. A cascade link is the stored form of what an operator otherwise assembles by hand — an outbound plus a routing rule on the source panel. All endpoints under /panel/api/network."
     },
     {
       "name": "Hosts",
@@ -9890,6 +9957,225 @@
                     "publicKey": "3d40...",
                     "isSelf": false,
                     "lastError": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/network/graph": {
+      "get": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Return the whole topology in one response: every panel with its inbounds, plus the cascade links between them. Panel id 0 is the panel serving the request.",
+        "operationId": "get_panel_api_network_graph",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "panels": [
+                      {
+                        "id": 0,
+                        "name": "this panel",
+                        "role": "node",
+                        "status": "online",
+                        "self": true,
+                        "enable": true,
+                        "inbounds": [
+                          {
+                            "id": 1,
+                            "tag": "in-39101-tcp",
+                            "remark": "FI exit",
+                            "protocol": "vless",
+                            "port": 39101,
+                            "enable": true,
+                            "clients": 2
+                          }
+                        ]
+                      }
+                    ],
+                    "links": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/network/link": {
+      "post": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Draw one cascade edge. The source inbound must live on the source panel and the target inbound on the target panel; the two panels must differ. Stored pending, then materialized into the source panel’s Xray config.",
+        "operationId": "post_panel_api_network_link",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "remark": "RU entry to FI exit",
+                "sourcePanelId": 2,
+                "sourceInboundTag": "in-39101-tcp",
+                "targetPanelId": 0,
+                "targetInboundId": 1,
+                "targetClientEmail": "",
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/CascadeLink"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "applied": 0,
+                    "createdAt": 0,
+                    "enable": true,
+                    "id": 1,
+                    "remark": "",
+                    "sourceInboundTag": "in-39101-tcp",
+                    "sourcePanelId": 2,
+                    "targetClientEmail": "",
+                    "targetInboundId": 7,
+                    "targetPanelId": 0,
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/network/link/del/{id}": {
+      "post": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Remove a cascade edge and re-push the source panel.",
+        "operationId": "post_panel_api_network_link_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Cascade link ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/network/link/setEnable/{id}": {
+      "post": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Pause or resume one cascade edge without deleting it.",
+        "operationId": "post_panel_api_network_link_setEnable_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Cascade link ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
                   }
                 }
               }

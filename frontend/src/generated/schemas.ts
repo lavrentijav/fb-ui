@@ -1041,6 +1041,69 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "CascadeLink": {
+    "description": "CascadeLink is one edge of the network graph: traffic arriving on the source\npanel's inbound is forwarded to an inbound on the target panel instead of\nleaving there. It is the stored form of what an operator otherwise assembles\nby hand — an outbound plus a routing rule on the source panel.\n\nPanels are referenced by node id, with 0 meaning this panel itself, matching\nhow Inbound.NodeID marks ownership (nil = local).",
+    "properties": {
+      "applied": {
+        "description": "Applied records the last time the link was materialized into the source\npanel's Xray config; 0 means it is still pending.",
+        "format": "int64",
+        "type": "integer"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "remark": {
+        "type": "string"
+      },
+      "sourceInboundTag": {
+        "example": "in-39101-tcp",
+        "type": "string"
+      },
+      "sourcePanelId": {
+        "example": 2,
+        "type": "integer"
+      },
+      "targetClientEmail": {
+        "description": "TargetClientEmail picks which credential the generated outbound dials\nwith. Empty means the first enabled client on the target inbound.",
+        "type": "string"
+      },
+      "targetInboundId": {
+        "example": 7,
+        "type": "integer"
+      },
+      "targetPanelId": {
+        "example": 0,
+        "type": "integer"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "applied",
+      "createdAt",
+      "enable",
+      "id",
+      "remark",
+      "sourceInboundTag",
+      "sourcePanelId",
+      "targetClientEmail",
+      "targetInboundId",
+      "targetPanelId",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
   "Client": {
     "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
     "properties": {

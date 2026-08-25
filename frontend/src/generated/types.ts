@@ -255,6 +255,20 @@ export interface ApiTokenView {
   token?: string;
 }
 
+export interface CascadeLink {
+  applied: number;
+  createdAt: number;
+  enable: boolean;
+  id: number;
+  remark: string;
+  sourceInboundTag: string;
+  sourcePanelId: number;
+  targetClientEmail: string;
+  targetInboundId: number;
+  targetPanelId: number;
+  updatedAt: number;
+}
+
 export interface Client {
   adTag?: string;
   allowedIPs?: string[];

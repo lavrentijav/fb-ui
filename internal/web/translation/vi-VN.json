@@ -114,7 +114,8 @@
     "pinSidebar": "Ghim thanh bên",
     "unpinSidebar": "Bỏ ghim thanh bên",
     "subFormats": "Sub Formats",
-    "peers": "Máy ngang hàng"
+    "peers": "Máy ngang hàng",
+    "network": "Mạng"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "Đang quảng bá",
         "enable": "Bật",
         "actions": "Thao tác"
+      }
+    },
+    "network": {
+      "title": "Sơ đồ mạng",
+      "hint": "Mỗi inbound là một cổng: kéo từ inbound của bảng này sang inbound của bảng khác để chuyển tiếp lưu lượng. Nhấp vào đường nối để xóa chuỗi.",
+      "thisPanel": "Bảng này",
+      "roleMaster": "Chính",
+      "roleNode": "Nút",
+      "noInbounds": "Chưa có inbound",
+      "unlinkConfirmTitle": "Xóa chuỗi này?",
+      "unlinkConfirmContent": "Lưu lượng của inbound nguồn sẽ trở lại đi ra từ chính bảng của nó.",
+      "toasts": {
+        "graph": "Không tải được sơ đồ",
+        "link": "Tạo chuỗi",
+        "unlink": "Xóa chuỗi",
+        "linked": "Đã tạo chuỗi",
+        "unlinked": "Đã xóa chuỗi",
+        "dragHint": "Hãy kéo từ inbound sang inbound",
+        "samePanel": "Chuỗi phải nối hai bảng khác nhau"
       }
     }
   },

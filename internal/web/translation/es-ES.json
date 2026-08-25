@@ -114,7 +114,8 @@
     "pinSidebar": "Fijar barra lateral",
     "unpinSidebar": "Desfijar barra lateral",
     "subFormats": "Sub Formats",
-    "peers": "Pares"
+    "peers": "Pares",
+    "network": "Red"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "Anunciado",
         "enable": "Activado",
         "actions": "Acciones"
+      }
+    },
+    "network": {
+      "title": "Topología de red",
+      "hint": "Cada entrada es un puerto: arrastra desde una entrada de un panel hasta una entrada de otro para reenviar el tráfico allí. Haz clic en una conexión para eliminar la cascada.",
+      "thisPanel": "Este panel",
+      "roleMaster": "Maestro",
+      "roleNode": "Nodo",
+      "noInbounds": "Todavía no hay entradas",
+      "unlinkConfirmTitle": "¿Eliminar esta cascada?",
+      "unlinkConfirmContent": "El tráfico de la entrada de origen volverá a salir por su propio panel.",
+      "toasts": {
+        "graph": "No se pudo cargar la topología",
+        "link": "Crear cascada",
+        "unlink": "Eliminar cascada",
+        "linked": "Cascada creada",
+        "unlinked": "Cascada eliminada",
+        "dragHint": "Arrastra de una entrada a otra entrada",
+        "samePanel": "Una cascada debe unir dos paneles distintos"
       }
     }
   },

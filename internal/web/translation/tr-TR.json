@@ -114,7 +114,8 @@
     "pinSidebar": "Kenar çubuğunu sabitle",
     "unpinSidebar": "Kenar çubuğu sabitlemesini kaldır",
     "subFormats": "Sub Formats",
-    "peers": "Eşler"
+    "peers": "Eşler",
+    "network": "Ağ"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "Duyurulan",
         "enable": "Etkin",
         "actions": "İşlemler"
+      }
+    },
+    "network": {
+      "title": "Ağ topolojisi",
+      "hint": "Her gelen bağlantı bir porttur: bir panelin gelen bağlantısından diğerininkine sürükleyerek trafiği oraya yönlendirin. Bağlantıya tıklamak zinciri siler.",
+      "thisPanel": "Bu panel",
+      "roleMaster": "Ana",
+      "roleNode": "Düğüm",
+      "noInbounds": "Henüz gelen bağlantı yok",
+      "unlinkConfirmTitle": "Bu zincir silinsin mi?",
+      "unlinkConfirmContent": "Kaynak gelen bağlantının trafiği yeniden kendi panelinden çıkar.",
+      "toasts": {
+        "graph": "Topoloji yüklenemedi",
+        "link": "Zincir oluştur",
+        "unlink": "Zinciri sil",
+        "linked": "Zincir oluşturuldu",
+        "unlinked": "Zincir silindi",
+        "dragHint": "Gelen bağlantıdan gelen bağlantıya sürükleyin",
+        "samePanel": "Zincir iki farklı paneli birleştirmeli"
       }
     }
   },

@@ -1478,6 +1478,44 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'network',
+    title: 'Network',
+    description:
+      'The topology graph and the cascade links drawn on it. The graph is a projection, not a second source of truth: vertices are registered panels (this one plus every row in the node registry) and each panel carries the inbounds whose ownership column points at it. A cascade link is the stored form of what an operator otherwise assembles by hand — an outbound plus a routing rule on the source panel. All endpoints under /panel/api/network.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/network/graph',
+        summary:
+          'Return the whole topology in one response: every panel with its inbounds, plus the cascade links between them. Panel id 0 is the panel serving the request.',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "panels": [\n      {\n        "id": 0,\n        "name": "this panel",\n        "role": "node",\n        "status": "online",\n        "self": true,\n        "enable": true,\n        "inbounds": [\n          { "id": 1, "tag": "in-39101-tcp", "remark": "FI exit", "protocol": "vless", "port": 39101, "enable": true, "clients": 2 }\n        ]\n      }\n    ],\n    "links": []\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/network/link',
+        summary:
+          'Draw one cascade edge. The source inbound must live on the source panel and the target inbound on the target panel; the two panels must differ. Stored pending, then materialized into the source panel\u2019s Xray config.',
+        body: '{\n  "remark": "RU entry to FI exit",\n  "sourcePanelId": 2,\n  "sourceInboundTag": "in-39101-tcp",\n  "targetPanelId": 0,\n  "targetInboundId": 1,\n  "targetClientEmail": "",\n  "enable": true\n}',
+        responseSchema: 'CascadeLink',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/network/link/del/:id',
+        summary: 'Remove a cascade edge and re-push the source panel.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Cascade link ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/network/link/setEnable/:id',
+        summary: 'Pause or resume one cascade edge without deleting it.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Cascade link ID.' }],
+        body: '{\n  "enable": true\n}',
+      },
+    ],
+  },
+
+  {
     id: 'hosts',
     title: 'Hosts',
     description:

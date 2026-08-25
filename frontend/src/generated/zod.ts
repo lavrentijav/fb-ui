@@ -275,6 +275,21 @@ export const ApiTokenViewSchema = z.object({
 });
 export type ApiTokenView = z.infer<typeof ApiTokenViewSchema>;
 
+export const CascadeLinkSchema = z.object({
+  applied: z.number().int(),
+  createdAt: z.number().int(),
+  enable: z.boolean(),
+  id: z.number().int(),
+  remark: z.string(),
+  sourceInboundTag: z.string(),
+  sourcePanelId: z.number().int(),
+  targetClientEmail: z.string(),
+  targetInboundId: z.number().int(),
+  targetPanelId: z.number().int(),
+  updatedAt: z.number().int(),
+});
+export type CascadeLink = z.infer<typeof CascadeLinkSchema>;
+
 export const ClientSchema = z.object({
   adTag: z.string().optional(),
   allowedIPs: z.array(z.string()).optional(),

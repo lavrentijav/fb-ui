@@ -39,6 +39,7 @@ func run(root, outDir string) error {
 				"ClientInbound",
 				"InboundFallback",
 				"Host",
+				"CascadeLink",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{

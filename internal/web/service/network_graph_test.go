@@ -1,0 +1,186 @@
+package service
+
+import (
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/database"
+	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+)
+
+func initNetworkTestDB(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	t.Setenv("XUI_DB_FOLDER", dir)
+	if err := database.InitDB(filepath.Join(dir, "x-ui.db")); err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	t.Cleanup(func() { _ = database.CloseDB() })
+	db := database.GetDB()
+	for _, m := range []any{&model.CascadeLink{}, &model.Inbound{}, &model.Node{}} {
+		if err := db.Where("1 = 1").Delete(m).Error; err != nil {
+			t.Fatalf("clear table: %v", err)
+		}
+	}
+}
+
+func seedGraphInbound(t *testing.T, tag string, port int, nodeID *int) *model.Inbound {
+	t.Helper()
+	ib := &model.Inbound{
+		UserId: 1, Tag: tag, Remark: tag, Enable: true, Port: port, NodeID: nodeID,
+		Protocol: model.VLESS, Settings: `{"clients":[],"decryption":"none"}`,
+		StreamSettings: `{"network":"tcp","security":"none"}`,
+	}
+	if err := database.GetDB().Create(ib).Error; err != nil {
+		t.Fatalf("seed inbound %s: %v", tag, err)
+	}
+	return ib
+}
+
+func seedGraphNode(t *testing.T, name, role string) *model.Node {
+	t.Helper()
+	n := &model.Node{
+		Name: name, Scheme: "https", Address: name + ".example.com", Port: 2053,
+		BasePath: "/", Role: role, Enable: true, Status: "online",
+	}
+	if err := database.GetDB().Create(n).Error; err != nil {
+		t.Fatalf("seed node %s: %v", name, err)
+	}
+	return n
+}
+
+// The graph must group inbounds by the ownership column, with panel 0 standing
+// for this panel — that mapping is what the editor draws its ports from.
+func TestNetworkGraphGroupsInboundsByOwningPanel(t *testing.T) {
+	initNetworkTestDB(t)
+	node := seedGraphNode(t, "msk1", model.NodeRoleNode)
+	seedGraphNode(t, "sibling", model.NodeRoleMaster)
+	seedGraphInbound(t, "local-in", 39101, nil)
+	seedGraphInbound(t, "remote-in", 39102, &node.Id)
+
+	graph, err := (&NetworkService{}).Graph()
+	if err != nil {
+		t.Fatalf("Graph: %v", err)
+	}
+	if len(graph.Panels) != 3 {
+		t.Fatalf("panels = %d, want this panel plus two registered ones", len(graph.Panels))
+	}
+
+	self := graph.Panels[0]
+	if !self.Self || self.Id != SelfPanelId {
+		t.Fatalf("first panel = %+v, want this panel at id 0", self)
+	}
+	if len(self.Inbounds) != 1 || self.Inbounds[0].Tag != "local-in" {
+		t.Fatalf("this panel's inbounds = %+v, want only local-in", self.Inbounds)
+	}
+
+	var remote GraphPanel
+	for _, p := range graph.Panels {
+		if p.Id == node.Id {
+			remote = p
+		}
+	}
+	if len(remote.Inbounds) != 1 || remote.Inbounds[0].Tag != "remote-in" {
+		t.Fatalf("node inbounds = %+v, want only remote-in", remote.Inbounds)
+	}
+	// A sibling master is a vertex too, so the editor can show the whole cluster.
+	if graph.Panels[2].Role != model.NodeRoleMaster {
+		t.Fatalf("third panel role = %q, want master", graph.Panels[2].Role)
+	}
+}
+
+// Every rejection here is an edge that would otherwise be stored and then fail
+// silently when the source panel's config is generated.
+func TestNetworkAddLinkRejectsImpossibleEdges(t *testing.T) {
+	initNetworkTestDB(t)
+	node := seedGraphNode(t, "msk1", model.NodeRoleNode)
+	local := seedGraphInbound(t, "local-in", 39101, nil)
+	remote := seedGraphInbound(t, "remote-in", 39102, &node.Id)
+	s := NetworkService{}
+
+	tests := []struct {
+		name string
+		link model.CascadeLink
+		want string
+	}{
+		{
+			name: "same panel on both ends",
+			link: model.CascadeLink{SourcePanelId: 0, SourceInboundTag: "local-in", TargetPanelId: 0, TargetInboundId: local.Id},
+			want: "two different panels",
+		},
+		{
+			name: "unknown source inbound",
+			link: model.CascadeLink{SourcePanelId: node.Id, SourceInboundTag: "nope", TargetPanelId: 0, TargetInboundId: local.Id},
+			want: "not found",
+		},
+		{
+			name: "source inbound lives elsewhere",
+			link: model.CascadeLink{SourcePanelId: node.Id, SourceInboundTag: "local-in", TargetPanelId: 0, TargetInboundId: local.Id},
+			want: "does not live on the source panel",
+		},
+		{
+			name: "target inbound lives elsewhere",
+			link: model.CascadeLink{SourcePanelId: node.Id, SourceInboundTag: "remote-in", TargetPanelId: 0, TargetInboundId: remote.Id},
+			want: "does not live on the target panel",
+		},
+		{
+			name: "unknown panel",
+			link: model.CascadeLink{SourcePanelId: 999, SourceInboundTag: "remote-in", TargetPanelId: 0, TargetInboundId: local.Id},
+			want: "panel not found",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			link := tt.link
+			err := s.AddLink(&link)
+			if err == nil {
+				t.Fatal("AddLink accepted an impossible edge")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want it to mention %q", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
+func TestNetworkLinkRoundTrip(t *testing.T) {
+	initNetworkTestDB(t)
+	node := seedGraphNode(t, "msk1", model.NodeRoleNode)
+	local := seedGraphInbound(t, "local-in", 39101, nil)
+	seedGraphInbound(t, "remote-in", 39102, &node.Id)
+	s := NetworkService{}
+
+	link := &model.CascadeLink{
+		Remark: "RU entry to FI exit", SourcePanelId: node.Id, SourceInboundTag: "remote-in",
+		TargetPanelId: SelfPanelId, TargetInboundId: local.Id, Enable: true,
+	}
+	if err := s.AddLink(link); err != nil {
+		t.Fatalf("AddLink: %v", err)
+	}
+	if link.Id == 0 {
+		t.Fatal("stored link has no id")
+	}
+	if tag := link.OutboundTag(); tag == "cascade-0" {
+		t.Fatalf("outbound tag = %q, want it keyed by the stored id", tag)
+	}
+
+	graph, err := s.Graph()
+	if err != nil {
+		t.Fatalf("Graph: %v", err)
+	}
+	if len(graph.Links) != 1 || graph.Links[0].SourceInboundTag != "remote-in" {
+		t.Fatalf("graph links = %+v, want the stored edge", graph.Links)
+	}
+
+	if err := s.DeleteLink(link.Id); err != nil {
+		t.Fatalf("DeleteLink: %v", err)
+	}
+	graph, err = s.Graph()
+	if err != nil {
+		t.Fatalf("Graph after delete: %v", err)
+	}
+	if len(graph.Links) != 0 {
+		t.Fatalf("graph links = %+v, want none after delete", graph.Links)
+	}
+}

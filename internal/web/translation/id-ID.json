@@ -114,7 +114,8 @@
     "pinSidebar": "Sematkan bilah sisi",
     "unpinSidebar": "Lepas sematan bilah sisi",
     "subFormats": "Sub Formats",
-    "peers": "Peer"
+    "peers": "Peer",
+    "network": "Jaringan"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "Diiklankan",
         "enable": "Aktif",
         "actions": "Aksi"
+      }
+    },
+    "network": {
+      "title": "Topologi jaringan",
+      "hint": "Setiap inbound adalah port: seret dari inbound satu panel ke inbound panel lain untuk meneruskan trafik ke sana. Klik garis untuk menghapus kaskade.",
+      "thisPanel": "Panel ini",
+      "roleMaster": "Master",
+      "roleNode": "Node",
+      "noInbounds": "Belum ada inbound",
+      "unlinkConfirmTitle": "Hapus kaskade ini?",
+      "unlinkConfirmContent": "Trafik inbound sumber kembali keluar dari panelnya sendiri.",
+      "toasts": {
+        "graph": "Gagal memuat topologi",
+        "link": "Buat kaskade",
+        "unlink": "Hapus kaskade",
+        "linked": "Kaskade dibuat",
+        "unlinked": "Kaskade dihapus",
+        "dragHint": "Seret dari inbound ke inbound",
+        "samePanel": "Kaskade harus menghubungkan dua panel berbeda"
       }
     }
   },

@@ -114,7 +114,8 @@
     "pinSidebar": "サイドバーを固定",
     "unpinSidebar": "サイドバーの固定を解除",
     "subFormats": "Sub Formats",
-    "peers": "ピア"
+    "peers": "ピア",
+    "network": "ネットワーク"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "配信中",
         "enable": "有効",
         "actions": "操作"
+      }
+    },
+    "network": {
+      "title": "ネットワーク構成",
+      "hint": "各インバウンドがポートです。あるパネルのインバウンドから別のパネルのインバウンドへドラッグすると、そこへ転送されます。線をクリックするとカスケードを削除します。",
+      "thisPanel": "このパネル",
+      "roleMaster": "マスター",
+      "roleNode": "ノード",
+      "noInbounds": "インバウンドがありません",
+      "unlinkConfirmTitle": "このカスケードを削除しますか？",
+      "unlinkConfirmContent": "元のインバウンドの通信は、そのパネルから直接出るように戻ります。",
+      "toasts": {
+        "graph": "構成の読み込みに失敗しました",
+        "link": "カスケードを作成",
+        "unlink": "カスケードを削除",
+        "linked": "カスケードを作成しました",
+        "unlinked": "カスケードを削除しました",
+        "dragHint": "インバウンドからインバウンドへドラッグしてください",
+        "samePanel": "カスケードは異なる 2 つのパネルを結ぶ必要があります"
       }
     }
   },

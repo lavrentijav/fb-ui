@@ -243,6 +243,19 @@ export const EXAMPLES: Record<string, unknown> = {
     "scope": "admin",
     "token": "new-token-string"
   },
+  "CascadeLink": {
+    "applied": 0,
+    "createdAt": 0,
+    "enable": true,
+    "id": 1,
+    "remark": "",
+    "sourceInboundTag": "in-39101-tcp",
+    "sourcePanelId": 2,
+    "targetClientEmail": "",
+    "targetInboundId": 7,
+    "targetPanelId": 0,
+    "updatedAt": 0
+  },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",
     "allowedIPs": [

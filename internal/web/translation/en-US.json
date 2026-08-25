@@ -114,7 +114,8 @@
     "pinSidebar": "Pin sidebar",
     "unpinSidebar": "Unpin sidebar",
     "subFormats": "Sub Formats",
-    "peers": "Peers"
+    "peers": "Peers",
+    "network": "Network"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "Advertised",
         "enable": "Enabled",
         "actions": "Actions"
+      }
+    },
+    "network": {
+      "title": "Network topology",
+      "hint": "Every inbound is a port: drag from an inbound on one panel onto an inbound on another to forward traffic there. Click an edge to remove the cascade.",
+      "thisPanel": "This panel",
+      "roleMaster": "Master",
+      "roleNode": "Node",
+      "noInbounds": "No inbounds yet",
+      "unlinkConfirmTitle": "Remove this cascade?",
+      "unlinkConfirmContent": "Traffic on the source inbound goes back to leaving from its own panel.",
+      "toasts": {
+        "graph": "Failed to load the topology",
+        "link": "Draw cascade",
+        "unlink": "Remove cascade",
+        "linked": "Cascade created",
+        "unlinked": "Cascade removed",
+        "dragHint": "Drag from an inbound to an inbound",
+        "samePanel": "A cascade must join two different panels"
       }
     }
   },

@@ -114,7 +114,8 @@
     "pinSidebar": "固定侧边栏",
     "unpinSidebar": "取消固定侧边栏",
     "subFormats": "Sub Formats",
-    "peers": "对等面板"
+    "peers": "对等面板",
+    "network": "网络"
   },
   "pages": {
     "login": {
@@ -1979,6 +1980,25 @@
         "advertised": "已下发",
         "enable": "启用",
         "actions": "操作"
+      }
+    },
+    "network": {
+      "title": "网络拓扑",
+      "hint": "每个入站都是一个端口：从一个面板的入站拖到另一个面板的入站，即可把流量转发过去。点击连线可删除级联。",
+      "thisPanel": "本面板",
+      "roleMaster": "主控",
+      "roleNode": "节点",
+      "noInbounds": "暂无入站",
+      "unlinkConfirmTitle": "删除该级联？",
+      "unlinkConfirmContent": "源入站的流量将恢复为从本面板直接出站。",
+      "toasts": {
+        "graph": "加载拓扑失败",
+        "link": "创建级联",
+        "unlink": "删除级联",
+        "linked": "级联已创建",
+        "unlinked": "级联已删除",
+        "dragHint": "请从入站拖到入站",
+        "samePanel": "级联必须连接两个不同的面板"
       }
     }
   },
