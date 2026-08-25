@@ -37,10 +37,14 @@ type GraphPanel struct {
 }
 
 // NetworkGraph is the whole topology in one response: what exists and how it is
-// wired. The editor renders it directly.
+// wired. The editor renders it directly. Filter rules are vertices too — they
+// sit between an inbound and where its traffic ends up — and the lists they
+// reference travel along so the canvas can label them without a second call.
 type NetworkGraph struct {
-	Panels []GraphPanel         `json:"panels"`
-	Links  []*model.CascadeLink `json:"links"`
+	Panels  []GraphPanel         `json:"panels"`
+	Links   []*model.CascadeLink `json:"links"`
+	Filters []*model.FilterRule  `json:"filters"`
+	Lists   []*model.FilterList  `json:"lists"`
 }
 
 type NetworkService struct{}
@@ -108,7 +112,17 @@ func (s *NetworkService) Graph() (*NetworkGraph, error) {
 		return nil, err
 	}
 
-	return &NetworkGraph{Panels: panels, Links: links}, nil
+	filterService := FilterService{}
+	rules, err := filterService.Rules()
+	if err != nil {
+		return nil, err
+	}
+	lists, err := filterService.Lists()
+	if err != nil {
+		return nil, err
+	}
+
+	return &NetworkGraph{Panels: panels, Links: links, Filters: rules, Lists: lists}, nil
 }
 
 // AddLink stores one edge after checking it describes a cascade that can exist:

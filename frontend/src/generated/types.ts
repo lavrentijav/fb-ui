@@ -370,6 +370,33 @@ export interface FallbackParentInfo {
   path?: string;
 }
 
+export interface FilterList {
+  createdAt: number;
+  enable: boolean;
+  entries: string[];
+  id: number;
+  kind: string;
+  name: string;
+  remark: string;
+  updatedAt: number;
+}
+
+export interface FilterRule {
+  action: string;
+  applied: number;
+  cascadeLinkId: number;
+  createdAt: number;
+  enable: boolean;
+  id: number;
+  listIds: number[];
+  name: string;
+  panelId: number;
+  remark: string;
+  sortOrder: number;
+  sourceInboundTags: string[];
+  updatedAt: number;
+}
+
 export interface GeoCategory {
   attributes: string[];
   code: string;

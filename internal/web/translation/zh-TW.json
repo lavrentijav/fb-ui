@@ -115,7 +115,8 @@
     "unpinSidebar": "取消固定側邊欄",
     "subFormats": "Sub Formats",
     "peers": "對等面板",
-    "network": "網路"
+    "network": "網路",
+    "filters": "過濾"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "串接已刪除",
         "dragHint": "請從入站拖到入站",
         "samePanel": "串接必須連接兩個不同的面板"
+      }
+    },
+    "filters": {
+      "listsTitle": "比對清單",
+      "rulesTitle": "過濾規則",
+      "rulesHint": "規則把清單套用到某個面板的入站上。在網路畫布上連線建立，這裡用於檢視與暫停。",
+      "addList": "新增清單",
+      "editList": "編輯清單",
+      "name": "名称",
+      "remark": "备注",
+      "kind": "类型",
+      "kindHint": "網域清單比對主機名稱，IP 清單比對位址與網段。類型決定項目寫入 Xray 規則的哪個欄位。",
+      "kindDomain": "網域",
+      "kindIp": "IP 位址",
+      "entries": "項目",
+      "entriesHint": "每行一項。網域支援 geosite:、regexp:、full:、domain: 與 ext:；IP 支援位址、CIDR 與 geoip:。以 # 開頭的行會被忽略。",
+      "entriesCount": "項目數",
+      "on": "启用",
+      "off": "停用",
+      "actions": "操作",
+      "ruleAction": "动作",
+      "ruleLists": "清單",
+      "ruleScope": "作用范围",
+      "allInbounds": "全部入站",
+      "action_block": "拦截",
+      "action_direct": "直连",
+      "action_cascade": "转入级联",
+      "noLists": "尚無比對清單",
+      "noRules": "尚無過濾規則",
+      "deleteListConfirmTitle": "刪除清單「{name}」？",
+      "deleteListConfirmContent": "仍被規則引用的清單無法刪除。",
+      "deleteRuleConfirmTitle": "刪除規則「{name}」？",
+      "toasts": {
+        "list": "載入過濾設定失敗",
+        "obtain": "載入過濾項目失敗",
+        "addList": "新增清單",
+        "updateList": "更新清單",
+        "deleteList": "刪除清單",
+        "deletedList": "清單已刪除",
+        "addRule": "新增规则",
+        "updateRule": "更新规则",
+        "deleteRule": "删除规则",
+        "deletedRule": "规则已删除",
+        "fillRequired": "名称为必填项"
       }
     }
   },

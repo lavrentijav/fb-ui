@@ -40,6 +40,8 @@ func run(root, outDir string) error {
 				"InboundFallback",
 				"Host",
 				"CascadeLink",
+				"FilterList",
+				"FilterRule",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{

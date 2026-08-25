@@ -115,7 +115,8 @@
     "unpinSidebar": "Desafixar barra lateral",
     "subFormats": "Sub Formats",
     "peers": "Pares",
-    "network": "Rede"
+    "network": "Rede",
+    "filters": "Filtros"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "Cascata removida",
         "dragHint": "Arraste de uma entrada para outra entrada",
         "samePanel": "Uma cascata deve unir dois painéis diferentes"
+      }
+    },
+    "filters": {
+      "listsTitle": "Listas de correspondência",
+      "rulesTitle": "Regras de filtragem",
+      "rulesHint": "Uma regra aplica suas listas às entradas de um painel. Elas são criadas no quadro de rede; aqui você revisa e pausa.",
+      "addList": "Adicionar lista",
+      "editList": "Editar lista",
+      "name": "Nome",
+      "remark": "Observação",
+      "kind": "Tipo",
+      "kindHint": "Listas de domínio combinam com nomes de host; listas de IP, com endereços e faixas. O tipo define em qual campo da regra do Xray as entradas entram.",
+      "kindDomain": "Domínios",
+      "kindIp": "Endereços IP",
+      "entries": "Entradas",
+      "entriesHint": "Uma por linha. Domínios aceitam geosite:, regexp:, full:, domain: e ext:; IPs aceitam endereços, CIDRs e geoip:. Linhas iniciadas por # são ignoradas.",
+      "entriesCount": "Entradas",
+      "on": "Ativo",
+      "off": "Inativo",
+      "actions": "Ações",
+      "ruleAction": "Ação",
+      "ruleLists": "Listas",
+      "ruleScope": "Aplica-se a",
+      "allInbounds": "Todas as entradas",
+      "action_block": "Bloquear",
+      "action_direct": "Direto",
+      "action_cascade": "Para a cascata",
+      "noLists": "Ainda não há listas",
+      "noRules": "Ainda não há regras",
+      "deleteListConfirmTitle": "Excluir a lista \"{name}\"?",
+      "deleteListConfirmContent": "Uma lista ainda usada por uma regra não pode ser excluída.",
+      "deleteRuleConfirmTitle": "Excluir a regra \"{name}\"?",
+      "toasts": {
+        "list": "Falha ao carregar os filtros",
+        "obtain": "Falha ao carregar o filtro",
+        "addList": "Adicionar lista",
+        "updateList": "Atualizar lista",
+        "deleteList": "Excluir lista",
+        "deletedList": "Lista excluída",
+        "addRule": "Adicionar regra",
+        "updateRule": "Atualizar regra",
+        "deleteRule": "Excluir regra",
+        "deletedRule": "Regra excluída",
+        "fillRequired": "O nome é obrigatório"
       }
     }
   },

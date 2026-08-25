@@ -7,6 +7,11 @@ export const keys = {
     root: () => ['nodes'] as const,
     list: () => ['nodes', 'list'] as const,
   },
+  filters: {
+    root: () => ['filters'] as const,
+    lists: () => ['filters', 'lists'] as const,
+    rules: () => ['filters', 'rules'] as const,
+  },
   network: {
     root: () => ['network'] as const,
     graph: () => ['network', 'graph'] as const,

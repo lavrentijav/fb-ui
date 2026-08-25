@@ -115,7 +115,8 @@
     "unpinSidebar": "サイドバーの固定を解除",
     "subFormats": "Sub Formats",
     "peers": "ピア",
-    "network": "ネットワーク"
+    "network": "ネットワーク",
+    "filters": "フィルター"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "カスケードを削除しました",
         "dragHint": "インバウンドからインバウンドへドラッグしてください",
         "samePanel": "カスケードは異なる 2 つのパネルを結ぶ必要があります"
+      }
+    },
+    "filters": {
+      "listsTitle": "マッチリスト",
+      "rulesTitle": "フィルタールール",
+      "rulesHint": "ルールはリストを 1 つのパネルのインバウンドに適用します。作成はネットワーク画面の線で行い、ここでは確認と一時停止をします。",
+      "addList": "リストを追加",
+      "editList": "リストを編集",
+      "name": "名前",
+      "remark": "備考",
+      "kind": "種別",
+      "kindHint": "ドメインリストはホスト名に、IP リストはアドレスと範囲に一致します。種別によって Xray ルールのどのフィールドに入るかが決まります。",
+      "kindDomain": "ドメイン",
+      "kindIp": "IP アドレス",
+      "entries": "エントリ",
+      "entriesHint": "1 行に 1 件。ドメインは geosite:、regexp:、full:、domain:、ext: が使えます。IP はアドレス、CIDR、geoip: です。# で始まる行は無視されます。",
+      "entriesCount": "件数",
+      "on": "有効",
+      "off": "無効",
+      "actions": "操作",
+      "ruleAction": "動作",
+      "ruleLists": "リスト",
+      "ruleScope": "適用範囲",
+      "allInbounds": "すべてのインバウンド",
+      "action_block": "ブロック",
+      "action_direct": "直接接続",
+      "action_cascade": "カスケードへ",
+      "noLists": "マッチリストがありません",
+      "noRules": "フィルタールールがありません",
+      "deleteListConfirmTitle": "リスト「{name}」を削除しますか？",
+      "deleteListConfirmContent": "ルールが参照しているリストは削除できません。",
+      "deleteRuleConfirmTitle": "ルール「{name}」を削除しますか？",
+      "toasts": {
+        "list": "フィルターの読み込みに失敗しました",
+        "obtain": "フィルターの読み込みに失敗しました",
+        "addList": "リストを追加",
+        "updateList": "リストを更新",
+        "deleteList": "リストを削除",
+        "deletedList": "リストを削除しました",
+        "addRule": "ルールを追加",
+        "updateRule": "ルールを更新",
+        "deleteRule": "ルールを削除",
+        "deletedRule": "ルールを削除しました",
+        "fillRequired": "名前は必須です"
       }
     }
   },

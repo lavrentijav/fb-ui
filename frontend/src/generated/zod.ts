@@ -397,6 +397,35 @@ export const FallbackParentInfoSchema = z.object({
 });
 export type FallbackParentInfo = z.infer<typeof FallbackParentInfoSchema>;
 
+export const FilterListSchema = z.object({
+  createdAt: z.number().int(),
+  enable: z.boolean(),
+  entries: z.array(z.string()),
+  id: z.number().int(),
+  kind: z.enum(['domain', 'ip']),
+  name: z.string(),
+  remark: z.string(),
+  updatedAt: z.number().int(),
+});
+export type FilterList = z.infer<typeof FilterListSchema>;
+
+export const FilterRuleSchema = z.object({
+  action: z.enum(['block', 'direct', 'cascade']),
+  applied: z.number().int(),
+  cascadeLinkId: z.number().int(),
+  createdAt: z.number().int(),
+  enable: z.boolean(),
+  id: z.number().int(),
+  listIds: z.array(z.number().int()),
+  name: z.string(),
+  panelId: z.number().int(),
+  remark: z.string(),
+  sortOrder: z.number().int(),
+  sourceInboundTags: z.array(z.string()),
+  updatedAt: z.number().int(),
+});
+export type FilterRule = z.infer<typeof FilterRuleSchema>;
+
 export const GeoCategorySchema = z.object({
   attributes: z.array(z.string()),
   code: z.string(),

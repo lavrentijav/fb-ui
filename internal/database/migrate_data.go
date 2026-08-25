@@ -58,6 +58,8 @@ func migrationModels() []any {
 		&model.ClientGlobalTraffic{},
 		&model.OutboundSubscription{},
 		&model.CascadeLink{},
+		&model.FilterList{},
+		&model.FilterRule{},
 	}
 }
 

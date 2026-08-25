@@ -115,7 +115,8 @@
     "unpinSidebar": "Kenar çubuğu sabitlemesini kaldır",
     "subFormats": "Sub Formats",
     "peers": "Eşler",
-    "network": "Ağ"
+    "network": "Ağ",
+    "filters": "Filtreler"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "Zincir silindi",
         "dragHint": "Gelen bağlantıdan gelen bağlantıya sürükleyin",
         "samePanel": "Zincir iki farklı paneli birleştirmeli"
+      }
+    },
+    "filters": {
+      "listsTitle": "Eşleşme listeleri",
+      "rulesTitle": "Filtre kuralları",
+      "rulesHint": "Bir kural listelerini tek bir panelin gelen bağlantılarına uygular. Ağ tuvalinde oluşturulur; burada gözden geçirip duraklatırsınız.",
+      "addList": "Liste ekle",
+      "editList": "Listeyi düzenle",
+      "name": "Ad",
+      "remark": "Not",
+      "kind": "Tür",
+      "kindHint": "Alan adı listeleri ana makine adlarıyla, IP listeleri adres ve aralıklarla eşleşir. Tür, girdilerin Xray kuralının hangi alanına gireceğini belirler.",
+      "kindDomain": "Alan adları",
+      "kindIp": "IP adresleri",
+      "entries": "Girdiler",
+      "entriesHint": "Her satıra bir tane. Alan adları için geosite:, regexp:, full:, domain: ve ext:; IP için adresler, CIDR ve geoip:. # ile başlayan satırlar yok sayılır.",
+      "entriesCount": "Girdi",
+      "on": "Açık",
+      "off": "Kapalı",
+      "actions": "İşlemler",
+      "ruleAction": "Eylem",
+      "ruleLists": "Listeler",
+      "ruleScope": "Kapsam",
+      "allInbounds": "Tüm gelen bağlantılar",
+      "action_block": "Engelle",
+      "action_direct": "Doğrudan",
+      "action_cascade": "Zincire",
+      "noLists": "Henüz liste yok",
+      "noRules": "Henüz kural yok",
+      "deleteListConfirmTitle": "\"{name}\" listesi silinsin mi?",
+      "deleteListConfirmContent": "Bir kuralın hâlâ kullandığı liste silinemez.",
+      "deleteRuleConfirmTitle": "\"{name}\" kuralı silinsin mi?",
+      "toasts": {
+        "list": "Filtreler yüklenemedi",
+        "obtain": "Filtre yüklenemedi",
+        "addList": "Liste ekle",
+        "updateList": "Listeyi güncelle",
+        "deleteList": "Listeyi sil",
+        "deletedList": "Liste silindi",
+        "addRule": "Kural ekle",
+        "updateRule": "Kuralı güncelle",
+        "deleteRule": "Kuralı sil",
+        "deletedRule": "Kural silindi",
+        "fillRequired": "Ad zorunludur"
       }
     }
   },

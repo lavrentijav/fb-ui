@@ -1537,6 +1537,143 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "FilterList": {
+    "description": "FilterList is a named set of matchers an operator maintains once and reuses\nacross rules — ad domains, a country's IP ranges, a bypass list. Entries are\nstored verbatim so Xray's own prefixes keep working: a domain list takes\nplain domains, \"geosite:category-ads\", \"regexp:\", \"full:\"; an IP list takes\naddresses, CIDRs and \"geoip:ru\".",
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "entries": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "kind": {
+        "enum": [
+          "domain",
+          "ip"
+        ],
+        "example": "domain",
+        "type": "string"
+      },
+      "name": {
+        "example": "ads",
+        "type": "string"
+      },
+      "remark": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "enable",
+      "entries",
+      "id",
+      "kind",
+      "name",
+      "remark",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "FilterRule": {
+    "description": "FilterRule is a filtering node on the topology canvas: traffic entering the\nnamed inbounds of one panel is matched against the referenced lists and sent\nto the chosen action. It is the stored form of one Xray routing rule.",
+    "properties": {
+      "action": {
+        "enum": [
+          "block",
+          "direct",
+          "cascade"
+        ],
+        "example": "block",
+        "type": "string"
+      },
+      "applied": {
+        "description": "Applied records the last time the rule reached the panel's Xray config;\n0 means it is still pending.",
+        "format": "int64",
+        "type": "integer"
+      },
+      "cascadeLinkId": {
+        "description": "CascadeLinkId names the edge matching traffic is diverted onto when the\naction is \"cascade\"; ignored for the other actions.",
+        "type": "integer"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "listIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "name": {
+        "example": "block ads",
+        "type": "string"
+      },
+      "panelId": {
+        "description": "PanelId is the panel that enforces the rule, with 0 meaning this one —\nthe same convention Inbound.NodeID uses for ownership.",
+        "example": 0,
+        "type": "integer"
+      },
+      "remark": {
+        "type": "string"
+      },
+      "sortOrder": {
+        "description": "SortOrder decides which rule wins when several match: Xray takes the\nfirst hit, so the order here is the order emitted into the config.",
+        "type": "integer"
+      },
+      "sourceInboundTags": {
+        "description": "SourceInboundTags narrows the rule to specific inbounds on that panel.\nEmpty means every inbound it owns, which is what a panel-wide block wants.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "action",
+      "applied",
+      "cascadeLinkId",
+      "createdAt",
+      "enable",
+      "id",
+      "listIds",
+      "name",
+      "panelId",
+      "remark",
+      "sortOrder",
+      "sourceInboundTags",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
   "GeoCategory": {
     "description": "GeoCategory is one code inside a database, such as geosite's \"google\".",
     "properties": {

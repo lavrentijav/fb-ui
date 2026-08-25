@@ -115,7 +115,8 @@
     "unpinSidebar": "Bỏ ghim thanh bên",
     "subFormats": "Sub Formats",
     "peers": "Máy ngang hàng",
-    "network": "Mạng"
+    "network": "Mạng",
+    "filters": "Bộ lọc"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "Đã xóa chuỗi",
         "dragHint": "Hãy kéo từ inbound sang inbound",
         "samePanel": "Chuỗi phải nối hai bảng khác nhau"
+      }
+    },
+    "filters": {
+      "listsTitle": "Danh sách khớp",
+      "rulesTitle": "Quy tắc lọc",
+      "rulesHint": "Một quy tắc áp dụng danh sách của nó lên các inbound của một bảng. Tạo trên khung mạng; ở đây để xem lại và tạm dừng.",
+      "addList": "Thêm danh sách",
+      "editList": "Sửa danh sách",
+      "name": "Tên",
+      "remark": "Ghi chú",
+      "kind": "Loại",
+      "kindHint": "Danh sách tên miền khớp với hostname, danh sách IP khớp với địa chỉ và dải. Loại quyết định mục nhập vào trường nào của quy tắc Xray.",
+      "kindDomain": "Tên miền",
+      "kindIp": "Địa chỉ IP",
+      "entries": "Mục",
+      "entriesHint": "Mỗi dòng một mục. Tên miền chấp nhận geosite:, regexp:, full:, domain: và ext:; IP chấp nhận địa chỉ, CIDR và geoip:. Dòng bắt đầu bằng # bị bỏ qua.",
+      "entriesCount": "Số mục",
+      "on": "Bật",
+      "off": "Tắt",
+      "actions": "Thao tác",
+      "ruleAction": "Hành động",
+      "ruleLists": "Danh sách",
+      "ruleScope": "Áp dụng cho",
+      "allInbounds": "Tất cả inbound",
+      "action_block": "Chặn",
+      "action_direct": "Trực tiếp",
+      "action_cascade": "Vào chuỗi",
+      "noLists": "Chưa có danh sách",
+      "noRules": "Chưa có quy tắc",
+      "deleteListConfirmTitle": "Xóa danh sách \"{name}\"?",
+      "deleteListConfirmContent": "Không thể xóa danh sách đang được một quy tắc sử dụng.",
+      "deleteRuleConfirmTitle": "Xóa quy tắc \"{name}\"?",
+      "toasts": {
+        "list": "Không tải được bộ lọc",
+        "obtain": "Không tải được bộ lọc",
+        "addList": "Thêm danh sách",
+        "updateList": "Cập nhật danh sách",
+        "deleteList": "Xóa danh sách",
+        "deletedList": "Đã xóa danh sách",
+        "addRule": "Thêm quy tắc",
+        "updateRule": "Cập nhật quy tắc",
+        "deleteRule": "Xóa quy tắc",
+        "deletedRule": "Đã xóa quy tắc",
+        "fillRequired": "Tên là bắt buộc"
       }
     }
   },

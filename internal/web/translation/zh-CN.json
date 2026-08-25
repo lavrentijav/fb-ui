@@ -115,7 +115,8 @@
     "unpinSidebar": "取消固定侧边栏",
     "subFormats": "Sub Formats",
     "peers": "对等面板",
-    "network": "网络"
+    "network": "网络",
+    "filters": "过滤"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "级联已删除",
         "dragHint": "请从入站拖到入站",
         "samePanel": "级联必须连接两个不同的面板"
+      }
+    },
+    "filters": {
+      "listsTitle": "匹配列表",
+      "rulesTitle": "过滤规则",
+      "rulesHint": "规则把它的列表应用到某个面板的入站上。在网络画布上连线创建，这里用于查看和暂停。",
+      "addList": "新增列表",
+      "editList": "编辑列表",
+      "name": "名称",
+      "remark": "备注",
+      "kind": "类型",
+      "kindHint": "域名列表匹配主机名，IP 列表匹配地址和网段。类型决定条目写入 Xray 规则的哪个字段。",
+      "kindDomain": "域名",
+      "kindIp": "IP 地址",
+      "entries": "条目",
+      "entriesHint": "每行一条。域名支持 geosite:、regexp:、full:、domain: 和 ext:；IP 支持地址、CIDR 和 geoip:。以 # 开头的行会被忽略。",
+      "entriesCount": "条目数",
+      "on": "启用",
+      "off": "停用",
+      "actions": "操作",
+      "ruleAction": "动作",
+      "ruleLists": "列表",
+      "ruleScope": "作用范围",
+      "allInbounds": "全部入站",
+      "action_block": "拦截",
+      "action_direct": "直连",
+      "action_cascade": "转入级联",
+      "noLists": "暂无匹配列表",
+      "noRules": "暂无过滤规则",
+      "deleteListConfirmTitle": "删除列表“{name}”？",
+      "deleteListConfirmContent": "仍被规则引用的列表无法删除。",
+      "deleteRuleConfirmTitle": "删除规则“{name}”？",
+      "toasts": {
+        "list": "加载过滤配置失败",
+        "obtain": "加载过滤项失败",
+        "addList": "新增列表",
+        "updateList": "更新列表",
+        "deleteList": "删除列表",
+        "deletedList": "列表已删除",
+        "addRule": "新增规则",
+        "updateRule": "更新规则",
+        "deleteRule": "删除规则",
+        "deletedRule": "规则已删除",
+        "fillRequired": "名称为必填项"
       }
     }
   },

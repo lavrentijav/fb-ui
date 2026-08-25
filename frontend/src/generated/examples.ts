@@ -353,6 +353,37 @@ export const EXAMPLES: Record<string, unknown> = {
     "masterId": 0,
     "path": ""
   },
+  "FilterList": {
+    "createdAt": 0,
+    "enable": true,
+    "entries": [
+      ""
+    ],
+    "id": 1,
+    "kind": "domain",
+    "name": "ads",
+    "remark": "",
+    "updatedAt": 0
+  },
+  "FilterRule": {
+    "action": "block",
+    "applied": 0,
+    "cascadeLinkId": 0,
+    "createdAt": 0,
+    "enable": true,
+    "id": 1,
+    "listIds": [
+      0
+    ],
+    "name": "block ads",
+    "panelId": 0,
+    "remark": "",
+    "sortOrder": 0,
+    "sourceInboundTags": [
+      ""
+    ],
+    "updatedAt": 0
+  },
   "GeoCategory": {
     "attributes": [
       "ads",

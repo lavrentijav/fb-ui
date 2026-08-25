@@ -22,6 +22,7 @@ type APIController struct {
 	hostController        *HostController
 	peerController        *PeerController
 	networkController     *NetworkController
+	filterController      *FilterController
 	settingController     *SettingController
 	xraySettingController *XraySettingController
 	userService           panel.UserService
@@ -204,6 +205,10 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	// Network API — the topology graph and the cascade links drawn on it
 	network := api.Group("/network")
 	a.networkController = NewNetworkController(network)
+
+	// Filters API — reusable matcher lists and the rules that apply them
+	filters := api.Group("/filters")
+	a.filterController = NewFilterController(filters)
 
 	// Settings + Xray config management live under the API surface too, so the
 	// same API token drives them. Paths are /panel/api/setting/* and

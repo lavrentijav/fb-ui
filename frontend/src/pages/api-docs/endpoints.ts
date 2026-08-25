@@ -1516,6 +1516,93 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'filters',
+    title: 'Filters',
+    description:
+      'Reusable matcher lists and the rules that apply them. A list is a named set of Xray matchers an operator maintains once and reuses — ad domains, a country\u2019s ranges, a bypass set — stored verbatim so Xray\u2019s own prefixes keep working (geosite:, regexp:, full: for domains; CIDRs and geoip: for IPs). A rule is a filtering node on the topology canvas: traffic entering the named inbounds of one panel is matched against the referenced lists and blocked, sent out directly, or diverted onto a cascade. All endpoints under /panel/api/filters.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/filters/lists',
+        summary: 'List every matcher list with its entries.',
+        responseSchema: 'FilterList',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/filters/lists/get/:id',
+        summary: 'Fetch one matcher list.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'List ID.' }],
+        responseSchema: 'FilterList',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/lists/add',
+        summary:
+          'Create a matcher list. Entries are trimmed, de-duplicated and validated against the kind: an ip list takes addresses, CIDRs and geoip: categories, a domain list takes domains and the geosite:/regexp:/full:/domain:/ext: prefixes. Lines starting with # are dropped.',
+        body: '{\n  "name": "ads",\n  "remark": "advertising domains",\n  "kind": "domain",\n  "entries": ["geosite:category-ads-all", "doubleclick.net"],\n  "enable": true\n}',
+        responseSchema: 'FilterList',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/lists/update/:id',
+        summary: 'Replace a matcher list.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'List ID.' }],
+        body: '{\n  "name": "ads",\n  "remark": "",\n  "kind": "domain",\n  "entries": ["geosite:category-ads-all"],\n  "enable": true\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/lists/del/:id',
+        summary:
+          'Delete a matcher list. Refused while a rule still references it, since the rule would silently stop matching.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'List ID.' }],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/filters/rules',
+        summary: 'List every filter rule, in the order they are emitted into the routing config.',
+        responseSchema: 'FilterRule',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/filters/rules/get/:id',
+        summary: 'Fetch one filter rule.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Rule ID.' }],
+        responseSchema: 'FilterRule',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/rules/add',
+        summary:
+          'Create a filter rule. panelId 0 is this panel; an empty sourceInboundTags means every inbound it owns. action is block, direct or cascade — cascade also needs the cascadeLinkId to divert onto.',
+        body: '{\n  "name": "block ads",\n  "remark": "",\n  "panelId": 0,\n  "sourceInboundTags": [],\n  "listIds": [1],\n  "action": "block",\n  "cascadeLinkId": 0,\n  "sortOrder": 0,\n  "enable": true\n}',
+        responseSchema: 'FilterRule',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/rules/update/:id',
+        summary: 'Replace a filter rule and re-push the panel that enforces it.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Rule ID.' }],
+        body: '{\n  "name": "block ads",\n  "panelId": 0,\n  "sourceInboundTags": ["in-443-tcp"],\n  "listIds": [1, 2],\n  "action": "block",\n  "sortOrder": 10,\n  "enable": true\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/rules/del/:id',
+        summary: 'Delete a filter rule.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Rule ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/rules/setEnable/:id',
+        summary: 'Pause or resume one rule without deleting it.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Rule ID.' }],
+        body: '{\n  "enable": true\n}',
+      },
+    ],
+  },
+
+  {
     id: 'hosts',
     title: 'Hosts',
     description:

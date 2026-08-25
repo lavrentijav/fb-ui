@@ -1563,6 +1563,143 @@
         ],
         "type": "object"
       },
+      "FilterList": {
+        "description": "FilterList is a named set of matchers an operator maintains once and reuses\nacross rules — ad domains, a country's IP ranges, a bypass list. Entries are\nstored verbatim so Xray's own prefixes keep working: a domain list takes\nplain domains, \"geosite:category-ads\", \"regexp:\", \"full:\"; an IP list takes\naddresses, CIDRs and \"geoip:ru\".",
+        "properties": {
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "entries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "domain",
+              "ip"
+            ],
+            "example": "domain",
+            "type": "string"
+          },
+          "name": {
+            "example": "ads",
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "enable",
+          "entries",
+          "id",
+          "kind",
+          "name",
+          "remark",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "FilterRule": {
+        "description": "FilterRule is a filtering node on the topology canvas: traffic entering the\nnamed inbounds of one panel is matched against the referenced lists and sent\nto the chosen action. It is the stored form of one Xray routing rule.",
+        "properties": {
+          "action": {
+            "enum": [
+              "block",
+              "direct",
+              "cascade"
+            ],
+            "example": "block",
+            "type": "string"
+          },
+          "applied": {
+            "description": "Applied records the last time the rule reached the panel's Xray config;\n0 means it is still pending.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "cascadeLinkId": {
+            "description": "CascadeLinkId names the edge matching traffic is diverted onto when the\naction is \"cascade\"; ignored for the other actions.",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "listIds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "block ads",
+            "type": "string"
+          },
+          "panelId": {
+            "description": "PanelId is the panel that enforces the rule, with 0 meaning this one —\nthe same convention Inbound.NodeID uses for ownership.",
+            "example": 0,
+            "type": "integer"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "SortOrder decides which rule wins when several match: Xray takes the\nfirst hit, so the order here is the order emitted into the config.",
+            "type": "integer"
+          },
+          "sourceInboundTags": {
+            "description": "SourceInboundTags narrows the rule to specific inbounds on that panel.\nEmpty means every inbound it owns, which is what a panel-wide block wants.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action",
+          "applied",
+          "cascadeLinkId",
+          "createdAt",
+          "enable",
+          "id",
+          "listIds",
+          "name",
+          "panelId",
+          "remark",
+          "sortOrder",
+          "sourceInboundTags",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "GeoCategory": {
         "description": "GeoCategory is one code inside a database, such as geosite's \"google\".",
         "properties": {
@@ -3277,6 +3414,10 @@
     {
       "name": "Network",
       "description": "The topology graph and the cascade links drawn on it. The graph is a projection, not a second source of truth: vertices are registered panels (this one plus every row in the node registry) and each panel carries the inbounds whose ownership column points at it. A cascade link is the stored form of what an operator otherwise assembles by hand — an outbound plus a routing rule on the source panel. All endpoints under /panel/api/network."
+    },
+    {
+      "name": "Filters",
+      "description": "Reusable matcher lists and the rules that apply them. A list is a named set of Xray matchers an operator maintains once and reuses — ad domains, a country’s ranges, a bypass set — stored verbatim so Xray’s own prefixes keep working (geosite:, regexp:, full: for domains; CIDRs and geoip: for IPs). A rule is a filtering node on the topology canvas: traffic entering the named inbounds of one panel is matched against the referenced lists and blocked, sent out directly, or diverted onto a cascade. All endpoints under /panel/api/filters."
     },
     {
       "name": "Hosts",
@@ -10143,6 +10284,645 @@
             "in": "path",
             "required": true,
             "description": "Cascade link ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/lists": {
+      "get": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "List every matcher list with its entries.",
+        "operationId": "get_panel_api_filters_lists",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FilterList"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "createdAt": 0,
+                      "enable": true,
+                      "entries": [
+                        ""
+                      ],
+                      "id": 1,
+                      "kind": "domain",
+                      "name": "ads",
+                      "remark": "",
+                      "updatedAt": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/lists/get/{id}": {
+      "get": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Fetch one matcher list.",
+        "operationId": "get_panel_api_filters_lists_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "List ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/FilterList"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 0,
+                    "enable": true,
+                    "entries": [
+                      ""
+                    ],
+                    "id": 1,
+                    "kind": "domain",
+                    "name": "ads",
+                    "remark": "",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/lists/add": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Create a matcher list. Entries are trimmed, de-duplicated and validated against the kind: an ip list takes addresses, CIDRs and geoip: categories, a domain list takes domains and the geosite:/regexp:/full:/domain:/ext: prefixes. Lines starting with # are dropped.",
+        "operationId": "post_panel_api_filters_lists_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "ads",
+                "remark": "advertising domains",
+                "kind": "domain",
+                "entries": [
+                  "geosite:category-ads-all",
+                  "doubleclick.net"
+                ],
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/FilterList"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 0,
+                    "enable": true,
+                    "entries": [
+                      ""
+                    ],
+                    "id": 1,
+                    "kind": "domain",
+                    "name": "ads",
+                    "remark": "",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/lists/update/{id}": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Replace a matcher list.",
+        "operationId": "post_panel_api_filters_lists_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "List ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "ads",
+                "remark": "",
+                "kind": "domain",
+                "entries": [
+                  "geosite:category-ads-all"
+                ],
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/lists/del/{id}": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Delete a matcher list. Refused while a rule still references it, since the rule would silently stop matching.",
+        "operationId": "post_panel_api_filters_lists_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "List ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/rules": {
+      "get": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "List every filter rule, in the order they are emitted into the routing config.",
+        "operationId": "get_panel_api_filters_rules",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FilterRule"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "action": "block",
+                      "applied": 0,
+                      "cascadeLinkId": 0,
+                      "createdAt": 0,
+                      "enable": true,
+                      "id": 1,
+                      "listIds": [
+                        0
+                      ],
+                      "name": "block ads",
+                      "panelId": 0,
+                      "remark": "",
+                      "sortOrder": 0,
+                      "sourceInboundTags": [
+                        ""
+                      ],
+                      "updatedAt": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/rules/get/{id}": {
+      "get": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Fetch one filter rule.",
+        "operationId": "get_panel_api_filters_rules_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Rule ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/FilterRule"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "action": "block",
+                    "applied": 0,
+                    "cascadeLinkId": 0,
+                    "createdAt": 0,
+                    "enable": true,
+                    "id": 1,
+                    "listIds": [
+                      0
+                    ],
+                    "name": "block ads",
+                    "panelId": 0,
+                    "remark": "",
+                    "sortOrder": 0,
+                    "sourceInboundTags": [
+                      ""
+                    ],
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/rules/add": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Create a filter rule. panelId 0 is this panel; an empty sourceInboundTags means every inbound it owns. action is block, direct or cascade — cascade also needs the cascadeLinkId to divert onto.",
+        "operationId": "post_panel_api_filters_rules_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "block ads",
+                "remark": "",
+                "panelId": 0,
+                "sourceInboundTags": [],
+                "listIds": [
+                  1
+                ],
+                "action": "block",
+                "cascadeLinkId": 0,
+                "sortOrder": 0,
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/FilterRule"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "action": "block",
+                    "applied": 0,
+                    "cascadeLinkId": 0,
+                    "createdAt": 0,
+                    "enable": true,
+                    "id": 1,
+                    "listIds": [
+                      0
+                    ],
+                    "name": "block ads",
+                    "panelId": 0,
+                    "remark": "",
+                    "sortOrder": 0,
+                    "sourceInboundTags": [
+                      ""
+                    ],
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/rules/update/{id}": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Replace a filter rule and re-push the panel that enforces it.",
+        "operationId": "post_panel_api_filters_rules_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Rule ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "block ads",
+                "panelId": 0,
+                "sourceInboundTags": [
+                  "in-443-tcp"
+                ],
+                "listIds": [
+                  1,
+                  2
+                ],
+                "action": "block",
+                "sortOrder": 10,
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/rules/del/{id}": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Delete a filter rule.",
+        "operationId": "post_panel_api_filters_rules_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Rule ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/filters/rules/setEnable/{id}": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Pause or resume one rule without deleting it.",
+        "operationId": "post_panel_api_filters_rules_setEnable_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Rule ID.",
             "schema": {
               "type": "integer"
             }

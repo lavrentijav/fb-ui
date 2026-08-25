@@ -14,6 +14,7 @@ import {
   DatabaseOutlined,
   DeploymentUnitOutlined,
   ExportOutlined,
+  FilterOutlined,
   GithubOutlined,
   GlobalOutlined,
   HeartOutlined,
@@ -63,6 +64,7 @@ type IconName =
   | 'cluster'
   | 'peers'
   | 'network'
+  | 'filters'
   | 'hosts'
   | 'logout'
   | 'apidocs'
@@ -79,6 +81,7 @@ const iconByName: Record<IconName, ComponentType> = {
   cluster: ClusterOutlined,
   peers: DeploymentUnitOutlined,
   network: PartitionOutlined,
+  filters: FilterOutlined,
   hosts: GlobalOutlined,
   logout: LogoutOutlined,
   apidocs: ApiOutlined,
@@ -225,6 +228,7 @@ export default function AppSidebar() {
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
       { key: '/peers', icon: 'peers', title: t('menu.peers') },
       { key: '/network', icon: 'network', title: t('menu.network') },
+      { key: '/filters', icon: 'filters', title: t('menu.filters') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
       { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing', title: t('menu.routing') },

@@ -115,7 +115,8 @@
     "unpinSidebar": "Desfijar barra lateral",
     "subFormats": "Sub Formats",
     "peers": "Pares",
-    "network": "Red"
+    "network": "Red",
+    "filters": "Filtros"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "Cascada eliminada",
         "dragHint": "Arrastra de una entrada a otra entrada",
         "samePanel": "Una cascada debe unir dos paneles distintos"
+      }
+    },
+    "filters": {
+      "listsTitle": "Listas de coincidencia",
+      "rulesTitle": "Reglas de filtrado",
+      "rulesHint": "Una regla aplica sus listas a las entradas de un panel. Se crean en el lienzo de red; aquí las revisas y las pausas.",
+      "addList": "Añadir lista",
+      "editList": "Editar lista",
+      "name": "Nombre",
+      "remark": "Comentario",
+      "kind": "Tipo",
+      "kindHint": "Las listas de dominios coinciden con nombres de host; las de IP, con direcciones y rangos. El tipo decide en qué campo de la regla de Xray entran.",
+      "kindDomain": "Dominios",
+      "kindIp": "Direcciones IP",
+      "entries": "Entradas",
+      "entriesHint": "Una por línea. Los dominios aceptan geosite:, regexp:, full:, domain: y ext:; las IP aceptan direcciones, CIDR y geoip:. Las líneas que empiezan por # se ignoran.",
+      "entriesCount": "Entradas",
+      "on": "Activo",
+      "off": "Inactivo",
+      "actions": "Acciones",
+      "ruleAction": "Acción",
+      "ruleLists": "Listas",
+      "ruleScope": "Se aplica a",
+      "allInbounds": "Todas las entradas",
+      "action_block": "Bloquear",
+      "action_direct": "Directo",
+      "action_cascade": "A la cascada",
+      "noLists": "Todavía no hay listas",
+      "noRules": "Todavía no hay reglas",
+      "deleteListConfirmTitle": "¿Eliminar la lista «{name}»?",
+      "deleteListConfirmContent": "No se puede eliminar una lista que una regla sigue usando.",
+      "deleteRuleConfirmTitle": "¿Eliminar la regla «{name}»?",
+      "toasts": {
+        "list": "No se pudieron cargar los filtros",
+        "obtain": "No se pudo cargar el filtro",
+        "addList": "Añadir lista",
+        "updateList": "Actualizar lista",
+        "deleteList": "Eliminar lista",
+        "deletedList": "Lista eliminada",
+        "addRule": "Añadir regla",
+        "updateRule": "Actualizar regla",
+        "deleteRule": "Eliminar regla",
+        "deletedRule": "Regla eliminada",
+        "fillRequired": "El nombre es obligatorio"
       }
     }
   },

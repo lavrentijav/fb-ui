@@ -115,7 +115,8 @@
     "unpinSidebar": "برداشتن تثبیت نوار کناری",
     "subFormats": "Sub Formats",
     "peers": "همتاها",
-    "network": "شبکه"
+    "network": "شبکه",
+    "filters": "فیلترها"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "آبشار حذف شد",
         "dragHint": "از ورودی به ورودی بکشید",
         "samePanel": "آبشار باید دو پنل متفاوت را به هم وصل کند"
+      }
+    },
+    "filters": {
+      "listsTitle": "فهرست‌های تطبیق",
+      "rulesTitle": "قواعد فیلتر",
+      "rulesHint": "هر قاعده فهرست‌هایش را روی ورودی‌های یک پنل اعمال می‌کند. ساختن آن‌ها روی بوم شبکه انجام می‌شود؛ اینجا برای مرور و توقف موقت است.",
+      "addList": "افزودن فهرست",
+      "editList": "ویرایش فهرست",
+      "name": "نام",
+      "remark": "توضیح",
+      "kind": "نوع",
+      "kindHint": "فهرست دامنه با نام میزبان و فهرست IP با آدرس‌ها و بازه‌ها تطبیق می‌یابد. نوع تعیین می‌کند ورودی‌ها در کدام فیلد قاعده Xray بنشینند.",
+      "kindDomain": "دامنه‌ها",
+      "kindIp": "آدرس‌های IP",
+      "entries": "ورودی‌ها",
+      "entriesHint": "هر خط یک مورد. برای دامنه‌ها geosite:، regexp:، full:، domain: و ext: پذیرفته می‌شود؛ برای IP آدرس، CIDR و geoip:. خطوطی که با # شروع شوند نادیده گرفته می‌شوند.",
+      "entriesCount": "تعداد",
+      "on": "روشن",
+      "off": "خاموش",
+      "actions": "عملیات",
+      "ruleAction": "اقدام",
+      "ruleLists": "فهرست‌ها",
+      "ruleScope": "دامنه اعمال",
+      "allInbounds": "همه ورودی‌ها",
+      "action_block": "مسدود",
+      "action_direct": "مستقیم",
+      "action_cascade": "به آبشار",
+      "noLists": "هنوز فهرستی نیست",
+      "noRules": "هنوز قاعده‌ای نیست",
+      "deleteListConfirmTitle": "فهرست «{name}» حذف شود؟",
+      "deleteListConfirmContent": "فهرستی که یک قاعده از آن استفاده می‌کند حذف نمی‌شود.",
+      "deleteRuleConfirmTitle": "قاعده «{name}» حذف شود؟",
+      "toasts": {
+        "list": "بارگذاری فیلترها ناموفق بود",
+        "obtain": "بارگذاری فیلتر ناموفق بود",
+        "addList": "افزودن فهرست",
+        "updateList": "به‌روزرسانی فهرست",
+        "deleteList": "حذف فهرست",
+        "deletedList": "فهرست حذف شد",
+        "addRule": "افزودن قاعده",
+        "updateRule": "به‌روزرسانی قاعده",
+        "deleteRule": "حذف قاعده",
+        "deletedRule": "قاعده حذف شد",
+        "fillRequired": "نام الزامی است"
       }
     }
   },

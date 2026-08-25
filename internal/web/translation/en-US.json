@@ -115,7 +115,8 @@
     "unpinSidebar": "Unpin sidebar",
     "subFormats": "Sub Formats",
     "peers": "Peers",
-    "network": "Network"
+    "network": "Network",
+    "filters": "Filters"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "Cascade removed",
         "dragHint": "Drag from an inbound to an inbound",
         "samePanel": "A cascade must join two different panels"
+      }
+    },
+    "filters": {
+      "listsTitle": "Matcher lists",
+      "rulesTitle": "Filter rules",
+      "rulesHint": "A rule applies its lists to the inbounds of one panel. Draw them on the network canvas; this table is where you review and pause them.",
+      "addList": "Add list",
+      "editList": "Edit list",
+      "name": "Name",
+      "remark": "Remark",
+      "kind": "Kind",
+      "kindHint": "Domain lists match hostnames, IP lists match addresses and ranges. The kind decides which Xray matcher the entries land in.",
+      "kindDomain": "Domains",
+      "kindIp": "IP addresses",
+      "entries": "Entries",
+      "entriesHint": "One per line. Domains accept geosite:, regexp:, full:, domain: and ext:; IP lists accept addresses, CIDRs and geoip:. Lines starting with # are ignored.",
+      "entriesCount": "Entries",
+      "on": "On",
+      "off": "Off",
+      "actions": "Actions",
+      "ruleAction": "Action",
+      "ruleLists": "Lists",
+      "ruleScope": "Applies to",
+      "allInbounds": "All inbounds",
+      "action_block": "Block",
+      "action_direct": "Direct",
+      "action_cascade": "Cascade",
+      "noLists": "No matcher lists yet",
+      "noRules": "No filter rules yet",
+      "deleteListConfirmTitle": "Delete list \"{name}\"?",
+      "deleteListConfirmContent": "A list still used by a rule cannot be deleted.",
+      "deleteRuleConfirmTitle": "Delete rule \"{name}\"?",
+      "toasts": {
+        "list": "Failed to load filters",
+        "obtain": "Failed to load the filter",
+        "addList": "Add list",
+        "updateList": "Update list",
+        "deleteList": "Delete list",
+        "deletedList": "List deleted",
+        "addRule": "Add rule",
+        "updateRule": "Update rule",
+        "deleteRule": "Delete rule",
+        "deletedRule": "Rule deleted",
+        "fillRequired": "A name is required"
       }
     }
   },

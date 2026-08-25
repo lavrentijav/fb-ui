@@ -115,7 +115,8 @@
     "unpinSidebar": "Lepas sematan bilah sisi",
     "subFormats": "Sub Formats",
     "peers": "Peer",
-    "network": "Jaringan"
+    "network": "Jaringan",
+    "filters": "Filter"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "Kaskade dihapus",
         "dragHint": "Seret dari inbound ke inbound",
         "samePanel": "Kaskade harus menghubungkan dua panel berbeda"
+      }
+    },
+    "filters": {
+      "listsTitle": "Daftar pencocokan",
+      "rulesTitle": "Aturan filter",
+      "rulesHint": "Sebuah aturan menerapkan daftarnya ke inbound satu panel. Dibuat di kanvas jaringan; di sini untuk meninjau dan menjeda.",
+      "addList": "Tambah daftar",
+      "editList": "Ubah daftar",
+      "name": "Nama",
+      "remark": "Catatan",
+      "kind": "Jenis",
+      "kindHint": "Daftar domain cocok dengan nama host, daftar IP dengan alamat dan rentang. Jenis menentukan ke bidang aturan Xray mana entri masuk.",
+      "kindDomain": "Domain",
+      "kindIp": "Alamat IP",
+      "entries": "Entri",
+      "entriesHint": "Satu per baris. Domain menerima geosite:, regexp:, full:, domain: dan ext:; IP menerima alamat, CIDR dan geoip:. Baris berawalan # diabaikan.",
+      "entriesCount": "Entri",
+      "on": "Aktif",
+      "off": "Nonaktif",
+      "actions": "Aksi",
+      "ruleAction": "Aksi",
+      "ruleLists": "Daftar",
+      "ruleScope": "Berlaku untuk",
+      "allInbounds": "Semua inbound",
+      "action_block": "Blokir",
+      "action_direct": "Langsung",
+      "action_cascade": "Ke kaskade",
+      "noLists": "Belum ada daftar",
+      "noRules": "Belum ada aturan",
+      "deleteListConfirmTitle": "Hapus daftar \"{name}\"?",
+      "deleteListConfirmContent": "Daftar yang masih dipakai aturan tidak bisa dihapus.",
+      "deleteRuleConfirmTitle": "Hapus aturan \"{name}\"?",
+      "toasts": {
+        "list": "Gagal memuat filter",
+        "obtain": "Gagal memuat filter",
+        "addList": "Tambah daftar",
+        "updateList": "Perbarui daftar",
+        "deleteList": "Hapus daftar",
+        "deletedList": "Daftar dihapus",
+        "addRule": "Tambah aturan",
+        "updateRule": "Perbarui aturan",
+        "deleteRule": "Hapus aturan",
+        "deletedRule": "Aturan dihapus",
+        "fillRequired": "Nama wajib diisi"
       }
     }
   },

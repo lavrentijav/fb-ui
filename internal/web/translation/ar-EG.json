@@ -115,7 +115,8 @@
     "unpinSidebar": "إلغاء تثبيت الشريط الجانبي",
     "subFormats": "Sub Formats",
     "peers": "النظائر",
-    "network": "الشبكة"
+    "network": "الشبكة",
+    "filters": "المرشحات"
   },
   "pages": {
     "login": {
@@ -1999,6 +2000,50 @@
         "unlinked": "تم حذف التتابع",
         "dragHint": "اسحب من وارد إلى وارد",
         "samePanel": "يجب أن يربط التتابع لوحتين مختلفتين"
+      }
+    },
+    "filters": {
+      "listsTitle": "قوائم المطابقة",
+      "rulesTitle": "قواعد الترشيح",
+      "rulesHint": "تطبّق القاعدة قوائمها على واردات لوحة واحدة. أنشئها على لوحة الشبكة، وهنا تراجعها وتوقفها مؤقتًا.",
+      "addList": "إضافة قائمة",
+      "editList": "تعديل القائمة",
+      "name": "الاسم",
+      "remark": "ملاحظة",
+      "kind": "النوع",
+      "kindHint": "قوائم النطاقات تطابق أسماء المضيفين، وقوائم IP تطابق العناوين والنطاقات. النوع يحدد في أي حقل من قاعدة Xray توضع المدخلات.",
+      "kindDomain": "نطاقات",
+      "kindIp": "عناوين IP",
+      "entries": "المدخلات",
+      "entriesHint": "مدخل في كل سطر. للنطاقات: geosite: و regexp: و full: و domain: و ext:؛ ولـ IP: العناوين و CIDR و geoip:. تُتجاهل الأسطر التي تبدأ بـ #.",
+      "entriesCount": "العدد",
+      "on": "مفعّل",
+      "off": "متوقف",
+      "actions": "إجراءات",
+      "ruleAction": "الإجراء",
+      "ruleLists": "القوائم",
+      "ruleScope": "نطاق التطبيق",
+      "allInbounds": "كل الواردات",
+      "action_block": "حظر",
+      "action_direct": "مباشر",
+      "action_cascade": "إلى التتابع",
+      "noLists": "لا توجد قوائم بعد",
+      "noRules": "لا توجد قواعد بعد",
+      "deleteListConfirmTitle": "حذف القائمة «{name}»؟",
+      "deleteListConfirmContent": "لا يمكن حذف قائمة ما زالت قاعدة تستخدمها.",
+      "deleteRuleConfirmTitle": "حذف القاعدة «{name}»؟",
+      "toasts": {
+        "list": "فشل تحميل المرشحات",
+        "obtain": "فشل تحميل المرشح",
+        "addList": "إضافة قائمة",
+        "updateList": "تحديث القائمة",
+        "deleteList": "حذف القائمة",
+        "deletedList": "تم حذف القائمة",
+        "addRule": "إضافة قاعدة",
+        "updateRule": "تحديث القاعدة",
+        "deleteRule": "حذف القاعدة",
+        "deletedRule": "تم حذف القاعدة",
+        "fillRequired": "الاسم مطلوب"
       }
     }
   },
