@@ -1,0 +1,104 @@
+---
+title: Filters
+description: 'Reusable matcher lists and the rules that apply them. A list is a
+  named set of Xray matchers an operator maintains once and reuses — ad domains,
+  a country’s ranges, a bypass set — stored verbatim so Xray’s own prefixes keep
+  working (geosite:, regexp:, full: for domains; CIDRs and geoip: for IPs). A
+  rule is a filtering node on the topology canvas: traffic entering the named
+  inbounds of one panel is matched against the referenced lists and blocked,
+  sent out directly, or diverted onto a cascade. All endpoints under
+  /panel/api/filters.'
+full: true
+_openapi:
+  preload:
+    - ./public/openapi.json
+  toc:
+    - depth: 2
+      title: List every matcher list with its entries.
+      url: '#list-every-matcher-list-with-its-entries'
+    - depth: 2
+      title: Fetch one matcher list.
+      url: '#fetch-one-matcher-list'
+    - depth: 2
+      title: 'Create a matcher list. Entries are trimmed, de-duplicated and validated
+        against the kind: an ip list takes addresses, CIDRs and geoip:
+        categories, a domain list takes domains and the
+        geosite:/regexp:/full:/domain:/ext: prefixes. Lines starting with # are
+        dropped.'
+      url: '#create-a-matcher-list-entries-are-trimmed-de-duplicated-and-validated-against-the-kind-an-ip-list-takes-addresses-cidrs-and-geoip-categories-a-domain-list-takes-domains-and-the-geositeregexpfulldomainext-prefixes-lines-starting-with--are-dropped'
+    - depth: 2
+      title: Replace a matcher list.
+      url: '#replace-a-matcher-list'
+    - depth: 2
+      title: Delete a matcher list. Refused while a rule still references it, since
+        the rule would silently stop matching.
+      url: '#delete-a-matcher-list-refused-while-a-rule-still-references-it-since-the-rule-would-silently-stop-matching'
+    - depth: 2
+      title: List every filter rule, in the order they are emitted into the routing
+        config.
+      url: '#list-every-filter-rule-in-the-order-they-are-emitted-into-the-routing-config'
+    - depth: 2
+      title: Fetch one filter rule.
+      url: '#fetch-one-filter-rule'
+    - depth: 2
+      title: Create a filter rule. panelId 0 is this panel; an empty sourceInboundTags
+        means every inbound it owns. action is block, direct or cascade —
+        cascade also needs the cascadeLinkId to divert onto.
+      url: '#create-a-filter-rule-panelid-0-is-this-panel-an-empty-sourceinboundtags-means-every-inbound-it-owns-action-is-block-direct-or-cascade--cascade-also-needs-the-cascadelinkid-to-divert-onto'
+    - depth: 2
+      title: Replace a filter rule and re-push the panel that enforces it.
+      url: '#replace-a-filter-rule-and-re-push-the-panel-that-enforces-it'
+    - depth: 2
+      title: Delete a filter rule.
+      url: '#delete-a-filter-rule'
+    - depth: 2
+      title: Pause or resume one rule without deleting it.
+      url: '#pause-or-resume-one-rule-without-deleting-it'
+  structuredData:
+    headings:
+      - content: List every matcher list with its entries.
+        id: list-every-matcher-list-with-its-entries
+      - content: Fetch one matcher list.
+        id: fetch-one-matcher-list
+      - content: 'Create a matcher list. Entries are trimmed, de-duplicated and
+          validated against the kind: an ip list takes addresses, CIDRs and
+          geoip: categories, a domain list takes domains and the
+          geosite:/regexp:/full:/domain:/ext: prefixes. Lines starting with #
+          are dropped.'
+        id: create-a-matcher-list-entries-are-trimmed-de-duplicated-and-validated-against-the-kind-an-ip-list-takes-addresses-cidrs-and-geoip-categories-a-domain-list-takes-domains-and-the-geositeregexpfulldomainext-prefixes-lines-starting-with--are-dropped
+      - content: Replace a matcher list.
+        id: replace-a-matcher-list
+      - content: Delete a matcher list. Refused while a rule still references it, since
+          the rule would silently stop matching.
+        id: delete-a-matcher-list-refused-while-a-rule-still-references-it-since-the-rule-would-silently-stop-matching
+      - content: List every filter rule, in the order they are emitted into the routing
+          config.
+        id: list-every-filter-rule-in-the-order-they-are-emitted-into-the-routing-config
+      - content: Fetch one filter rule.
+        id: fetch-one-filter-rule
+      - content: Create a filter rule. panelId 0 is this panel; an empty
+          sourceInboundTags means every inbound it owns. action is block, direct
+          or cascade — cascade also needs the cascadeLinkId to divert onto.
+        id: create-a-filter-rule-panelid-0-is-this-panel-an-empty-sourceinboundtags-means-every-inbound-it-owns-action-is-block-direct-or-cascade--cascade-also-needs-the-cascadelinkid-to-divert-onto
+      - content: Replace a filter rule and re-push the panel that enforces it.
+        id: replace-a-filter-rule-and-re-push-the-panel-that-enforces-it
+      - content: Delete a filter rule.
+        id: delete-a-filter-rule
+      - content: Pause or resume one rule without deleting it.
+        id: pause-or-resume-one-rule-without-deleting-it
+    contents: []
+---
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+export default function Layout(props) {
+  const { APIPage, OpenAPIPage } = props.components ?? {};
+  // "APIPage" is the old name from v10, this allows both for backward compatibility
+  const Comp = OpenAPIPage ?? APIPage;
+  return (
+    <>
+      {props.children}
+      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/filters/lists","method":"get"},{"path":"/panel/api/filters/lists/get/{id}","method":"get"},{"path":"/panel/api/filters/lists/add","method":"post"},{"path":"/panel/api/filters/lists/update/{id}","method":"post"},{"path":"/panel/api/filters/lists/del/{id}","method":"post"},{"path":"/panel/api/filters/rules","method":"get"},{"path":"/panel/api/filters/rules/get/{id}","method":"get"},{"path":"/panel/api/filters/rules/add","method":"post"},{"path":"/panel/api/filters/rules/update/{id}","method":"post"},{"path":"/panel/api/filters/rules/del/{id}","method":"post"},{"path":"/panel/api/filters/rules/setEnable/{id}","method":"post"}]} showTitle />
+    </>
+  );
+}

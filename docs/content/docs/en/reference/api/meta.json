@@ -13,6 +13,9 @@
     "subscription-server",
     "hosts",
     "nodes",
+    "peers",
+    "network",
+    "filters",
     "backup",
     "websocket"
   ]

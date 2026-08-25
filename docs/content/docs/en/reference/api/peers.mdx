@@ -1,0 +1,90 @@
+---
+title: Peers
+description: 'Sibling panels that serve the same subscriptions as this one. A
+  peer and a node are the same entity — a registered panel — and differ only by
+  role: these endpoints operate on rows with role=master, /panel/api/nodes on
+  role=node. Live masters are advertised to clients through the
+  X-Subscription-Fallback-* headers and the ?format=meta payload, so a blocked
+  subscription host can be replaced without reissuing links. A background job
+  probes each master every 30 seconds. All endpoints under /panel/api/peers.'
+full: true
+_openapi:
+  preload:
+    - ./public/openapi.json
+  toc:
+    - depth: 2
+      title: List every configured peer panel with its addressing and last probe
+        result.
+      url: '#list-every-configured-peer-panel-with-its-addressing-and-last-probe-result'
+    - depth: 2
+      title: This panel's own ed25519 subscription-signing public key. Peers recognise
+        this panel by it, and it is the key clients verify
+        X-Subscription-Signature against. Generated on first call.
+      url: '#this-panels-own-ed25519-subscription-signing-public-key-peers-recognise-this-panel-by-it-and-it-is-the-key-clients-verify-x-subscription-signature-against-generated-on-first-call'
+    - depth: 2
+      title: Fetch a single peer by ID.
+      url: '#fetch-a-single-peer-by-id'
+    - depth: 2
+      title: Register a sibling master. Point subDomain/subPort/subPath at its
+        subscription server, not its admin panel; the row is stored with
+        role=master. Static subIps are optional and are advertised verbatim in
+        X-Subscription-Fallback-IPs.
+      url: '#register-a-sibling-master-point-subdomainsubportsubpath-at-its-subscription-server-not-its-admin-panel-the-row-is-stored-with-rolemaster-static-subips-are-optional-and-are-advertised-verbatim-in-x-subscription-fallback-ips'
+    - depth: 2
+      title: Replace a peer’s addressing. Observed state (status, latency, learned
+        public key) is owned by the health job and is not writable here.
+      url: '#replace-a-peers-addressing-observed-state-status-latency-learned-public-key-is-owned-by-the-health-job-and-is-not-writable-here'
+    - depth: 2
+      title: Delete a peer. Clients stop being offered it on the next subscription
+        fetch.
+      url: '#delete-a-peer-clients-stop-being-offered-it-on-the-next-subscription-fetch'
+    - depth: 2
+      title: Pause or resume advertising this peer without deleting it.
+      url: '#pause-or-resume-advertising-this-peer-without-deleting-it'
+    - depth: 2
+      title: Probe a peer now and persist the result, instead of waiting for the next
+        health tick. Returns the stored patch.
+      url: '#probe-a-peer-now-and-persist-the-result-instead-of-waiting-for-the-next-health-tick-returns-the-stored-patch'
+  structuredData:
+    headings:
+      - content: List every configured peer panel with its addressing and last probe
+          result.
+        id: list-every-configured-peer-panel-with-its-addressing-and-last-probe-result
+      - content: This panel's own ed25519 subscription-signing public key. Peers
+          recognise this panel by it, and it is the key clients verify
+          X-Subscription-Signature against. Generated on first call.
+        id: this-panels-own-ed25519-subscription-signing-public-key-peers-recognise-this-panel-by-it-and-it-is-the-key-clients-verify-x-subscription-signature-against-generated-on-first-call
+      - content: Fetch a single peer by ID.
+        id: fetch-a-single-peer-by-id
+      - content: Register a sibling master. Point subDomain/subPort/subPath at its
+          subscription server, not its admin panel; the row is stored with
+          role=master. Static subIps are optional and are advertised verbatim in
+          X-Subscription-Fallback-IPs.
+        id: register-a-sibling-master-point-subdomainsubportsubpath-at-its-subscription-server-not-its-admin-panel-the-row-is-stored-with-rolemaster-static-subips-are-optional-and-are-advertised-verbatim-in-x-subscription-fallback-ips
+      - content: Replace a peer’s addressing. Observed state (status, latency, learned
+          public key) is owned by the health job and is not writable here.
+        id: replace-a-peers-addressing-observed-state-status-latency-learned-public-key-is-owned-by-the-health-job-and-is-not-writable-here
+      - content: Delete a peer. Clients stop being offered it on the next subscription
+          fetch.
+        id: delete-a-peer-clients-stop-being-offered-it-on-the-next-subscription-fetch
+      - content: Pause or resume advertising this peer without deleting it.
+        id: pause-or-resume-advertising-this-peer-without-deleting-it
+      - content: Probe a peer now and persist the result, instead of waiting for the
+          next health tick. Returns the stored patch.
+        id: probe-a-peer-now-and-persist-the-result-instead-of-waiting-for-the-next-health-tick-returns-the-stored-patch
+    contents: []
+---
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+export default function Layout(props) {
+  const { APIPage, OpenAPIPage } = props.components ?? {};
+  // "APIPage" is the old name from v10, this allows both for backward compatibility
+  const Comp = OpenAPIPage ?? APIPage;
+  return (
+    <>
+      {props.children}
+      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/peers/list","method":"get"},{"path":"/panel/api/peers/identity","method":"get"},{"path":"/panel/api/peers/get/{id}","method":"get"},{"path":"/panel/api/peers/add","method":"post"},{"path":"/panel/api/peers/update/{id}","method":"post"},{"path":"/panel/api/peers/del/{id}","method":"post"},{"path":"/panel/api/peers/setEnable/{id}","method":"post"},{"path":"/panel/api/peers/probe/{id}","method":"post"}]} showTitle />
+    </>
+  );
+}
