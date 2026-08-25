@@ -94,6 +94,7 @@ func run(root, outDir string) error {
 				"InboundOption",
 				"NodeMutationRequest",
 				"NodeRoleChangeRequest",
+				"PeerMutationRequest",
 				"NodeView",
 				"ProbeResultUI",
 				"RealityScanResult",

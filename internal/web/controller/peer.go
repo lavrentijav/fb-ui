@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/cluster"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 )
@@ -73,10 +72,11 @@ func (a *PeerController) get(c *gin.Context) {
 }
 
 func (a *PeerController) add(c *gin.Context) {
-	peer, ok := middleware.BindAndValidate[model.Node](c)
+	req, ok := middleware.BindAndValidate[service.PeerMutationRequest](c)
 	if !ok {
 		return
 	}
+	peer := req.ToNode()
 	if err := a.peerService.Create(peer); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.peers.toasts.add"), err)
 		return
@@ -90,11 +90,11 @@ func (a *PeerController) update(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "get"), err)
 		return
 	}
-	peer, ok := middleware.BindAndValidate[model.Node](c)
+	req, ok := middleware.BindAndValidate[service.PeerMutationRequest](c)
 	if !ok {
 		return
 	}
-	if err := a.peerService.Update(id, peer); err != nil {
+	if err := a.peerService.Update(id, req.ToNode()); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.peers.toasts.update"), err)
 		return
 	}

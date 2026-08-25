@@ -3264,6 +3264,80 @@
         ],
         "type": "object"
       },
+      "PeerMutationRequest": {
+        "description": "PeerMutationRequest is the master write contract. Masters share model.Node\nwith controlled nodes, whose validation demands panel credentials a master\nrow never has, so the two roles cannot share one bind target.",
+        "properties": {
+          "allowPrivateAddress": {
+            "example": false,
+            "type": "boolean"
+          },
+          "basePath": {
+            "example": "/",
+            "type": "string"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "isSelf": {
+            "example": false,
+            "type": "boolean"
+          },
+          "name": {
+            "example": "eu-sub-2",
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "scheme": {
+            "enum": [
+              "http",
+              "https"
+            ],
+            "example": "https",
+            "type": "string"
+          },
+          "subDomain": {
+            "example": "sub2.example.com",
+            "type": "string"
+          },
+          "subIps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subPath": {
+            "example": "/sub/",
+            "type": "string"
+          },
+          "subPort": {
+            "example": 2096,
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "allowPrivateAddress",
+          "basePath",
+          "enable",
+          "id",
+          "isSelf",
+          "name",
+          "remark",
+          "scheme",
+          "subDomain",
+          "subIps",
+          "subPath",
+          "subPort"
+        ],
+        "type": "object"
+      },
       "ProbeResultUI": {
         "properties": {
           "cpuPct": {

@@ -26,6 +26,42 @@ type PeerHealthPatch struct {
 	LastError     string `json:"lastError"`
 }
 
+// PeerMutationRequest is the master write contract. Masters share model.Node
+// with controlled nodes, whose validation demands panel credentials a master
+// row never has, so the two roles cannot share one bind target.
+type PeerMutationRequest struct {
+	Id                  int      `json:"id" form:"id"`
+	Name                string   `json:"name" form:"name" validate:"required" example:"eu-sub-2"`
+	Remark              string   `json:"remark" form:"remark"`
+	Scheme              string   `json:"scheme" form:"scheme" validate:"omitempty,oneof=http https" example:"https"`
+	SubDomain           string   `json:"subDomain" form:"subDomain" validate:"required" example:"sub2.example.com"`
+	SubPort             int      `json:"subPort" form:"subPort" validate:"gte=1,lte=65535" example:"2096"`
+	SubPath             string   `json:"subPath" form:"subPath" example:"/sub/"`
+	BasePath            string   `json:"basePath" form:"basePath" example:"/"`
+	SubIps              []string `json:"subIps" form:"subIps"`
+	Enable              bool     `json:"enable" form:"enable" example:"true"`
+	AllowPrivateAddress bool     `json:"allowPrivateAddress" form:"allowPrivateAddress" example:"false"`
+	IsSelf              bool     `json:"isSelf" form:"isSelf" example:"false"`
+}
+
+func (r *PeerMutationRequest) ToNode() *model.Node {
+	return &model.Node{
+		Id:                  r.Id,
+		Name:                r.Name,
+		Remark:              r.Remark,
+		Scheme:              r.Scheme,
+		SubDomain:           r.SubDomain,
+		SubPort:             r.SubPort,
+		SubPath:             r.SubPath,
+		BasePath:            r.BasePath,
+		SubIps:              r.SubIps,
+		Enable:              r.Enable,
+		AllowPrivateAddress: r.AllowPrivateAddress,
+		IsSelf:              r.IsSelf,
+		Role:                model.NodeRoleMaster,
+	}
+}
+
 // PeerService manages the master half of the node registry: sibling panels that
 // serve the same subscriptions and are advertised to clients as fallbacks. They
 // live in the same table as controlled nodes and differ only by role.

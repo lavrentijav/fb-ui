@@ -775,6 +775,22 @@ export const PanelUpdateStatusSchema = z.object({
 });
 export type PanelUpdateStatus = z.infer<typeof PanelUpdateStatusSchema>;
 
+export const PeerMutationRequestSchema = z.object({
+  allowPrivateAddress: z.boolean(),
+  basePath: z.string(),
+  enable: z.boolean(),
+  id: z.number().int(),
+  isSelf: z.boolean(),
+  name: z.string(),
+  remark: z.string(),
+  scheme: z.enum(['http', 'https']),
+  subDomain: z.string(),
+  subIps: z.array(z.string()),
+  subPath: z.string(),
+  subPort: z.number().int().min(1).max(65535),
+});
+export type PeerMutationRequest = z.infer<typeof PeerMutationRequestSchema>;
+
 export const ProbeResultUISchema = z.object({
   cpuPct: z.number(),
   error: z.string(),

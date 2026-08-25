@@ -763,6 +763,22 @@ export const EXAMPLES: Record<string, unknown> = {
     "runId": "1735689600123456789",
     "state": "success"
   },
+  "PeerMutationRequest": {
+    "allowPrivateAddress": false,
+    "basePath": "/",
+    "enable": true,
+    "id": 0,
+    "isSelf": false,
+    "name": "eu-sub-2",
+    "remark": "",
+    "scheme": "https",
+    "subDomain": "sub2.example.com",
+    "subIps": [
+      ""
+    ],
+    "subPath": "/sub/",
+    "subPort": 2096
+  },
   "ProbeResultUI": {
     "cpuPct": 12.5,
     "error": "",

@@ -726,6 +726,21 @@ export interface PanelUpdateStatus {
   state: string;
 }
 
+export interface PeerMutationRequest {
+  allowPrivateAddress: boolean;
+  basePath: string;
+  enable: boolean;
+  id: number;
+  isSelf: boolean;
+  name: string;
+  remark: string;
+  scheme: string;
+  subDomain: string;
+  subIps: string[];
+  subPath: string;
+  subPort: number;
+}
+
 export interface ProbeResultUI {
   cpuPct: number;
   error: string;
