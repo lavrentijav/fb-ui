@@ -566,29 +566,6 @@ export const EXAMPLES: Record<string, unknown> = {
     "wgMtu": 0,
     "wgPublicKey": ""
   },
-  "MasterPeer": {
-    "allowPrivateAddress": false,
-    "basePath": "/",
-    "createdAt": 1700000000,
-    "domain": "sub2.example.com",
-    "enable": true,
-    "id": 1,
-    "ips": [
-      ""
-    ],
-    "isSelf": false,
-    "lastError": "",
-    "lastHeartbeat": 1700000000,
-    "latencyMs": 42,
-    "name": "eu-sub-2",
-    "port": 2096,
-    "publicKey": "",
-    "remark": "",
-    "scheme": "https",
-    "status": "online",
-    "subPath": "/sub/",
-    "updatedAt": 1700000000
-  },
   "Msg": {
     "msg": "",
     "obj": null,
@@ -614,6 +591,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "inboundTags": [
       ""
     ],
+    "isSelf": false,
     "lastError": "",
     "lastHeartbeat": 1700000000,
     "latencyMs": 42,
@@ -627,9 +605,17 @@ export const EXAMPLES: Record<string, unknown> = {
     "parentGuid": "",
     "pinnedCertSha256": "",
     "port": 2053,
+    "publicKey": "",
     "remark": "",
+    "role": "node",
     "scheme": "https",
     "status": "online",
+    "subDomain": "",
+    "subIps": [
+      ""
+    ],
+    "subPath": "",
+    "subPort": 0,
     "tlsVerifyMode": "verify",
     "transitive": false,
     "updatedAt": 1700000000,

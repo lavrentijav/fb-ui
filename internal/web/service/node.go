@@ -118,10 +118,13 @@ func decryptToken(n *model.Node) {
 	n.ApiToken = pt
 }
 
+// GetAll returns the panels this one controls. Sibling masters share the table
+// but are never dispatched to, so every caller here — heartbeat, traffic sync,
+// config generation — must not see them.
 func (s *NodeService) GetAll() ([]*model.Node, error) {
 	db := database.GetDB()
 	var nodes []*model.Node
-	err := db.Model(model.Node{}).Order("id asc").Find(&nodes).Error
+	err := db.Model(model.Node{}).Where("role <> ?", model.NodeRoleMaster).Order("id asc").Find(&nodes).Error
 	if err != nil || len(nodes) == 0 {
 		return nodes, err
 	}

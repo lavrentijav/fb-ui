@@ -20,17 +20,17 @@ func initPeerTestDB(t *testing.T) {
 
 // validPeer names the row after the calling test: under XUI_DB_TYPE=postgres
 // every test shares one database, so a fixed name collides on the unique index.
-func validPeer(t *testing.T) *model.MasterPeer {
+func validPeer(t *testing.T) *model.Node {
 	t.Helper()
-	return &model.MasterPeer{
-		Name: t.Name(), Scheme: "https", Domain: "sub2.example.com",
-		Port: 2096, SubPath: "sub", Enable: true,
+	return &model.Node{
+		Name: t.Name(), Scheme: "https", SubDomain: "sub2.example.com",
+		SubPort: 2096, SubPath: "sub", Enable: true,
 	}
 }
 
 func TestPeerNormalizeFillsDefaults(t *testing.T) {
 	s := PeerService{}
-	p := &model.MasterPeer{Name: "  eu-sub-2  ", Domain: "sub2.example.com", Port: 2096, SubPath: "sub", Ips: []string{" 185.51.100.2 ", ""}}
+	p := &model.Node{Name: "  eu-sub-2  ", SubDomain: "sub2.example.com", SubPort: 2096, SubPath: "sub", SubIps: []string{" 185.51.100.2 ", ""}}
 	if err := s.normalize(p); err != nil {
 		t.Fatalf("normalize: %v", err)
 	}
@@ -46,8 +46,8 @@ func TestPeerNormalizeFillsDefaults(t *testing.T) {
 	if p.BasePath != "/" {
 		t.Fatalf("basePath = %q, want /", p.BasePath)
 	}
-	if len(p.Ips) != 1 || p.Ips[0] != "185.51.100.2" {
-		t.Fatalf("ips = %v, want the single trimmed address", p.Ips)
+	if len(p.SubIps) != 1 || p.SubIps[0] != "185.51.100.2" {
+		t.Fatalf("ips = %v, want the single trimmed address", p.SubIps)
 	}
 }
 
@@ -55,14 +55,14 @@ func TestPeerNormalizeRejectsBadInput(t *testing.T) {
 	s := PeerService{}
 	tests := []struct {
 		name   string
-		mutate func(*model.MasterPeer)
+		mutate func(*model.Node)
 	}{
-		{"empty name", func(p *model.MasterPeer) { p.Name = "  " }},
-		{"empty domain", func(p *model.MasterPeer) { p.Domain = "" }},
-		{"domain with a scheme", func(p *model.MasterPeer) { p.Domain = "https://sub2.example.com" }},
-		{"port out of range", func(p *model.MasterPeer) { p.Port = 70000 }},
-		{"non-IP in ips", func(p *model.MasterPeer) { p.Ips = []string{"not an ip"} }},
-		{"hostname in ips", func(p *model.MasterPeer) { p.Ips = []string{"sub2.example.com"} }},
+		{"empty name", func(p *model.Node) { p.Name = "  " }},
+		{"empty domain", func(p *model.Node) { p.SubDomain = "" }},
+		{"domain with a scheme", func(p *model.Node) { p.SubDomain = "https://sub2.example.com" }},
+		{"port out of range", func(p *model.Node) { p.SubPort = 70000 }},
+		{"non-IP in ips", func(p *model.Node) { p.SubIps = []string{"not an ip"} }},
+		{"hostname in ips", func(p *model.Node) { p.SubIps = []string{"sub2.example.com"} }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -110,8 +110,8 @@ func TestPeerUpdateKeepsObservedState(t *testing.T) {
 	}
 
 	edit := validPeer(t)
-	edit.Domain = "sub9.example.com"
-	edit.Ips = []string{"185.51.100.9"}
+	edit.SubDomain = "sub9.example.com"
+	edit.SubIps = []string{"185.51.100.9"}
 	if err := s.Update(p.Id, edit); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -120,11 +120,11 @@ func TestPeerUpdateKeepsObservedState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetById: %v", err)
 	}
-	if stored.Domain != "sub9.example.com" {
-		t.Fatalf("domain = %q, want the edited value", stored.Domain)
+	if stored.SubDomain != "sub9.example.com" {
+		t.Fatalf("domain = %q, want the edited value", stored.SubDomain)
 	}
-	if len(stored.Ips) != 1 || stored.Ips[0] != "185.51.100.9" {
-		t.Fatalf("ips = %v, want the edited list", stored.Ips)
+	if len(stored.SubIps) != 1 || stored.SubIps[0] != "185.51.100.9" {
+		t.Fatalf("ips = %v, want the edited list", stored.SubIps)
 	}
 	if stored.Status != "online" || stored.LatencyMs != 42 || stored.PublicKey != "deadbeef" {
 		t.Fatalf("edit clobbered observed state: %+v", stored)
@@ -136,20 +136,20 @@ func TestPeerLiveEndpointsFiltersAndOrders(t *testing.T) {
 	db := database.GetDB()
 	// The assertion is over the whole live set, so start from an empty table:
 	// under XUI_DB_TYPE=postgres every test shares one database.
-	if err := db.Where("1 = 1").Delete(&model.MasterPeer{}).Error; err != nil {
+	if err := db.Where("1 = 1").Delete(&model.Node{}).Error; err != nil {
 		t.Fatalf("clear peers: %v", err)
 	}
 	seed := func(name, domain, status string, latency int, self bool, enable bool) {
 		t.Helper()
-		p := &model.MasterPeer{
-			Name: name, Scheme: "https", Domain: domain, Port: 2096, SubPath: "/sub/",
-			Enable: enable, Status: status, LatencyMs: latency, IsSelf: self,
+		p := &model.Node{
+			Name: name, Scheme: "https", SubDomain: domain, SubPort: 2096, SubPath: "/sub/",
+			Role: model.NodeRoleMaster, Enable: enable, Status: status, LatencyMs: latency, IsSelf: self,
 		}
 		if err := db.Create(p).Error; err != nil {
 			t.Fatalf("seed %s: %v", name, err)
 		}
 		if !enable {
-			if err := db.Model(model.MasterPeer{}).Where("id = ?", p.Id).Update("enable", false).Error; err != nil {
+			if err := db.Model(model.Node{}).Where("id = ?", p.Id).Update("enable", false).Error; err != nil {
 				t.Fatalf("disable %s: %v", name, err)
 			}
 		}

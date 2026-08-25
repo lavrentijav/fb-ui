@@ -73,7 +73,7 @@ func (a *PeerController) get(c *gin.Context) {
 }
 
 func (a *PeerController) add(c *gin.Context) {
-	peer, ok := middleware.BindAndValidate[model.MasterPeer](c)
+	peer, ok := middleware.BindAndValidate[model.Node](c)
 	if !ok {
 		return
 	}
@@ -90,7 +90,7 @@ func (a *PeerController) update(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "get"), err)
 		return
 	}
-	peer, ok := middleware.BindAndValidate[model.MasterPeer](c)
+	peer, ok := middleware.BindAndValidate[model.Node](c)
 	if !ok {
 		return
 	}

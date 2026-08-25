@@ -2295,120 +2295,6 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
-  "MasterPeer": {
-    "description": "MasterPeer is another panel that serves the same subscriptions as this one.\nPeers are advertised to clients as fallback endpoints, so a client whose\nprimary subscription host is blocked can retry elsewhere without a new link.",
-    "properties": {
-      "allowPrivateAddress": {
-        "description": "AllowPrivateAddress opens the SSRF guard for lab setups where peers sit on\na private network; off by default, exactly like Node.",
-        "type": "boolean"
-      },
-      "basePath": {
-        "example": "/",
-        "type": "string"
-      },
-      "createdAt": {
-        "example": 1700000000,
-        "format": "int64",
-        "type": "integer"
-      },
-      "domain": {
-        "example": "sub2.example.com",
-        "type": "string"
-      },
-      "enable": {
-        "example": true,
-        "type": "boolean"
-      },
-      "id": {
-        "example": 1,
-        "type": "integer"
-      },
-      "ips": {
-        "items": {
-          "type": "string"
-        },
-        "type": "array"
-      },
-      "isSelf": {
-        "description": "IsSelf marks the row describing this very panel. Set automatically when a\nprobe returns our own subscription signing key, and never advertised as a\nfallback of itself. Admins can also set it by hand for an unsigned peer.",
-        "type": "boolean"
-      },
-      "lastError": {
-        "type": "string"
-      },
-      "lastHeartbeat": {
-        "description": "unix seconds, 0 = never",
-        "example": 1700000000,
-        "format": "int64",
-        "type": "integer"
-      },
-      "latencyMs": {
-        "example": 42,
-        "type": "integer"
-      },
-      "name": {
-        "example": "eu-sub-2",
-        "type": "string"
-      },
-      "port": {
-        "example": 2096,
-        "maximum": 65535,
-        "minimum": 1,
-        "type": "integer"
-      },
-      "publicKey": {
-        "description": "PublicKey is the peer's ed25519 subscription-signing key as learned from\nits probe. Observed state — never user-edited.",
-        "type": "string"
-      },
-      "remark": {
-        "type": "string"
-      },
-      "scheme": {
-        "enum": [
-          "http",
-          "https"
-        ],
-        "example": "https",
-        "type": "string"
-      },
-      "status": {
-        "description": "online|offline|unknown",
-        "example": "online",
-        "type": "string"
-      },
-      "subPath": {
-        "example": "/sub/",
-        "type": "string"
-      },
-      "updatedAt": {
-        "example": 1700000000,
-        "format": "int64",
-        "type": "integer"
-      }
-    },
-    "required": [
-      "allowPrivateAddress",
-      "basePath",
-      "createdAt",
-      "domain",
-      "enable",
-      "id",
-      "ips",
-      "isSelf",
-      "lastError",
-      "lastHeartbeat",
-      "latencyMs",
-      "name",
-      "port",
-      "publicKey",
-      "remark",
-      "scheme",
-      "status",
-      "subPath",
-      "updatedAt"
-    ],
-    "type": "object"
-  },
   "Msg": {
     "properties": {
       "msg": {
@@ -2501,6 +2387,9 @@ export const SCHEMAS: Record<string, unknown> = {
         },
         "type": "array"
       },
+      "isSelf": {
+        "type": "boolean"
+      },
       "lastError": {
         "type": "string"
       },
@@ -2556,7 +2445,20 @@ export const SCHEMAS: Record<string, unknown> = {
         "minimum": 1,
         "type": "integer"
       },
+      "publicKey": {
+        "description": "PublicKey is the panel's ed25519 subscription-signing key, learned from\nits identity endpoint. IsSelf is set when that key is our own — a panel\nmust never advertise itself as its own fallback. Observed state only.",
+        "type": "string"
+      },
       "remark": {
+        "type": "string"
+      },
+      "role": {
+        "description": "Role separates the two things a registered panel can be to this one: a\n\"node\" it controls, or a \"master\" that serves the same subscriptions and\nis advertised to clients as a fallback. One row, one panel, either way.",
+        "enum": [
+          "master",
+          "node"
+        ],
+        "example": "node",
         "type": "string"
       },
       "scheme": {
@@ -2571,6 +2473,24 @@ export const SCHEMAS: Record<string, unknown> = {
         "description": "Heartbeat-updated fields. UpdatedAt advances on every probe even when\nthe row is otherwise unchanged so the UI's \"last seen\" tooltip is\ntruthful without us having to read LastHeartbeat separately.\nonline|offline|unknown",
         "example": "online",
         "type": "string"
+      },
+      "subDomain": {
+        "description": "Subscription-facing address, used when this panel is advertised as a\nfallback. Separate from Address/Port above, which reach its panel API.",
+        "type": "string"
+      },
+      "subIps": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "subPath": {
+        "type": "string"
+      },
+      "subPort": {
+        "maximum": 65535,
+        "minimum": 0,
+        "type": "integer"
       },
       "tlsVerifyMode": {
         "enum": [
@@ -2624,6 +2544,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "inboundCount",
       "inboundSyncMode",
       "inboundTags",
+      "isSelf",
       "lastError",
       "lastHeartbeat",
       "latencyMs",
@@ -2636,9 +2557,15 @@ export const SCHEMAS: Record<string, unknown> = {
       "panelVersion",
       "pinnedCertSha256",
       "port",
+      "publicKey",
       "remark",
+      "role",
       "scheme",
       "status",
+      "subDomain",
+      "subIps",
+      "subPath",
+      "subPort",
       "tlsVerifyMode",
       "updatedAt",
       "uptimeSecs",

@@ -535,28 +535,6 @@ export interface InboundOption {
   wgPublicKey?: string;
 }
 
-export interface MasterPeer {
-  allowPrivateAddress: boolean;
-  basePath: string;
-  createdAt: number;
-  domain: string;
-  enable: boolean;
-  id: number;
-  ips: string[];
-  isSelf: boolean;
-  lastError: string;
-  lastHeartbeat: number;
-  latencyMs: number;
-  name: string;
-  port: number;
-  publicKey: string;
-  remark: string;
-  scheme: string;
-  status: string;
-  subPath: string;
-  updatedAt: number;
-}
-
 export interface Msg {
   msg: string;
   obj: unknown;
@@ -581,6 +559,7 @@ export interface Node {
   inboundCount: number;
   inboundSyncMode: string;
   inboundTags: string[];
+  isSelf: boolean;
   lastError: string;
   lastHeartbeat: number;
   latencyMs: number;
@@ -594,9 +573,15 @@ export interface Node {
   parentGuid?: string;
   pinnedCertSha256: string;
   port: number;
+  publicKey: string;
   remark: string;
+  role: string;
   scheme: string;
   status: string;
+  subDomain: string;
+  subIps: string[];
+  subPath: string;
+  subPort: number;
   tlsVerifyMode: string;
   transitive?: boolean;
   updatedAt: number;

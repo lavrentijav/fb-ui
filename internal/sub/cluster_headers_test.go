@@ -26,14 +26,15 @@ func setSubSetting(t *testing.T, key, value string) {
 // under XUI_DB_TYPE=postgres every test in the package shares one database.
 func clearPeers(t *testing.T) {
 	t.Helper()
-	if err := database.GetDB().Where("1 = 1").Delete(&model.MasterPeer{}).Error; err != nil {
+	if err := database.GetDB().Where("role = ?", model.NodeRoleMaster).Delete(&model.Node{}).Error; err != nil {
 		t.Fatalf("clear peers: %v", err)
 	}
 	resetSubMetaCache()
 }
 
-func seedPeer(t *testing.T, p *model.MasterPeer) *model.MasterPeer {
+func seedPeer(t *testing.T, p *model.Node) *model.Node {
 	t.Helper()
+	p.Role = model.NodeRoleMaster
 	p.Name = t.Name() + "/" + p.Name
 	// Create refreshes Enable from the DB default when it was false, so the
 	// intent has to be captured before the insert.
@@ -42,7 +43,7 @@ func seedPeer(t *testing.T, p *model.MasterPeer) *model.MasterPeer {
 		t.Fatalf("seed peer %s: %v", p.Name, err)
 	}
 	if !wantEnabled {
-		if err := database.GetDB().Model(model.MasterPeer{}).Where("id = ?", p.Id).Update("enable", false).Error; err != nil {
+		if err := database.GetDB().Model(model.Node{}).Where("id = ?", p.Id).Update("enable", false).Error; err != nil {
 			t.Fatalf("disable peer %s: %v", p.Name, err)
 		}
 		p.Enable = false
@@ -67,7 +68,7 @@ func TestFallbackHeadersAbsentUntilEnabled(t *testing.T) {
 	seedSubDB(t)
 	clearPeers(t)
 	seedSubInbound(t, "s1", "fb-off", 4601, 1, `{"network":"tcp","security":"none"}`)
-	seedPeer(t, &model.MasterPeer{Name: "p2", Scheme: "https", Domain: "sub2.example.com", Port: 2096, SubPath: "/sub/", Enable: true, Status: "online"})
+	seedPeer(t, &model.Node{Name: "p2", Scheme: "https", SubDomain: "sub2.example.com", SubPort: 2096, SubPath: "/sub/", Enable: true, Status: "online"})
 
 	w := getSub(t, newSubscriptionTestRouter(subscriptionTestRouterConfig{}), "/sub/s1")
 
@@ -86,10 +87,10 @@ func TestFallbackHeadersAdvertiseReachablePeersOnly(t *testing.T) {
 	seedSubInbound(t, "s1", "fb-on", 4602, 1, `{"network":"tcp","security":"none"}`)
 	setSubSetting(t, "subFallbackEnable", "true")
 
-	seedPeer(t, &model.MasterPeer{Name: "live", Scheme: "https", Domain: "sub2.example.com", Port: 2096, SubPath: "/sub/", Ips: []string{"185.51.100.2"}, Enable: true, Status: "online"})
-	seedPeer(t, &model.MasterPeer{Name: "down", Scheme: "https", Domain: "sub3.example.com", Port: 2096, SubPath: "/sub/", Ips: []string{"185.51.100.3"}, Enable: true, Status: "offline"})
-	seedPeer(t, &model.MasterPeer{Name: "self", Scheme: "https", Domain: "sub1.example.com", Port: 2096, SubPath: "/sub/", Ips: []string{"185.51.100.1"}, Enable: true, Status: "online", IsSelf: true})
-	seedPeer(t, &model.MasterPeer{Name: "paused", Scheme: "https", Domain: "sub4.example.com", Port: 2096, SubPath: "/sub/", Ips: []string{"185.51.100.4"}, Enable: false, Status: "online"})
+	seedPeer(t, &model.Node{Name: "live", Scheme: "https", SubDomain: "sub2.example.com", SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.2"}, Enable: true, Status: "online"})
+	seedPeer(t, &model.Node{Name: "down", Scheme: "https", SubDomain: "sub3.example.com", SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.3"}, Enable: true, Status: "offline"})
+	seedPeer(t, &model.Node{Name: "self", Scheme: "https", SubDomain: "sub1.example.com", SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.1"}, Enable: true, Status: "online", IsSelf: true})
+	seedPeer(t, &model.Node{Name: "paused", Scheme: "https", SubDomain: "sub4.example.com", SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.4"}, Enable: false, Status: "online"})
 
 	w := getSub(t, newSubscriptionTestRouter(subscriptionTestRouterConfig{}), "/sub/s1")
 
@@ -159,7 +160,7 @@ func TestClusterFeaturesDoNotChangeSubscriptionBodies(t *testing.T) {
 
 	setSubSetting(t, "subFallbackEnable", "true")
 	setSubSetting(t, "subSignEnable", "true")
-	seedPeer(t, &model.MasterPeer{Name: "live", Scheme: "https", Domain: "sub2.example.com", Port: 2096, SubPath: "/sub/", Enable: true, Status: "online"})
+	seedPeer(t, &model.Node{Name: "live", Scheme: "https", SubDomain: "sub2.example.com", SubPort: 2096, SubPath: "/sub/", Enable: true, Status: "online"})
 
 	for _, p := range paths {
 		if got := getSub(t, router, p).Body.String(); got != before[p] {
@@ -175,8 +176,8 @@ func TestSubMetaFormat(t *testing.T) {
 	seedSubInbound(t, "s1", "meta", 4605, 1, `{"network":"tcp","security":"none"}`)
 	setSubSetting(t, "subFallbackEnable", "true")
 	setSubSetting(t, "subEmergencyUrl", "https://example.invalid/emergency.json")
-	seedPeer(t, &model.MasterPeer{Name: "self", Scheme: "https", Domain: "sub1.example.com", Port: 2096, SubPath: "/sub/", Ips: []string{"185.51.100.1"}, Enable: true, Status: "online", IsSelf: true})
-	seedPeer(t, &model.MasterPeer{Name: "live", Scheme: "https", Domain: "sub2.example.com", Port: 2096, SubPath: "/sub/", Ips: []string{"185.51.100.2"}, Enable: true, Status: "online"})
+	seedPeer(t, &model.Node{Name: "self", Scheme: "https", SubDomain: "sub1.example.com", SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.1"}, Enable: true, Status: "online", IsSelf: true})
+	seedPeer(t, &model.Node{Name: "live", Scheme: "https", SubDomain: "sub2.example.com", SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.2"}, Enable: true, Status: "online"})
 	router := newSubscriptionTestRouter(subscriptionTestRouterConfig{})
 
 	w := getSub(t, router, "/sub/s1?format=meta")

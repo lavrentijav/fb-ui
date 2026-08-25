@@ -1412,13 +1412,13 @@ export const sections: readonly Section[] = [
     id: 'peers',
     title: 'Peers',
     description:
-      'Sibling panels that serve the same subscriptions as this one. Live peers are advertised to clients through the X-Subscription-Fallback-* headers and the ?format=meta payload, so a blocked subscription host can be replaced without reissuing links. A background job probes each peer every 30 seconds. All endpoints under /panel/api/peers.',
+      'Sibling panels that serve the same subscriptions as this one. A peer and a node are the same entity — a registered panel — and differ only by role: these endpoints operate on rows with role=master, /panel/api/nodes on role=node. Live masters are advertised to clients through the X-Subscription-Fallback-* headers and the ?format=meta payload, so a blocked subscription host can be replaced without reissuing links. A background job probes each master every 30 seconds. All endpoints under /panel/api/peers.',
     endpoints: [
       {
         method: 'GET',
         path: '/panel/api/peers/list',
         summary: 'List every configured peer panel with its addressing and last probe result.',
-        responseSchema: 'MasterPeer',
+        responseSchema: 'Node',
         responseSchemaArray: true,
       },
       {
@@ -1434,15 +1434,15 @@ export const sections: readonly Section[] = [
         path: '/panel/api/peers/get/:id',
         summary: 'Fetch a single peer by ID.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
-        responseSchema: 'MasterPeer',
+        responseSchema: 'Node',
       },
       {
         method: 'POST',
         path: '/panel/api/peers/add',
         summary:
-          'Register a peer panel. Point domain/port/subPath at its subscription server, not its admin panel. Static ips are optional and are advertised verbatim in X-Subscription-Fallback-IPs.',
-        body: '{\n  "name": "eu-sub-2",\n  "remark": "",\n  "scheme": "https",\n  "domain": "sub2.example.com",\n  "port": 2096,\n  "subPath": "/sub/",\n  "basePath": "/",\n  "ips": ["185.51.100.2"],\n  "enable": true,\n  "allowPrivateAddress": false,\n  "isSelf": false\n}',
-        responseSchema: 'MasterPeer',
+          'Register a sibling master. Point subDomain/subPort/subPath at its subscription server, not its admin panel; the row is stored with role=master. Static subIps are optional and are advertised verbatim in X-Subscription-Fallback-IPs.',
+        body: '{\n  "name": "eu-sub-2",\n  "remark": "",\n  "scheme": "https",\n  "subDomain": "sub2.example.com",\n  "subPort": 2096,\n  "subPath": "/sub/",\n  "basePath": "/",\n  "subIps": ["185.51.100.2"],\n  "enable": true,\n  "allowPrivateAddress": false,\n  "isSelf": false\n}',
+        responseSchema: 'Node',
       },
       {
         method: 'POST',
@@ -1450,7 +1450,7 @@ export const sections: readonly Section[] = [
         summary:
           'Replace a peer\u2019s addressing. Observed state (status, latency, learned public key) is owned by the health job and is not writable here.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'Peer ID.' }],
-        body: '{\n  "name": "eu-sub-2",\n  "remark": "",\n  "scheme": "https",\n  "domain": "sub2.example.com",\n  "port": 2096,\n  "subPath": "/sub/",\n  "basePath": "/",\n  "ips": ["185.51.100.2"],\n  "enable": true,\n  "allowPrivateAddress": false,\n  "isSelf": false\n}',
+        body: '{\n  "name": "eu-sub-2",\n  "remark": "",\n  "scheme": "https",\n  "subDomain": "sub2.example.com",\n  "subPort": 2096,\n  "subPath": "/sub/",\n  "basePath": "/",\n  "subIps": ["185.51.100.2"],\n  "enable": true,\n  "allowPrivateAddress": false,\n  "isSelf": false\n}',
       },
       {
         method: 'POST',

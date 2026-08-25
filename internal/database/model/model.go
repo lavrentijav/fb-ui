@@ -769,6 +769,13 @@ type Setting struct {
 	Value string `json:"value" form:"value"`
 }
 
+// Node roles. A registered panel is either something this panel controls
+// ("node") or a sibling master serving the same subscriptions ("master").
+const (
+	NodeRoleNode   = "node"
+	NodeRoleMaster = "master"
+)
+
 // Node represents a remote 3x-ui panel registered with the central panel.
 // The central panel polls each node's existing /panel/api/server/status
 // endpoint over HTTP using the per-node ApiToken to populate the runtime
@@ -796,6 +803,24 @@ type Node struct {
 	// of nodes (#4983); panel-local autoincrement ids don't survive a hop.
 	// Observed-state only — never user-edited.
 	Guid string `json:"guid" gorm:"column:guid;index"`
+
+	// Role separates the two things a registered panel can be to this one: a
+	// "node" it controls, or a "master" that serves the same subscriptions and
+	// is advertised to clients as a fallback. One row, one panel, either way.
+	Role string `json:"role" form:"role" gorm:"default:node;index" validate:"omitempty,oneof=master node" example:"node"`
+
+	// Subscription-facing address, used when this panel is advertised as a
+	// fallback. Separate from Address/Port above, which reach its panel API.
+	SubDomain string   `json:"subDomain" form:"subDomain" gorm:"column:sub_domain"`
+	SubPort   int      `json:"subPort" form:"subPort" gorm:"column:sub_port" validate:"omitempty,gte=0,lte=65535"`
+	SubPath   string   `json:"subPath" form:"subPath" gorm:"column:sub_path;default:/sub/"`
+	SubIps    []string `json:"subIps" form:"subIps" gorm:"serializer:json;column:sub_ips"`
+
+	// PublicKey is the panel's ed25519 subscription-signing key, learned from
+	// its identity endpoint. IsSelf is set when that key is our own — a panel
+	// must never advertise itself as its own fallback. Observed state only.
+	PublicKey string `json:"publicKey" gorm:"column:public_key"`
+	IsSelf    bool   `json:"isSelf" form:"isSelf" gorm:"column:is_self;default:false"`
 
 	// Heartbeat-updated fields. UpdatedAt advances on every probe even when
 	// the row is otherwise unchanged so the UI's "last seen" tooltip is

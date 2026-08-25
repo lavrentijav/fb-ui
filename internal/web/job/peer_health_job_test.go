@@ -27,7 +27,7 @@ func initPeerJobDB(t *testing.T) {
 
 // seedJobPeer stores a peer pointing at srv. AllowPrivateAddress is required
 // because a test server always listens on loopback, which the SSRF guard blocks.
-func seedJobPeer(t *testing.T, srv *httptest.Server, status string) *model.MasterPeer {
+func seedJobPeer(t *testing.T, srv *httptest.Server, status string) *model.Node {
 	t.Helper()
 	host, port, ok := strings.Cut(strings.TrimPrefix(srv.URL, "http://"), ":")
 	if !ok {
@@ -37,9 +37,9 @@ func seedJobPeer(t *testing.T, srv *httptest.Server, status string) *model.Maste
 	if err != nil {
 		t.Fatalf("parse test server port: %v", err)
 	}
-	peer := &model.MasterPeer{
-		Name: "peer-1", Scheme: "http", Domain: host, Port: p, SubPath: "/sub/",
-		Enable: true, AllowPrivateAddress: true, Status: status,
+	peer := &model.Node{
+		Name: "peer-1", Scheme: "http", SubDomain: host, SubPort: p, SubPath: "/sub/",
+		Role: model.NodeRoleMaster, Enable: true, AllowPrivateAddress: true, Status: status,
 	}
 	if err := database.GetDB().Create(peer).Error; err != nil {
 		t.Fatalf("seed peer: %v", err)
@@ -162,7 +162,7 @@ func TestPeerHealthJobSkipsDisabledPeers(t *testing.T) {
 	}))
 	defer srv.Close()
 	peer := seedJobPeer(t, srv, "unknown")
-	if err := database.GetDB().Model(model.MasterPeer{}).Where("id = ?", peer.Id).Update("enable", false).Error; err != nil {
+	if err := database.GetDB().Model(model.Node{}).Where("id = ?", peer.Id).Update("enable", false).Error; err != nil {
 		t.Fatalf("disable peer: %v", err)
 	}
 

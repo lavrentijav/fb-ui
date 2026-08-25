@@ -574,29 +574,6 @@ export const InboundOptionSchema = z.object({
 });
 export type InboundOption = z.infer<typeof InboundOptionSchema>;
 
-export const MasterPeerSchema = z.object({
-  allowPrivateAddress: z.boolean(),
-  basePath: z.string(),
-  createdAt: z.number().int(),
-  domain: z.string(),
-  enable: z.boolean(),
-  id: z.number().int(),
-  ips: z.array(z.string()),
-  isSelf: z.boolean(),
-  lastError: z.string(),
-  lastHeartbeat: z.number().int(),
-  latencyMs: z.number().int(),
-  name: z.string(),
-  port: z.number().int().min(1).max(65535),
-  publicKey: z.string(),
-  remark: z.string(),
-  scheme: z.enum(['http', 'https']),
-  status: z.string(),
-  subPath: z.string(),
-  updatedAt: z.number().int(),
-});
-export type MasterPeer = z.infer<typeof MasterPeerSchema>;
-
 export const MsgSchema = z.object({
   msg: z.string(),
   obj: z.unknown(),
@@ -622,6 +599,7 @@ export const NodeSchema = z.object({
   inboundCount: z.number().int(),
   inboundSyncMode: z.enum(['all', 'selected']),
   inboundTags: z.array(z.string()),
+  isSelf: z.boolean(),
   lastError: z.string(),
   lastHeartbeat: z.number().int(),
   latencyMs: z.number().int(),
@@ -635,9 +613,15 @@ export const NodeSchema = z.object({
   parentGuid: z.string().optional(),
   pinnedCertSha256: z.string(),
   port: z.number().int().min(1).max(65535),
+  publicKey: z.string(),
   remark: z.string(),
+  role: z.enum(['master', 'node']),
   scheme: z.enum(['http', 'https']),
   status: z.string(),
+  subDomain: z.string(),
+  subIps: z.array(z.string()),
+  subPath: z.string(),
+  subPort: z.number().int().min(0).max(65535),
   tlsVerifyMode: z.enum(['verify', 'skip', 'pin', 'mtls']),
   transitive: z.boolean().optional(),
   updatedAt: z.number().int(),

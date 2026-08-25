@@ -21,7 +21,9 @@ const (
 )
 
 // PeerHealthJob keeps the fallback endpoints advertised in subscriptions honest:
-// a peer that stops answering is dropped from the headers within one tick.
+// a master that stops answering is dropped from the headers within one tick.
+// Only master rows are probed here — a controlled node is reached through its
+// panel API by the heartbeat job instead.
 type PeerHealthJob struct {
 	peerService service.PeerService
 	client      *http.Client
@@ -64,7 +66,7 @@ func (j *PeerHealthJob) Run() {
 	wg.Wait()
 }
 
-func (j *PeerHealthJob) probeOne(p *model.MasterPeer) {
+func (j *PeerHealthJob) probeOne(p *model.Node) {
 	ctx, cancel := context.WithTimeout(context.Background(), peerHealthRequestTimeout)
 	defer cancel()
 
@@ -78,7 +80,7 @@ func (j *PeerHealthJob) probeOne(p *model.MasterPeer) {
 
 // publishPeerTransition emits peer.down / peer.up only on a genuine state
 // change, so a peer that is simply still offline stays quiet.
-func publishPeerTransition(p *model.MasterPeer, prevStatus string, patch service.PeerHealthPatch) {
+func publishPeerTransition(p *model.Node, prevStatus string, patch service.PeerHealthPatch) {
 	if EventBus == nil {
 		return
 	}
@@ -100,7 +102,7 @@ func publishPeerTransition(p *model.MasterPeer, prevStatus string, patch service
 		Source: source,
 		Data: &eventbus.PeerHealthData{
 			PeerId:    p.Id,
-			Domain:    p.Domain,
+			Domain:    p.SubDomain,
 			LatencyMs: patch.LatencyMs,
 			Error:     patch.LastError,
 		},

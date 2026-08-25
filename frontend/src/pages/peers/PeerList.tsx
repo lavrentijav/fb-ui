@@ -27,7 +27,7 @@ function statusBadge(status?: string): BadgeProps['status'] {
 function peerEndpoint(peer: PeerRecord): string {
   const scheme = peer.scheme || 'https';
   const subPath = peer.subPath || '/sub/';
-  return `${scheme}://${peer.domain ?? ''}:${peer.port ?? 0}${subPath}`;
+  return `${scheme}://${peer.subDomain ?? ''}:${peer.subPort ?? 0}${subPath}`;
 }
 
 export default function PeerList({
@@ -71,9 +71,9 @@ export default function PeerList({
         title: t('pages.peers.columns.ips'),
         key: 'ips',
         render: (_: unknown, peer) =>
-          peer.ips && peer.ips.length > 0 ? (
+          peer.subIps && peer.subIps.length > 0 ? (
             <Space size={4} wrap>
-              {peer.ips.map((ip) => (
+              {peer.subIps.map((ip) => (
                 <Tag key={ip}>{ip}</Tag>
               ))}
             </Space>

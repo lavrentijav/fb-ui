@@ -24,8 +24,8 @@ function defaultValues(): PeerFormValues {
     name: '',
     remark: '',
     scheme: 'https',
-    domain: '',
-    port: 2096,
+    subDomain: '',
+    subPort: 2096,
     subPath: '/sub/',
     basePath: '/',
     ipsText: '',
@@ -62,11 +62,11 @@ export default function PeerFormModal({
             name: peer.name ?? '',
             remark: peer.remark ?? '',
             scheme: (peer.scheme as 'http' | 'https') || base.scheme,
-            domain: peer.domain ?? '',
-            port: peer.port ?? base.port,
+            subDomain: peer.subDomain ?? '',
+            subPort: peer.subPort ?? base.subPort,
             subPath: peer.subPath || base.subPath,
             basePath: peer.basePath || base.basePath,
-            ipsText: (peer.ips ?? []).join('\n'),
+            ipsText: (peer.subIps ?? []).join('\n'),
             enable: peer.enable ?? true,
             allowPrivateAddress: peer.allowPrivateAddress ?? false,
             isSelf: peer.isSelf ?? false,
@@ -86,11 +86,11 @@ export default function PeerFormModal({
       name: values.name.trim(),
       remark: values.remark?.trim() || '',
       scheme: values.scheme,
-      domain: values.domain.trim(),
-      port: values.port,
+      subDomain: values.subDomain.trim(),
+      subPort: values.subPort,
       subPath: values.subPath.trim() || '/sub/',
       basePath: values.basePath.trim() || '/',
-      ips: values.ipsText
+      subIps: values.ipsText
         .split(/[\n,]/)
         .map((ip) => ip.trim())
         .filter(Boolean),
@@ -162,14 +162,14 @@ export default function PeerFormModal({
               <Col xs={24} md={12}>
                 <FormField
                   label={t('pages.peers.domain')}
-                  name="domain"
-                  rules={{ validate: rhfZodValidate(PeerFormSchema.shape.domain) }}
+                  name="subDomain"
+                  rules={{ validate: rhfZodValidate(PeerFormSchema.shape.subDomain) }}
                 >
                   <Input placeholder={t('pages.peers.domainPlaceholder')} />
                 </FormField>
               </Col>
               <Col xs={24} md={6}>
-                <FormField label={t('pages.peers.port')} name="port">
+                <FormField label={t('pages.peers.port')} name="subPort">
                   <InputNumber min={1} max={65535} style={{ width: '100%' }} />
                 </FormField>
               </Col>

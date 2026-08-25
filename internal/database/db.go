@@ -84,7 +84,6 @@ func allModels() []any {
 		&model.NodeClientIp{},
 		&model.ClientGlobalTraffic{},
 		&model.OutboundSubscription{},
-		&model.MasterPeer{},
 	}
 }
 
@@ -124,6 +123,9 @@ func initModels() error {
 		return err
 	}
 	if err := migrateApiTokenScopeAndExpiry(); err != nil {
+		return err
+	}
+	if err := migrateMasterPeersIntoNodes(); err != nil {
 		return err
 	}
 	if err := dropLegacyForeignKeys(); err != nil {
@@ -200,6 +202,70 @@ func postgresModelSettled(mdl any) bool {
 		}
 	}
 	return true
+}
+
+// migrateMasterPeersIntoNodes folds the short-lived master_peers table into
+// nodes. A peer and a node are the same thing — another panel — so they share
+// one row and differ only by role. A migrated master keeps its subscription
+// address; its panel-API address stays blank until an operator fills it in.
+func migrateMasterPeersIntoNodes() error {
+	migrator := db.Migrator()
+	if !migrator.HasTable("master_peers") {
+		return nil
+	}
+	type legacyPeer struct {
+		Name                string
+		Remark              string
+		Scheme              string
+		Domain              string
+		Port                int
+		SubPath             string
+		BasePath            string
+		Ips                 string
+		Enable              bool
+		AllowPrivateAddress bool
+		IsSelf              bool
+		PublicKey           string
+		Status              string
+		LastHeartbeat       int64
+		LatencyMs           int
+		LastError           string
+	}
+	var peers []legacyPeer
+	if err := db.Table("master_peers").Find(&peers).Error; err != nil {
+		return err
+	}
+	for i := range peers {
+		p := peers[i]
+		var existing int64
+		if err := db.Model(&model.Node{}).Where("name = ?", p.Name).Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing > 0 {
+			continue
+		}
+		var ips []string
+		if p.Ips != "" {
+			_ = json.Unmarshal([]byte(p.Ips), &ips)
+		}
+		node := &model.Node{
+			Name: p.Name, Remark: p.Remark, Scheme: p.Scheme, Address: p.Domain,
+			BasePath: p.BasePath, Enable: p.Enable, AllowPrivateAddress: p.AllowPrivateAddress,
+			Role: model.NodeRoleMaster, SubDomain: p.Domain, SubPort: p.Port, SubPath: p.SubPath,
+			SubIps: ips, PublicKey: p.PublicKey, IsSelf: p.IsSelf,
+			Status: p.Status, LastHeartbeat: p.LastHeartbeat, LatencyMs: p.LatencyMs, LastError: p.LastError,
+		}
+		if err := db.Create(node).Error; err != nil {
+			return err
+		}
+		if !p.Enable {
+			if err := db.Model(model.Node{}).Where("id = ?", node.Id).Update("enable", false).Error; err != nil {
+				return err
+			}
+		}
+	}
+	log.Printf("migrated %d master_peers row(s) into nodes", len(peers))
+	return migrator.DropTable("master_peers")
 }
 
 func dropLegacyForeignKeys() error {
