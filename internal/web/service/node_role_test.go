@@ -260,3 +260,46 @@ func TestSetRoleRefusesSelfMaster(t *testing.T) {
 		t.Fatalf("error = %v, want the self row to be refused", err)
 	}
 }
+
+// A round trip must be lossless: the master fields the node role never touches
+// have to survive it, or flipping back quietly drops the static IPs clients
+// were being handed.
+func TestSetRoleRoundTripKeepsTheOtherRolesFields(t *testing.T) {
+	initNodeRoleTestDB(t)
+	db := database.GetDB()
+	if err := db.Where("1 = 1").Delete(&model.Node{}).Error; err != nil {
+		t.Fatalf("clear nodes: %v", err)
+	}
+	master := &model.Node{
+		Name: "sib-2", Scheme: "https", Address: "sub3.example.com", SubDomain: "sub3.example.com",
+		SubPort: 2096, SubPath: "/sub/", SubIps: []string{"185.51.100.3"}, Role: model.NodeRoleMaster,
+		Enable: true, AllowPrivateAddress: true,
+	}
+	if err := db.Create(master).Error; err != nil {
+		t.Fatalf("seed master: %v", err)
+	}
+	s := NodeService{}
+
+	if err := s.SetRole(master.Id, &NodeRoleChangeRequest{
+		Role: model.NodeRoleNode, Address: "node3.example.com", Port: 2053, ApiToken: "t0ken",
+	}); err != nil {
+		t.Fatalf("SetRole to node: %v", err)
+	}
+	if err := s.SetRole(master.Id, &NodeRoleChangeRequest{Role: model.NodeRoleMaster}); err != nil {
+		t.Fatalf("SetRole back to master: %v", err)
+	}
+
+	stored, err := (&PeerService{}).GetById(master.Id)
+	if err != nil {
+		t.Fatalf("GetById: %v", err)
+	}
+	if len(stored.SubIps) != 1 || stored.SubIps[0] != "185.51.100.3" {
+		t.Fatalf("subIps = %v, want them to survive the round trip", stored.SubIps)
+	}
+	if !stored.AllowPrivateAddress {
+		t.Fatal("allowPrivateAddress was cleared by a request that never mentioned it")
+	}
+	if stored.SubDomain != "sub3.example.com" || stored.SubPort != 2096 {
+		t.Fatalf("subscription endpoint = %s:%d, want it unchanged", stored.SubDomain, stored.SubPort)
+	}
+}

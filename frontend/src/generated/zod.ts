@@ -698,7 +698,7 @@ export type NodeMutationRequest = z.infer<typeof NodeMutationRequestSchema>;
 
 export const NodeRoleChangeRequestSchema = z.object({
   address: z.string(),
-  allowPrivateAddress: z.boolean(),
+  allowPrivateAddress: z.boolean().nullable().optional(),
   apiToken: z.string(),
   basePath: z.string(),
   pinnedCertSha256: z.string(),

@@ -690,7 +690,7 @@ export const EXAMPLES: Record<string, unknown> = {
   },
   "NodeRoleChangeRequest": {
     "address": "node1.example.com",
-    "allowPrivateAddress": false,
+    "allowPrivateAddress": null,
     "apiToken": "abcdef0123456789",
     "basePath": "/",
     "pinnedCertSha256": "",

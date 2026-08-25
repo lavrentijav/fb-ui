@@ -653,7 +653,7 @@ export interface NodeMutationRequest {
 
 export interface NodeRoleChangeRequest {
   address: string;
-  allowPrivateAddress: boolean;
+  allowPrivateAddress?: boolean | null;
   apiToken: string;
   basePath: string;
   pinnedCertSha256: string;

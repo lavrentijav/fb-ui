@@ -17,10 +17,12 @@ import (
 // NodeRoleChangeRequest carries only what the *target* role needs. Fields of
 // the role being left stay on the row, so flipping back does not re-ask them.
 type NodeRoleChangeRequest struct {
-	Role                string `json:"role" form:"role" validate:"required,oneof=master node" example:"master"`
-	Scheme              string `json:"scheme" form:"scheme" validate:"omitempty,oneof=http https" example:"https"`
-	BasePath            string `json:"basePath" form:"basePath" example:"/"`
-	AllowPrivateAddress bool   `json:"allowPrivateAddress" form:"allowPrivateAddress" example:"false"`
+	Role     string `json:"role" form:"role" validate:"required,oneof=master node" example:"master"`
+	Scheme   string `json:"scheme" form:"scheme" validate:"omitempty,oneof=http https" example:"https"`
+	BasePath string `json:"basePath" form:"basePath" example:"/"`
+	// Omitted means keep what the row already has, the same as every other
+	// field here; a bool and a slice need the nil to say so.
+	AllowPrivateAddress *bool `json:"allowPrivateAddress" form:"allowPrivateAddress"`
 
 	// Target role "node": how this panel reaches the node's panel API.
 	Address          string `json:"address" form:"address" example:"node1.example.com"`
@@ -114,7 +116,10 @@ func (s *NodeService) toMasterUpdates(existing *model.Node, req *NodeRoleChangeR
 	p.SubPath = firstNonBlank(req.SubPath, existing.SubPath)
 	p.BasePath = firstNonBlank(req.BasePath, existing.BasePath)
 	p.SubIps = req.SubIps
-	p.AllowPrivateAddress = req.AllowPrivateAddress
+	if req.SubIps == nil {
+		p.SubIps = existing.SubIps
+	}
+	p.AllowPrivateAddress = keepBool(req.AllowPrivateAddress, existing.AllowPrivateAddress)
 	p.SubPort = req.SubPort
 	if p.SubPort == 0 {
 		p.SubPort = existing.SubPort
@@ -155,7 +160,7 @@ func (s *NodeService) toNodeUpdates(existing *model.Node, req *NodeRoleChangeReq
 	n.BasePath = firstNonBlank(req.BasePath, existing.BasePath)
 	n.TlsVerifyMode = firstNonBlank(req.TlsVerifyMode, existing.TlsVerifyMode)
 	n.PinnedCertSha256 = firstNonBlank(req.PinnedCertSha256, existing.PinnedCertSha256)
-	n.AllowPrivateAddress = req.AllowPrivateAddress
+	n.AllowPrivateAddress = keepBool(req.AllowPrivateAddress, existing.AllowPrivateAddress)
 	n.ApiToken = strings.TrimSpace(req.ApiToken)
 	n.Port = req.Port
 	if n.Port == 0 {
@@ -211,6 +216,13 @@ func observedStateReset() map[string]any {
 		"config_dirty_at":     0,
 		"inbounds_adopted_at": 0,
 	}
+}
+
+func keepBool(want *bool, current bool) bool {
+	if want == nil {
+		return current
+	}
+	return *want
 }
 
 func firstNonBlank(values ...string) string {

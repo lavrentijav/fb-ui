@@ -2874,7 +2874,8 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "string"
       },
       "allowPrivateAddress": {
-        "example": false,
+        "description": "Omitted means keep what the row already has, the same as every other\nfield here; a bool and a slice need the nil to say so.",
+        "nullable": true,
         "type": "boolean"
       },
       "apiToken": {
@@ -2944,7 +2945,6 @@ export const SCHEMAS: Record<string, unknown> = {
     },
     "required": [
       "address",
-      "allowPrivateAddress",
       "apiToken",
       "basePath",
       "pinnedCertSha256",
