@@ -69,7 +69,11 @@ type XrayService struct {
 
 	// materializedRules carries the filter layers of the config this receiver
 	// last generated over to the point where that config is known to be live.
+	// lastFlushed keeps the pending-restart job, which runs every 30 seconds,
+	// from rewriting the same marks forever.
 	materializedRules []int
+	lastFlushed       []int
+	lastFlushedSet    bool
 }
 
 // IsXrayRunning checks if the Xray process is currently running.
@@ -1140,9 +1144,27 @@ func (s *XrayService) RestartXray(isForce bool) error {
 // carries. It runs only after the config is live, so the panel never shows a
 // layer as applied because of a config that failed to start.
 func (s *XrayService) flushMaterialized() {
+	if s.lastFlushedSet && sameIds(s.lastFlushed, s.materializedRules) {
+		return
+	}
 	if err := markClusterApplied(s.materializedRules); err != nil {
 		logger.Warning("cluster routing: failed to record applied filter rules:", err)
+		return
 	}
+	s.lastFlushed = append([]int(nil), s.materializedRules...)
+	s.lastFlushedSet = true
+}
+
+func sameIds(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // tryHotApply attempts to reconcile the running Xray instance with newCfg
