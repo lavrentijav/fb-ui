@@ -2012,8 +2012,24 @@
         "linked": "级联已创建",
         "unlinked": "级联已删除",
         "dragHint": "请从入站拖到入站",
-        "samePanel": "级联必须连接两个不同的面板"
-      }
+        "samePanel": "级联必须连接两个不同的面板",
+        "allInboundsHint": "“所有入站”端口只接过滤节点——级联请从单个入站拖出。",
+        "panelMissing": "无法加载该面板的记录，请刷新后重试。"
+      },
+      "allInbounds": "所有入站",
+      "applied": "配置",
+      "appliedYes": "已应用",
+      "pending": "待应用",
+      "inboundCount": "入站",
+      "insertFilter": "插入过滤",
+      "inspectorTitle": "所选对象",
+      "linkSource": "来源",
+      "linkTarget": "去向",
+      "manageInbounds": "管理入站",
+      "roleLabel": "角色",
+      "selfHint": "这是你登录的面板，在它自己的设置里管理。",
+      "sinkBlock": "已阻断",
+      "sinkDirect": "直连"
     },
     "filters": {
       "listsTitle": "匹配列表",
@@ -2056,8 +2072,16 @@
         "updateRule": "更新规则",
         "deleteRule": "删除规则",
         "deletedRule": "规则已删除",
-        "fillRequired": "名称为必填项"
-      }
+        "fillRequired": "名称为必填项",
+        "needLink": "请选择该规则转发到的级联连接"
+      },
+      "addRule": "添加规则",
+      "editRule": "编辑规则",
+      "rulePanel": "面板",
+      "ruleScopeHint": "留空表示该面板的所有入站。",
+      "ruleActionHint": "阻断会丢弃匹配流量，直连从本机出站，级联则经所选连接转发。",
+      "ruleLink": "级联连接",
+      "ruleLinkHint": "匹配流量经由转发的连接。"
     }
   },
   "tgbot": {

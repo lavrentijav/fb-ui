@@ -2012,8 +2012,24 @@
         "linked": "Đã tạo chuỗi",
         "unlinked": "Đã xóa chuỗi",
         "dragHint": "Hãy kéo từ inbound sang inbound",
-        "samePanel": "Chuỗi phải nối hai bảng khác nhau"
-      }
+        "samePanel": "Chuỗi phải nối hai bảng khác nhau",
+        "allInboundsHint": "Cổng \"tất cả inbound\" chỉ dẫn vào bộ lọc — kéo từ một inbound cụ thể để tạo tầng.",
+        "panelMissing": "Không tải được bản ghi của bảng này; hãy làm mới rồi thử lại."
+      },
+      "allInbounds": "tất cả inbound",
+      "applied": "Cấu hình",
+      "appliedYes": "Đã áp dụng",
+      "pending": "Đang chờ",
+      "inboundCount": "Inbound",
+      "insertFilter": "Chèn bộ lọc",
+      "inspectorTitle": "Đang chọn",
+      "linkSource": "Từ",
+      "linkTarget": "Đến",
+      "manageInbounds": "Quản lý inbound",
+      "roleLabel": "Vai trò",
+      "selfHint": "Đây là bảng bạn đang đăng nhập; nó được quản lý trong phần cài đặt của chính nó.",
+      "sinkBlock": "Bị chặn",
+      "sinkDirect": "Trực tiếp"
     },
     "filters": {
       "listsTitle": "Danh sách khớp",
@@ -2056,8 +2072,16 @@
         "updateRule": "Cập nhật quy tắc",
         "deleteRule": "Xóa quy tắc",
         "deletedRule": "Đã xóa quy tắc",
-        "fillRequired": "Tên là bắt buộc"
-      }
+        "fillRequired": "Tên là bắt buộc",
+        "needLink": "Chọn liên kết tầng cho quy tắc này"
+      },
+      "addRule": "Thêm quy tắc",
+      "editRule": "Sửa quy tắc",
+      "rulePanel": "Bảng",
+      "ruleScopeHint": "Để trống nghĩa là mọi inbound trên bảng đó.",
+      "ruleActionHint": "Chặn loại bỏ lưu lượng, Trực tiếp cho ra cục bộ, Tầng chuyển tiếp qua liên kết đã chọn.",
+      "ruleLink": "Liên kết tầng",
+      "ruleLinkHint": "Liên kết mà lưu lượng khớp được chuyển tiếp qua."
     }
   },
   "tgbot": {

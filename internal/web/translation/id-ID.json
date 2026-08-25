@@ -2012,8 +2012,24 @@
         "linked": "Kaskade dibuat",
         "unlinked": "Kaskade dihapus",
         "dragHint": "Seret dari inbound ke inbound",
-        "samePanel": "Kaskade harus menghubungkan dua panel berbeda"
-      }
+        "samePanel": "Kaskade harus menghubungkan dua panel berbeda",
+        "allInboundsHint": "Port \"semua inbound\" hanya memberi makan filter — seret dari satu inbound untuk cascade.",
+        "panelMissing": "Data panel ini gagal dimuat; segarkan lalu coba lagi."
+      },
+      "allInbounds": "semua inbound",
+      "applied": "Konfig",
+      "appliedYes": "Diterapkan",
+      "pending": "Menunggu",
+      "inboundCount": "Inbound",
+      "insertFilter": "Sisipkan filter",
+      "inspectorTitle": "Pilihan",
+      "linkSource": "Dari",
+      "linkTarget": "Ke",
+      "manageInbounds": "Kelola inbound",
+      "roleLabel": "Peran",
+      "selfHint": "Ini panel tempat Anda masuk; dikelola dari pengaturannya sendiri.",
+      "sinkBlock": "Diblokir",
+      "sinkDirect": "Langsung"
     },
     "filters": {
       "listsTitle": "Daftar pencocokan",
@@ -2056,8 +2072,16 @@
         "updateRule": "Perbarui aturan",
         "deleteRule": "Hapus aturan",
         "deletedRule": "Aturan dihapus",
-        "fillRequired": "Nama wajib diisi"
-      }
+        "fillRequired": "Nama wajib diisi",
+        "needLink": "Pilih tautan cascade untuk aturan ini"
+      },
+      "addRule": "Tambah aturan",
+      "editRule": "Ubah aturan",
+      "rulePanel": "Panel",
+      "ruleScopeHint": "Kosong berarti semua inbound di panel itu.",
+      "ruleActionHint": "Blokir membuang trafik, Direct mengeluarkannya lokal, Cascade meneruskannya lewat tautan terpilih.",
+      "ruleLink": "Tautan cascade",
+      "ruleLinkHint": "Tautan tempat trafik yang cocok diteruskan."
     }
   },
   "tgbot": {

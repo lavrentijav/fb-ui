@@ -39,6 +39,31 @@ export const FilterListFormSchema = z.object({
   enable: z.boolean(),
 });
 
+// A rule's required fields depend on its action, so the check is a refinement.
+export const FilterRuleFormSchema = z
+  .object({
+    id: z.number().optional(),
+    name: z.string().trim().min(1, 'pages.filters.toasts.fillRequired'),
+    remark: z.string().optional(),
+    panelId: z.number(),
+    sourceInboundTags: z.array(z.string()),
+    listIds: z.array(z.number()).min(1, 'pages.filters.toasts.needList'),
+    action: z.enum(['block', 'direct', 'cascade']),
+    cascadeLinkId: z.number().optional(),
+    sortOrder: z.number().optional(),
+    enable: z.boolean(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.action === 'cascade' && !val.cascadeLinkId) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['cascadeLinkId'],
+        message: 'pages.filters.toasts.needLink',
+      });
+    }
+  });
+
+export type FilterRuleFormValues = z.infer<typeof FilterRuleFormSchema>;
 export type FilterList = z.infer<typeof FilterListSchema>;
 export type FilterRule = z.infer<typeof FilterRuleSchema>;
 export type FilterListFormValues = z.infer<typeof FilterListFormSchema>;

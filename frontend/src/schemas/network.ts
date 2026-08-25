@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { FilterListSchema, FilterRuleSchema } from '@/schemas/filter';
+
 export const GraphInboundSchema = z.object({
   id: z.number(),
   tag: z.string(),
@@ -34,9 +36,13 @@ export const CascadeLinkSchema = z.object({
   applied: z.number().optional(),
 });
 
+// Filter rules and the lists they name travel with the topology: the canvas
+// draws a rule as a vertex between an inbound and where its traffic ends up.
 export const NetworkGraphSchema = z.object({
   panels: z.array(GraphPanelSchema),
   links: z.array(CascadeLinkSchema).nullish(),
+  filters: z.array(FilterRuleSchema).nullish(),
+  lists: z.array(FilterListSchema).nullish(),
 });
 
 export type GraphInbound = z.infer<typeof GraphInboundSchema>;

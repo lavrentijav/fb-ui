@@ -2012,8 +2012,24 @@
         "linked": "Cascada creada",
         "unlinked": "Cascada eliminada",
         "dragHint": "Arrastra de una entrada a otra entrada",
-        "samePanel": "Una cascada debe unir dos paneles distintos"
-      }
+        "samePanel": "Una cascada debe unir dos paneles distintos",
+        "allInboundsHint": "El puerto «todos los inbounds» solo alimenta filtros: arrastra desde un inbound concreto para una cascada.",
+        "panelMissing": "No se pudo cargar el registro de este panel; actualiza e inténtalo de nuevo."
+      },
+      "allInbounds": "todos los inbounds",
+      "applied": "Config",
+      "appliedYes": "Aplicado",
+      "pending": "Pendiente",
+      "inboundCount": "Inbounds",
+      "insertFilter": "Insertar filtro",
+      "inspectorTitle": "Selección",
+      "linkSource": "Desde",
+      "linkTarget": "Hasta",
+      "manageInbounds": "Gestionar inbounds",
+      "roleLabel": "Rol",
+      "selfHint": "Este es el panel en el que has iniciado sesión; se gestiona desde sus propios ajustes.",
+      "sinkBlock": "Bloqueado",
+      "sinkDirect": "Directo"
     },
     "filters": {
       "listsTitle": "Listas de coincidencia",
@@ -2056,8 +2072,16 @@
         "updateRule": "Actualizar regla",
         "deleteRule": "Eliminar regla",
         "deletedRule": "Regla eliminada",
-        "fillRequired": "El nombre es obligatorio"
-      }
+        "fillRequired": "El nombre es obligatorio",
+        "needLink": "Elige el enlace en cascada de esta regla"
+      },
+      "addRule": "Añadir regla",
+      "editRule": "Editar regla",
+      "rulePanel": "Panel",
+      "ruleScopeHint": "Vacío significa todos los inbounds de ese panel.",
+      "ruleActionHint": "Bloquear descarta el tráfico, Directo lo saca localmente, Cascada lo reenvía por el enlace elegido.",
+      "ruleLink": "Enlace en cascada",
+      "ruleLinkHint": "El enlace por el que se reenvía el tráfico coincidente."
     }
   },
   "tgbot": {

@@ -58,6 +58,22 @@ export function useFilters() {
     },
   });
 
+  const createRuleMut = useMutation({
+    mutationFn: (payload: Partial<FilterRule>) =>
+      HttpUtil.post('/panel/api/filters/rules/add', payload),
+    onSuccess: (msg) => {
+      if (msg?.success) invalidate();
+    },
+  });
+
+  const updateRuleMut = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<FilterRule> }) =>
+      HttpUtil.post(`/panel/api/filters/rules/update/${id}`, payload),
+    onSuccess: (msg) => {
+      if (msg?.success) invalidate();
+    },
+  });
+
   const removeRuleMut = useMutation({
     mutationFn: (id: number) => HttpUtil.post(`/panel/api/filters/rules/del/${id}`),
     onSuccess: (msg) => {
@@ -87,6 +103,9 @@ export function useFilters() {
     updateList: (id: number, payload: Partial<FilterList>) =>
       updateListMut.mutateAsync({ id, payload }),
     removeList: (id: number) => removeListMut.mutateAsync(id),
+    createRule: (payload: Partial<FilterRule>) => createRuleMut.mutateAsync(payload),
+    updateRule: (id: number, payload: Partial<FilterRule>) =>
+      updateRuleMut.mutateAsync({ id, payload }),
     removeRule: (id: number) => removeRuleMut.mutateAsync(id),
     setRuleEnable: (id: number, enable: boolean) => setRuleEnableMut.mutateAsync({ id, enable }),
   };

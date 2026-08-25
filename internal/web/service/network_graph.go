@@ -154,6 +154,19 @@ func (s *NetworkService) DeleteLink(id int) error {
 	if err := db.Where("id = ?", id).First(link).Error; err != nil {
 		return err
 	}
+	// A filter routes over this edge; without it the rule would stay enabled and
+	// forward nowhere, which reads as the filter silently breaking.
+	var routed []*model.FilterRule
+	if err := db.Model(model.FilterRule{}).Where("cascade_link_id = ?", id).Find(&routed).Error; err != nil {
+		return err
+	}
+	if len(routed) > 0 {
+		names := make([]string, 0, len(routed))
+		for _, rule := range routed {
+			names = append(names, rule.Name)
+		}
+		return common.NewError("link is still used by filter(s): " + strings.Join(names, ", "))
+	}
 	if err := db.Where("id = ?", id).Delete(&model.CascadeLink{}).Error; err != nil {
 		return err
 	}

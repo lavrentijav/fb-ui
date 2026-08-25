@@ -24,9 +24,11 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFilters, type FilterList, type FilterRule } from '@/api/queries/useFilters';
+import { useNetworkGraph } from '@/api/queries/useNetworkGraph';
 import AppSidebar from '@/layouts/AppSidebar';
 import { setMessageInstance } from '@/utils/messageBus';
 import FilterListModal from './FilterListModal';
+import FilterRuleModal from './FilterRuleModal';
 
 export default function FiltersPage() {
   const { t } = useTranslation();
@@ -48,13 +50,21 @@ export default function FiltersPage() {
     createList,
     updateList,
     removeList,
+    createRule,
+    updateRule,
     removeRule,
     setRuleEnable,
   } = useFilters();
+  // A rule points at a panel, its inbounds and a cascade link, so the form
+  // needs the same topology the network editor draws.
+  const { graph } = useNetworkGraph();
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   const [formList, setFormList] = useState<FilterList | null>(null);
+  const [ruleOpen, setRuleOpen] = useState(false);
+  const [ruleMode, setRuleMode] = useState<'add' | 'edit'>('add');
+  const [ruleRecord, setRuleRecord] = useState<FilterRule | null>(null);
 
   const listNameById = useMemo(() => {
     const out = new Map<number, string>();
@@ -97,6 +107,26 @@ export default function FiltersPage() {
       });
     },
     [modal, t, removeList, messageApi],
+  );
+
+  const onAddRule = useCallback(() => {
+    setRuleMode('add');
+    setRuleRecord(null);
+    setRuleOpen(true);
+  }, []);
+
+  const onEditRule = useCallback((rule: FilterRule) => {
+    setRuleMode('edit');
+    setRuleRecord({ ...rule });
+    setRuleOpen(true);
+  }, []);
+
+  const onSaveRule = useCallback(
+    async (payload: Partial<FilterRule>) => {
+      if (ruleMode === 'edit' && ruleRecord?.id) return updateRule(ruleRecord.id, payload);
+      return createRule(payload);
+    },
+    [ruleMode, ruleRecord, updateRule, createRule],
   );
 
   const onDeleteRule = useCallback(
@@ -239,19 +269,29 @@ export default function FiltersPage() {
         title: t('pages.filters.actions'),
         key: 'actions',
         render: (_: unknown, rule) => (
-          <Tooltip title={t('delete')}>
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => onDeleteRule(rule)}
-              aria-label={t('delete')}
-            />
-          </Tooltip>
+          <Space size={4}>
+            <Tooltip title={t('edit')}>
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => onEditRule(rule)}
+                aria-label={t('edit')}
+              />
+            </Tooltip>
+            <Tooltip title={t('delete')}>
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => onDeleteRule(rule)}
+                aria-label={t('delete')}
+              />
+            </Tooltip>
+          </Space>
         ),
       },
     ],
-    [t, listNameById, setRuleEnable, onDeleteRule],
+    [t, listNameById, setRuleEnable, onEditRule, onDeleteRule],
   );
 
   const pageClass = useMemo(() => {
@@ -306,7 +346,15 @@ export default function FiltersPage() {
                     </Card>
                   </Col>
                   <Col span={24}>
-                    <Card size="small" title={t('pages.filters.rulesTitle')}>
+                    <Card
+                      size="small"
+                      title={t('pages.filters.rulesTitle')}
+                      extra={
+                        <Button type="primary" icon={<PlusOutlined />} onClick={onAddRule}>
+                          {t('pages.filters.addRule')}
+                        </Button>
+                      }
+                    >
                       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
                         {t('pages.filters.rulesHint')}
                       </Typography.Paragraph>
@@ -327,6 +375,17 @@ export default function FiltersPage() {
             </Spin>
           </Layout.Content>
         </Layout>
+
+        <FilterRuleModal
+          open={ruleOpen}
+          mode={ruleMode}
+          rule={ruleRecord}
+          panels={graph.panels}
+          links={graph.links ?? []}
+          lists={lists}
+          save={onSaveRule}
+          onOpenChange={setRuleOpen}
+        />
 
         <FilterListModal
           open={formOpen}

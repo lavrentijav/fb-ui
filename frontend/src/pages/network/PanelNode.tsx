@@ -3,17 +3,9 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Badge, Tag, Tooltip, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 
-import type { GraphInbound } from '@/schemas/network';
+import { ALL_INBOUNDS_HANDLE, type PanelNodeData } from '@/lib/network/graph-elements';
 
-export interface PanelNodeData extends Record<string, unknown> {
-  name: string;
-  role: string;
-  status: string;
-  address: string;
-  self: boolean;
-  enable: boolean;
-  inbounds: GraphInbound[];
-}
+export type { PanelNodeData };
 
 function statusColor(status: string): string {
   if (status === 'online') return 'var(--ant-color-success)';
@@ -24,12 +16,14 @@ function statusColor(status: string): string {
 // One panel on the canvas. Every inbound is a port: drag from its right handle
 // (traffic leaving that inbound) onto another panel's left handle (the inbound
 // that traffic should be forwarded to) to draw a cascade.
-function PanelNodeComponent({ data }: NodeProps) {
+function PanelNodeComponent({ data, selected }: NodeProps) {
   const { t } = useTranslation();
   const panel = data as PanelNodeData;
 
   return (
-    <div className={`panel-node${panel.enable ? '' : ' is-disabled'}`}>
+    <div
+      className={`panel-node${panel.enable ? '' : ' is-disabled'}${selected ? ' is-selected' : ''}`}
+    >
       <div className="panel-node-head">
         <Badge color={statusColor(panel.status)} />
         <Typography.Text strong ellipsis className="panel-node-title">
@@ -78,6 +72,16 @@ function PanelNodeComponent({ data }: NodeProps) {
             />
           </div>
         ))}
+      </div>
+
+      <div className="panel-node-all">
+        <span className="panel-node-port-label">{t('pages.network.allInbounds')}</span>
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={ALL_INBOUNDS_HANDLE}
+          className="panel-node-handle"
+        />
       </div>
     </div>
   );

@@ -2012,8 +2012,24 @@
         "linked": "Cascata criada",
         "unlinked": "Cascata removida",
         "dragHint": "Arraste de uma entrada para outra entrada",
-        "samePanel": "Uma cascata deve unir dois painéis diferentes"
-      }
+        "samePanel": "Uma cascata deve unir dois painéis diferentes",
+        "allInboundsHint": "A porta \"todos os inbounds\" só alimenta filtros — arraste de um inbound específico para cascatear.",
+        "panelMissing": "Não foi possível carregar o registro deste painel; atualize e tente de novo."
+      },
+      "allInbounds": "todos os inbounds",
+      "applied": "Config",
+      "appliedYes": "Aplicado",
+      "pending": "Pendente",
+      "inboundCount": "Inbounds",
+      "insertFilter": "Inserir filtro",
+      "inspectorTitle": "Seleção",
+      "linkSource": "De",
+      "linkTarget": "Para",
+      "manageInbounds": "Gerenciar inbounds",
+      "roleLabel": "Papel",
+      "selfHint": "Este é o painel em que você entrou; ele é gerenciado nas próprias configurações.",
+      "sinkBlock": "Bloqueado",
+      "sinkDirect": "Direto"
     },
     "filters": {
       "listsTitle": "Listas de correspondência",
@@ -2056,8 +2072,16 @@
         "updateRule": "Atualizar regra",
         "deleteRule": "Excluir regra",
         "deletedRule": "Regra excluída",
-        "fillRequired": "O nome é obrigatório"
-      }
+        "fillRequired": "O nome é obrigatório",
+        "needLink": "Escolha o link em cascata desta regra"
+      },
+      "addRule": "Adicionar regra",
+      "editRule": "Editar regra",
+      "rulePanel": "Painel",
+      "ruleScopeHint": "Vazio significa todos os inbounds desse painel.",
+      "ruleActionHint": "Bloquear descarta o tráfego, Direto o envia localmente, Cascata o encaminha pelo link escolhido.",
+      "ruleLink": "Link em cascata",
+      "ruleLinkHint": "O link por onde o tráfego correspondente é encaminhado."
     }
   },
   "tgbot": {

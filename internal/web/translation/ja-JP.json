@@ -2012,8 +2012,24 @@
         "linked": "カスケードを作成しました",
         "unlinked": "カスケードを削除しました",
         "dragHint": "インバウンドからインバウンドへドラッグしてください",
-        "samePanel": "カスケードは異なる 2 つのパネルを結ぶ必要があります"
-      }
+        "samePanel": "カスケードは異なる 2 つのパネルを結ぶ必要があります",
+        "allInboundsHint": "「すべてのインバウンド」ポートはフィルター専用です。カスケードは個々のインバウンドからドラッグしてください。",
+        "panelMissing": "このパネルのレコードを読み込めませんでした。更新して再試行してください。"
+      },
+      "allInbounds": "すべてのインバウンド",
+      "applied": "設定",
+      "appliedYes": "適用済み",
+      "pending": "保留中",
+      "inboundCount": "インバウンド",
+      "insertFilter": "フィルターを挿入",
+      "inspectorTitle": "選択中",
+      "linkSource": "送信元",
+      "linkTarget": "送信先",
+      "manageInbounds": "インバウンドを管理",
+      "roleLabel": "ロール",
+      "selfHint": "ログイン中のパネルです。設定はこのパネル自身の設定画面から行います。",
+      "sinkBlock": "ブロック",
+      "sinkDirect": "ダイレクト"
     },
     "filters": {
       "listsTitle": "マッチリスト",
@@ -2056,8 +2072,16 @@
         "updateRule": "ルールを更新",
         "deleteRule": "ルールを削除",
         "deletedRule": "ルールを削除しました",
-        "fillRequired": "名前は必須です"
-      }
+        "fillRequired": "名前は必須です",
+        "needLink": "このルールの転送先カスケードリンクを選んでください"
+      },
+      "addRule": "ルールを追加",
+      "editRule": "ルールを編集",
+      "rulePanel": "パネル",
+      "ruleScopeHint": "空にすると、そのパネルのすべてのインバウンドが対象です。",
+      "ruleActionHint": "ブロックは一致した通信を破棄し、ダイレクトはローカルから出し、カスケードは選んだリンクへ転送します。",
+      "ruleLink": "カスケードリンク",
+      "ruleLinkHint": "一致した通信の転送先リンク。"
     }
   },
   "tgbot": {

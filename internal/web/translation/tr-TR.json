@@ -2012,8 +2012,24 @@
         "linked": "Zincir oluşturuldu",
         "unlinked": "Zincir silindi",
         "dragHint": "Gelen bağlantıdan gelen bağlantıya sürükleyin",
-        "samePanel": "Zincir iki farklı paneli birleştirmeli"
-      }
+        "samePanel": "Zincir iki farklı paneli birleştirmeli",
+        "allInboundsHint": "\"Tüm gelenler\" portu yalnızca filtre besler — kaskad için tek bir gelenden sürükleyin.",
+        "panelMissing": "Bu panelin kaydı yüklenemedi; yenileyip tekrar deneyin."
+      },
+      "allInbounds": "tüm gelenler",
+      "applied": "Yapılandırma",
+      "appliedYes": "Uygulandı",
+      "pending": "Bekliyor",
+      "inboundCount": "Gelenler",
+      "insertFilter": "Filtre ekle",
+      "inspectorTitle": "Seçim",
+      "linkSource": "Kaynak",
+      "linkTarget": "Hedef",
+      "manageInbounds": "Gelenleri yönet",
+      "roleLabel": "Rol",
+      "selfHint": "Bu, oturum açtığınız panel; kendi ayarlarından yönetilir.",
+      "sinkBlock": "Engellendi",
+      "sinkDirect": "Doğrudan"
     },
     "filters": {
       "listsTitle": "Eşleşme listeleri",
@@ -2056,8 +2072,16 @@
         "updateRule": "Kuralı güncelle",
         "deleteRule": "Kuralı sil",
         "deletedRule": "Kural silindi",
-        "fillRequired": "Ad zorunludur"
-      }
+        "fillRequired": "Ad zorunludur",
+        "needLink": "Bu kuralın ilettiği kaskad bağlantısını seçin"
+      },
+      "addRule": "Kural ekle",
+      "editRule": "Kuralı düzenle",
+      "rulePanel": "Panel",
+      "ruleScopeHint": "Boş bırakılırsa o panelin tüm gelenleri eşleşir.",
+      "ruleActionHint": "Engelle eşleşen trafiği düşürür, Doğrudan yerelden çıkarır, Kaskad seçilen bağlantıdan iletir.",
+      "ruleLink": "Kaskad bağlantısı",
+      "ruleLinkHint": "Eşleşen trafiğin iletildiği bağlantı."
     }
   },
   "tgbot": {

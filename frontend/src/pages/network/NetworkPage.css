@@ -87,3 +87,94 @@
 .cascade-edge.is-paused {
   opacity: 0.45;
 }
+
+.panel-node.is-selected,
+.filter-node.is-selected {
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 2px var(--ant-color-primary-border, rgba(22, 119, 255, 0.3));
+}
+
+.panel-node-all {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding: 2px 6px;
+  border-top: 1px dashed var(--ant-color-border-secondary);
+  color: var(--ant-color-text-tertiary);
+  font-size: 11px;
+}
+
+.filter-node {
+  position: relative;
+  min-width: 200px;
+  max-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--ant-color-warning-border, var(--ant-color-border));
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-bg-container);
+  box-shadow: var(--ant-box-shadow-tertiary, 0 1px 2px rgba(0, 0, 0, 0.06));
+}
+
+.filter-node.is-disabled {
+  opacity: 0.55;
+}
+
+.filter-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-node-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-node-lists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.filter-node-list {
+  margin: 0;
+}
+
+.filter-node-empty,
+.filter-node-scope {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.filter-node-pending {
+  margin-top: 6px;
+}
+
+.sink-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px dashed var(--ant-color-border);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.sink-node.is-block {
+  border-color: var(--ant-color-error-border, var(--ant-color-error));
+  color: var(--ant-color-error);
+}
+
+.sink-node.is-direct {
+  border-color: var(--ant-color-success-border, var(--ant-color-success));
+  color: var(--ant-color-success);
+}
+
+.filter-edge.is-paused,
+.block-edge.is-paused,
+.direct-edge.is-paused {
+  opacity: 0.45;
+}

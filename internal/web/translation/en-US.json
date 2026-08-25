@@ -2012,8 +2012,24 @@
         "linked": "Cascade created",
         "unlinked": "Cascade removed",
         "dragHint": "Drag from an inbound to an inbound",
-        "samePanel": "A cascade must join two different panels"
-      }
+        "samePanel": "A cascade must join two different panels",
+        "allInboundsHint": "The \"all inbounds\" port only feeds filters — drag from a single inbound to cascade.",
+        "panelMissing": "This panel's record could not be loaded; refresh and try again."
+      },
+      "allInbounds": "all inbounds",
+      "applied": "Config",
+      "appliedYes": "Applied",
+      "pending": "Pending",
+      "inboundCount": "Inbounds",
+      "insertFilter": "Insert filter",
+      "inspectorTitle": "Selection",
+      "linkSource": "From",
+      "linkTarget": "To",
+      "manageInbounds": "Manage inbounds",
+      "roleLabel": "Role",
+      "selfHint": "This is the panel you are logged into; it is managed from its own settings.",
+      "sinkBlock": "Blocked",
+      "sinkDirect": "Direct"
     },
     "filters": {
       "listsTitle": "Matcher lists",
@@ -2056,8 +2072,16 @@
         "updateRule": "Update rule",
         "deleteRule": "Delete rule",
         "deletedRule": "Rule deleted",
-        "fillRequired": "A name is required"
-      }
+        "fillRequired": "A name is required",
+        "needLink": "Pick the cascade link this rule forwards to"
+      },
+      "addRule": "Add rule",
+      "editRule": "Edit rule",
+      "rulePanel": "Panel",
+      "ruleScopeHint": "Leave empty to match every inbound on that panel.",
+      "ruleActionHint": "Block drops matched traffic, Direct sends it out locally, Cascade forwards it over the chosen link.",
+      "ruleLink": "Cascade link",
+      "ruleLinkHint": "The link matched traffic is forwarded over."
     }
   },
   "tgbot": {

@@ -224,3 +224,63 @@ func TestNetworkLinkRoundTrip(t *testing.T) {
 		t.Fatalf("graph links = %+v, want none after delete", graph.Links)
 	}
 }
+
+// A filter node sits on a cascade edge, so deleting that edge underneath it
+// would leave a rule pointing at nothing: still enabled, matching nothing,
+// forwarding nowhere.
+func TestNetworkDeleteLinkRefusedWhileAFilterSitsOnIt(t *testing.T) {
+	initNetworkTestDB(t)
+	db := database.GetDB()
+	for _, m := range []any{&model.FilterRule{}, &model.FilterList{}} {
+		if err := db.Where("1 = 1").Delete(m).Error; err != nil {
+			t.Fatalf("clear table: %v", err)
+		}
+	}
+	node := seedGraphNode(t, "exit", model.NodeRoleNode)
+	seedGraphInbound(t, "entry-in", 39201, nil)
+	target := seedGraphInbound(t, "exit-in", 39202, &node.Id)
+
+	s := NetworkService{}
+	link := &model.CascadeLink{
+		SourcePanelId: SelfPanelId, SourceInboundTag: "entry-in",
+		TargetPanelId: node.Id, TargetInboundId: target.Id, Enable: true,
+	}
+	if err := s.AddLink(link); err != nil {
+		t.Fatalf("AddLink: %v", err)
+	}
+
+	filters := FilterService{}
+	list := &model.FilterList{Name: "ads", Kind: model.FilterKindDomain, Entries: []string{"ads.example.com"}, Enable: true}
+	if err := filters.CreateList(list); err != nil {
+		t.Fatalf("CreateList: %v", err)
+	}
+	rule := &model.FilterRule{
+		Name: "ads to exit", PanelId: SelfPanelId, ListIds: []int{list.Id},
+		Action: model.FilterActionCascade, CascadeLinkId: link.Id, Enable: true,
+	}
+	if err := filters.CreateRule(rule); err != nil {
+		t.Fatalf("CreateRule: %v", err)
+	}
+
+	err := s.DeleteLink(link.Id)
+	if err == nil {
+		t.Fatal("DeleteLink removed an edge a filter still routes over")
+	}
+	if !strings.Contains(err.Error(), "ads to exit") {
+		t.Fatalf("error = %q, want it to name the filter", err.Error())
+	}
+	var still int64
+	if err := db.Model(model.CascadeLink{}).Where("id = ?", link.Id).Count(&still).Error; err != nil {
+		t.Fatalf("count links: %v", err)
+	}
+	if still != 1 {
+		t.Fatal("the refused delete removed the link anyway")
+	}
+
+	if err := filters.DeleteRule(rule.Id); err != nil {
+		t.Fatalf("DeleteRule: %v", err)
+	}
+	if err := s.DeleteLink(link.Id); err != nil {
+		t.Fatalf("DeleteLink after the filter is gone: %v", err)
+	}
+}
