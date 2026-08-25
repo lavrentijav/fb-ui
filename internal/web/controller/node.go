@@ -35,6 +35,7 @@ func (a *NodeController) initRouter(g *gin.RouterGroup) {
 	g.POST("/update/:id", a.update)
 	g.POST("/del/:id", a.del)
 	g.POST("/setEnable/:id", a.setEnable)
+	g.POST("/setRole/:id", a.setRole)
 
 	g.POST("/test", a.test)
 	g.POST("/certFingerprint", a.certFingerprint)
@@ -215,6 +216,25 @@ func (a *NodeController) del(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.delete"), nil)
+}
+
+// setRole flips one registered panel between node and master. The row is the
+// same either way, so this is an edit, not a delete-and-recreate.
+func (a *NodeController) setRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	req, ok := middleware.BindAndValidate[service.NodeRoleChangeRequest](c)
+	if !ok {
+		return
+	}
+	if err := a.nodeService.SetRole(id, req); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.setRole"), err)
+		return
+	}
+	jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.setRole"), nil)
 }
 
 func (a *NodeController) setEnable(c *gin.Context) {

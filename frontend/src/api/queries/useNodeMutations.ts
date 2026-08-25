@@ -15,6 +15,22 @@ export interface NodeUpdateResult {
   error?: string;
 }
 
+export interface NodeRoleChangePayload {
+  role: 'node' | 'master';
+  scheme?: string;
+  basePath?: string;
+  allowPrivateAddress?: boolean;
+  address?: string;
+  port?: number;
+  apiToken?: string;
+  tlsVerifyMode?: string;
+  pinnedCertSha256?: string;
+  subDomain?: string;
+  subPort?: number;
+  subPath?: string;
+  subIps?: string[];
+}
+
 export interface RemoteInboundOption {
   tag: string;
   remark?: string;
@@ -59,6 +75,18 @@ export function useNodeMutations() {
     },
   });
 
+  const setRoleMut = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: NodeRoleChangePayload }) =>
+      HttpUtil.post(`/panel/api/nodes/setRole/${id}`, payload),
+    onSuccess: (msg) => {
+      if (msg?.success) {
+        invalidate();
+        queryClient.invalidateQueries({ queryKey: keys.peers.root() });
+        queryClient.invalidateQueries({ queryKey: keys.network.root() });
+      }
+    },
+  });
+
   const probeMut = useMutation({
     mutationFn: async (id: number): Promise<Msg<ProbeResult>> => {
       const raw = await HttpUtil.post(`/panel/api/nodes/probe/${id}`);
@@ -88,6 +116,8 @@ export function useNodeMutations() {
     update: (id: number, payload: Partial<NodeRecord>) => updateMut.mutateAsync({ id, payload }),
     remove: (id: number) => removeMut.mutateAsync(id),
     setEnable: (id: number, enable: boolean) => setEnableMut.mutateAsync({ id, enable }),
+    setRole: (id: number, payload: NodeRoleChangePayload) =>
+      setRoleMut.mutateAsync({ id, payload }),
     probe: (id: number) => probeMut.mutateAsync(id),
     updatePanels: (ids: number[], dev: boolean): Promise<Msg<NodeUpdateResult[]>> =>
       updatePanelsMut.mutateAsync({ ids, dev }),

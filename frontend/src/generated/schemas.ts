@@ -2865,6 +2865,100 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "NodeRoleChangeRequest": {
+    "description": "NodeRoleChangeRequest carries only what the *target* role needs. Fields of\nthe role being left stay on the row, so flipping back does not re-ask them.",
+    "properties": {
+      "address": {
+        "description": "Target role \"node\": how this panel reaches the node's panel API.",
+        "example": "node1.example.com",
+        "type": "string"
+      },
+      "allowPrivateAddress": {
+        "example": false,
+        "type": "boolean"
+      },
+      "apiToken": {
+        "example": "abcdef0123456789",
+        "type": "string"
+      },
+      "basePath": {
+        "example": "/",
+        "type": "string"
+      },
+      "pinnedCertSha256": {
+        "type": "string"
+      },
+      "port": {
+        "example": 2053,
+        "maximum": 65535,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "role": {
+        "enum": [
+          "master",
+          "node"
+        ],
+        "example": "master",
+        "type": "string"
+      },
+      "scheme": {
+        "enum": [
+          "http",
+          "https"
+        ],
+        "example": "https",
+        "type": "string"
+      },
+      "subDomain": {
+        "description": "Target role \"master\": how clients reach its subscription server.",
+        "example": "sub2.example.com",
+        "type": "string"
+      },
+      "subIps": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "subPath": {
+        "example": "/sub/",
+        "type": "string"
+      },
+      "subPort": {
+        "example": 2096,
+        "maximum": 65535,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "tlsVerifyMode": {
+        "enum": [
+          "verify",
+          "skip",
+          "pin",
+          "mtls"
+        ],
+        "example": "verify",
+        "type": "string"
+      }
+    },
+    "required": [
+      "address",
+      "allowPrivateAddress",
+      "apiToken",
+      "basePath",
+      "pinnedCertSha256",
+      "port",
+      "role",
+      "scheme",
+      "subDomain",
+      "subIps",
+      "subPath",
+      "subPort",
+      "tlsVerifyMode"
+    ],
+    "type": "object"
+  },
   "NodeView": {
     "description": "NodeView is the browser/API read contract for nodes. Credentials are\nwrite-only: responses expose only whether a node has a token configured.",
     "properties": {

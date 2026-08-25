@@ -18,6 +18,7 @@ import { CheckCircleOutlined, CloseCircleOutlined, CloudServerOutlined } from '@
 
 import { usePeersQuery, type PeerRecord } from '@/api/queries/usePeersQuery';
 import { usePeerMutations } from '@/api/queries/usePeerMutations';
+import { useNodeMutations } from '@/api/queries/useNodeMutations';
 import { useAllSettings } from '@/api/queries/useAllSettings';
 import { keys } from '@/api/queryKeys';
 import { HttpUtil } from '@/utils';
@@ -25,6 +26,7 @@ import { parseMsg } from '@/utils/zodValidate';
 import { PeerIdentitySchema } from '@/schemas/peer';
 import PeerList from './PeerList';
 import PeerFormModal from './PeerFormModal';
+import NodeRoleModal from './NodeRoleModal';
 
 // The master half of the nodes page: sibling panels this one falls back to,
 // reached over their subscription endpoint rather than the node runtime.
@@ -35,6 +37,7 @@ export default function PeerPanels({ isMobile }: { isMobile: boolean }) {
 
   const { peers, totals, loading, fetched, fetchError, refetch } = usePeersQuery();
   const { create, update, remove, setEnable, probe } = usePeerMutations();
+  const { setRole } = useNodeMutations();
   const { allSetting, fetched: settingsFetched } = useAllSettings();
 
   const { data: identityKey = '' } = useQuery({
@@ -47,6 +50,8 @@ export default function PeerPanels({ isMobile }: { isMobile: boolean }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [rolePeer, setRolePeer] = useState<PeerRecord | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   const [formPeer, setFormPeer] = useState<PeerRecord | null>(null);
@@ -55,6 +60,11 @@ export default function PeerPanels({ isMobile }: { isMobile: boolean }) {
     setFormMode('add');
     setFormPeer(null);
     setFormOpen(true);
+  }, []);
+
+  const onChangeRole = useCallback((peer: PeerRecord) => {
+    setRolePeer({ ...peer });
+    setRoleOpen(true);
   }, []);
 
   const onEdit = useCallback((peer: PeerRecord) => {
@@ -188,12 +198,21 @@ export default function PeerPanels({ isMobile }: { isMobile: boolean }) {
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onProbe={onProbe}
+                onChangeRole={onChangeRole}
                 onToggleEnable={onToggleEnable}
               />
             </Col>
           </Row>
         )}
       </Spin>
+
+      <NodeRoleModal
+        open={roleOpen}
+        target="node"
+        record={rolePeer}
+        save={setRole}
+        onOpenChange={setRoleOpen}
+      />
 
       <PeerFormModal
         open={formOpen}

@@ -13,7 +13,17 @@ afterEach(() => {
 function mockPanel() {
   vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
     if (url.includes('/api/nodes/list')) {
-      return new Msg(true, '', [{ id: 1, name: 'node-msk1', enable: true, status: 'online' }]);
+      return new Msg(true, '', [
+        {
+          id: 1,
+          name: 'node-msk1',
+          enable: true,
+          status: 'online',
+          scheme: 'https',
+          address: 'msk1.example.com',
+          port: 2053,
+        },
+      ]);
     }
     if (url.includes('/api/peers/list')) {
       return new Msg(true, '', [

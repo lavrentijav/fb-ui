@@ -940,6 +940,17 @@
       "avgLatency": "متوسط الكمون",
       "roleNode": "النودز المُدارة",
       "roleMaster": "اللوحات الرئيسية",
+      "role": {
+        "makeMaster": "اجعلها لوحة رئيسية",
+        "makeNode": "أدرها كنود",
+        "selfLocked": "هذا الصف هو هذه اللوحة نفسها",
+        "toMasterTitle": "تحويل \"{name}\" إلى لوحة رئيسية",
+        "toNodeTitle": "إدارة \"{name}\" كنود",
+        "toMasterHint": "الصف نفسه يحتفظ باسمه وسجله. يتوقف التحكم فيه عبر واجهة النود، ويبدأ الإعلان عنه للعملاء كاشتراك احتياطي. تُمسح آخر حالة معروفة حتى أول فحص.",
+        "toNodeHint": "الصف نفسه يحتفظ باسمه وسجله. يتوقف الإعلان عنه للعملاء، ويبدأ التحكم فيه عبر واجهة لوحته. تُمسح آخر حالة معروفة حتى أول فحص.",
+        "fillRequired": "املأ ما يحتاجه الدور الجديد",
+        "changed": "تم تغيير الدور"
+      },
       "name": "الاسم",
       "namePlaceholder": "مثال: de-frankfurt-1",
       "addressPlaceholder": "panel.example.com أو 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "تم بدء التحديث على {ok} عقدة، فشل {failed}",
         "updateNoneEligible": "اختر عقدة واحدة على الأقل متصلة ومفعّلة",
         "saveMtls": "حفظ mTLS النود",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "تغيير دور النود"
       },
       "tlsVerifyMode": "التحقق من TLS",
       "tlsVerifyModeHint": "كيف يتحقق اللوحة من شهادة HTTPS الخاصة بالعقدة. التثبيت أو التخطّي مخصّصان للشهادات الموقّعة ذاتيًا (عُقد https فقط).",

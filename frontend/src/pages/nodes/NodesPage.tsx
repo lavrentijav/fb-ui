@@ -37,6 +37,7 @@ import { useNodeMutations } from '@/api/queries/useNodeMutations';
 import AppSidebar from '@/layouts/AppSidebar';
 import NodeList from './NodeList';
 import NodeFormModal from './NodeFormModal';
+import NodeRoleModal from './NodeRoleModal';
 import PeerPanels from './PeerPanels';
 import { setMessageInstance } from '@/utils/messageBus';
 import { HttpUtil } from '@/utils';
@@ -103,6 +104,7 @@ export default function NodesPage() {
     fetchFingerprint,
     fetchInbounds,
     probe,
+    setRole,
     updatePanels,
   } = useNodeMutations();
 
@@ -119,6 +121,8 @@ export default function NodesPage() {
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   const [formNode, setFormNode] = useState<NodeRecord | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [roleNode, setRoleNode] = useState<NodeRecord | null>(null);
   const [mtlsOpen, setMtlsOpen] = useState(false);
   const [trustCa, setTrustCa] = useState('');
   const [copyingCa, setCopyingCa] = useState(false);
@@ -163,6 +167,11 @@ export default function NodesPage() {
     setFormMode('add');
     setFormNode(null);
     setFormOpen(true);
+  }, []);
+
+  const onChangeRole = useCallback((node: NodeRecord) => {
+    setRoleNode({ ...node });
+    setRoleOpen(true);
   }, []);
 
   const onEdit = useCallback((node: NodeRecord) => {
@@ -392,6 +401,7 @@ export default function NodesPage() {
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onProbe={onProbe}
+                        onChangeRole={onChangeRole}
                         onToggleEnable={onToggleEnable}
                         onUpdateNode={onUpdateNode}
                         onUpdateSelected={onUpdateSelected}
@@ -403,6 +413,14 @@ export default function NodesPage() {
             )}
           </Layout.Content>
         </Layout>
+
+        <NodeRoleModal
+          open={roleOpen}
+          target="master"
+          record={roleNode}
+          save={setRole}
+          onOpenChange={setRoleOpen}
+        />
 
         <NodeFormModal
           open={formOpen}

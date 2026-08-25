@@ -17,6 +17,7 @@ import {
   PlusOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
+  SwapOutlined,
   TeamOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -39,6 +40,7 @@ interface NodeListProps {
   onEdit: (node: NodeRecord) => void;
   onDelete: (node: NodeRecord) => void;
   onProbe: (node: NodeRecord) => void;
+  onChangeRole: (node: NodeRecord) => void;
   onToggleEnable: (node: NodeRecord, next: boolean) => void;
   onUpdateNode: (node: NodeRecord) => void;
   onUpdateSelected: () => void;
@@ -170,6 +172,7 @@ export default function NodeList({
   onEdit,
   onDelete,
   onProbe,
+  onChangeRole,
   onToggleEnable,
   onUpdateNode,
   onUpdateSelected,
@@ -275,6 +278,16 @@ export default function NodeList({
                   />
                 </Tooltip>
               )}
+              <Tooltip title={t('pages.nodes.role.makeMaster')}>
+                <Button
+                  type="text"
+                  size="small"
+                  style={{ fontSize: 16 }}
+                  icon={<SwapOutlined />}
+                  aria-label={t('pages.nodes.role.makeMaster')}
+                  onClick={() => onChangeRole(record)}
+                />
+              </Tooltip>
               <Tooltip title={t('edit')}>
                 <Button
                   type="text"
@@ -523,6 +536,7 @@ export default function NodeList({
       latestVersion,
       onToggleEnable,
       onProbe,
+      onChangeRole,
       onEdit,
       onDelete,
       onUpdateNode,
@@ -636,6 +650,15 @@ export default function NodeList({
                                     },
                                   ]
                                 : []),
+                              {
+                                key: 'role',
+                                label: (
+                                  <>
+                                    <SwapOutlined /> {t('pages.nodes.role.makeMaster')}
+                                  </>
+                                ),
+                                onClick: () => onChangeRole(record),
+                              },
                               {
                                 key: 'edit',
                                 label: (

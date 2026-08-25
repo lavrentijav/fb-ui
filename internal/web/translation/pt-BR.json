@@ -940,6 +940,17 @@
       "avgLatency": "Latência média",
       "roleNode": "Nós gerenciados",
       "roleMaster": "Painéis mestres",
+      "role": {
+        "makeMaster": "Tornar mestre",
+        "makeNode": "Gerenciar como nó",
+        "selfLocked": "Esta linha é este próprio painel",
+        "toMasterTitle": "Tornar \"{name}\" um painel mestre",
+        "toNodeTitle": "Gerenciar \"{name}\" como nó",
+        "toMasterHint": "A mesma linha mantém nome e histórico. Ela deixa de ser controlada pela API de nó e passa a ser anunciada aos clientes como assinatura reserva. O último estado conhecido é limpo até a primeira sondagem.",
+        "toNodeHint": "A mesma linha mantém nome e histórico. Ela deixa de ser anunciada aos clientes e passa a ser controlada pela API do seu painel. O último estado conhecido é limpo até a primeira sondagem.",
+        "fillRequired": "Preencha o que o novo papel exige",
+        "changed": "Papel alterado"
+      },
       "name": "Nome",
       "namePlaceholder": "ex.: de-frankfurt-1",
       "addressPlaceholder": "panel.example.com ou 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "Atualização iniciada em {ok} nó(s), {failed} falharam",
         "updateNoneEligible": "Selecione pelo menos um nó online e ativo",
         "saveMtls": "Salvar mTLS do nó",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "Alterar o papel do nó"
       },
       "tlsVerifyMode": "Verificação TLS",
       "tlsVerifyModeHint": "Como o painel valida o certificado HTTPS do nó. Fixar ou Ignorar são para certificados autoassinados (apenas nós https).",

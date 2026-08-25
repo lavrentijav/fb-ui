@@ -3,7 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
 import type { BadgeProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SwapOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 
 import type { PeerRecord } from '@/api/queries/usePeersQuery';
 
@@ -15,6 +21,7 @@ export interface PeerListProps {
   onEdit: (peer: PeerRecord) => void;
   onDelete: (peer: PeerRecord) => void;
   onProbe: (peer: PeerRecord) => void;
+  onChangeRole: (peer: PeerRecord) => void;
   onToggleEnable: (peer: PeerRecord, next: boolean) => void;
 }
 
@@ -38,6 +45,7 @@ export default function PeerList({
   onEdit,
   onDelete,
   onProbe,
+  onChangeRole,
   onToggleEnable,
 }: PeerListProps) {
   const { t } = useTranslation();
@@ -133,6 +141,19 @@ export default function PeerList({
                 aria-label={t('pages.peers.probe')}
               />
             </Tooltip>
+            <Tooltip
+              title={
+                peer.isSelf ? t('pages.nodes.role.selfLocked') : t('pages.nodes.role.makeNode')
+              }
+            >
+              <Button
+                size="small"
+                icon={<SwapOutlined />}
+                disabled={!!peer.isSelf}
+                onClick={() => onChangeRole(peer)}
+                aria-label={t('pages.nodes.role.makeNode')}
+              />
+            </Tooltip>
             <Tooltip title={t('edit')}>
               <Button
                 size="small"
@@ -154,7 +175,7 @@ export default function PeerList({
         ),
       },
     ],
-    [t, onEdit, onDelete, onProbe, onToggleEnable],
+    [t, onEdit, onDelete, onProbe, onChangeRole, onToggleEnable],
   );
 
   return (

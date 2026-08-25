@@ -940,6 +940,17 @@
       "avgLatency": "平均延迟",
       "roleNode": "受管节点",
       "roleMaster": "主面板",
+      "role": {
+        "makeMaster": "设为主面板",
+        "makeNode": "作为节点管理",
+        "selfLocked": "该行就是本面板",
+        "toMasterTitle": "将“{name}”设为主面板",
+        "toNodeTitle": "将“{name}”作为节点管理",
+        "toMasterHint": "仍是同一行，名称与历史保留。它不再通过节点 API 受控，而开始作为备用订阅向客户端下发。已知状态将清空，直到第一次探测。",
+        "toNodeHint": "仍是同一行，名称与历史保留。它不再向客户端下发，而开始通过其面板 API 受控。已知状态将清空，直到第一次探测。",
+        "fillRequired": "请填写新角色所需的字段",
+        "changed": "角色已更改"
+      },
       "name": "名称",
       "namePlaceholder": "例如：de-frankfurt-1",
       "addressPlaceholder": "panel.example.com 或 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "已在 {ok} 个节点上触发更新，{failed} 个失败",
         "updateNoneEligible": "请至少选择一个在线且已启用的节点",
         "saveMtls": "保存节点 mTLS",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "更改节点角色"
       },
       "tlsVerifyMode": "TLS 校验",
       "tlsVerifyModeHint": "面板如何校验节点的 HTTPS 证书。固定或跳过用于自签名证书（仅 https 节点）。",

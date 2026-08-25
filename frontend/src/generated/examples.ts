@@ -688,6 +688,23 @@ export const EXAMPLES: Record<string, unknown> = {
     "scheme": "http",
     "tlsVerifyMode": "verify"
   },
+  "NodeRoleChangeRequest": {
+    "address": "node1.example.com",
+    "allowPrivateAddress": false,
+    "apiToken": "abcdef0123456789",
+    "basePath": "/",
+    "pinnedCertSha256": "",
+    "port": 2053,
+    "role": "master",
+    "scheme": "https",
+    "subDomain": "sub2.example.com",
+    "subIps": [
+      ""
+    ],
+    "subPath": "/sub/",
+    "subPort": 2096,
+    "tlsVerifyMode": "verify"
+  },
   "NodeView": {
     "activeCount": 20,
     "address": "node.example.com",

@@ -1351,6 +1351,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
+        path: '/panel/api/nodes/setRole/:id',
+        summary:
+          'Flip one registered panel between the two roles of the same row: a node this panel controls, or a master it advertises as a subscription fallback. Send only what the target role needs \u2014 address/port/apiToken for node, subDomain/subPort/subPath for master; the other role\u2019s fields are kept so flipping back does not re-ask them. Observed health (status, latency, learned key) is reset, since the two roles are probed by different jobs. Refused while inbounds are still attached to the node, and for the row that is this panel itself.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
+        body: '{\n  "role": "master",\n  "scheme": "https",\n  "subDomain": "sub2.example.com",\n  "subPort": 2096,\n  "subPath": "/sub/",\n  "subIps": ["185.51.100.2"],\n  "basePath": "/",\n  "allowPrivateAddress": false\n}',
+      },
+      {
+        method: 'POST',
         path: '/panel/api/nodes/test',
         summary:
           'Probe a node without saving it. Uses the body as connection details and returns the same heartbeat snapshot a registered node would have.',

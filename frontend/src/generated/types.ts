@@ -651,6 +651,22 @@ export interface NodeMutationRequest {
   tlsVerifyMode: string;
 }
 
+export interface NodeRoleChangeRequest {
+  address: string;
+  allowPrivateAddress: boolean;
+  apiToken: string;
+  basePath: string;
+  pinnedCertSha256: string;
+  port: number;
+  role: string;
+  scheme: string;
+  subDomain: string;
+  subIps: string[];
+  subPath: string;
+  subPort: number;
+  tlsVerifyMode: string;
+}
+
 export interface NodeView {
   activeCount: number;
   address: string;

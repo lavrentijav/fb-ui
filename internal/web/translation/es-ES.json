@@ -940,6 +940,17 @@
       "avgLatency": "Latencia media",
       "roleNode": "Nodos gestionados",
       "roleMaster": "Paneles maestros",
+      "role": {
+        "makeMaster": "Convertir en maestro",
+        "makeNode": "Gestionar como nodo",
+        "selfLocked": "Esta fila es este mismo panel",
+        "toMasterTitle": "Convertir «{name}» en panel maestro",
+        "toNodeTitle": "Gestionar «{name}» como nodo",
+        "toMasterHint": "La misma fila conserva su nombre y su historial. Deja de controlarse por la API de nodo y pasa a anunciarse a los clientes como suscripción de reserva. Su último estado conocido se borra hasta el primer sondeo.",
+        "toNodeHint": "La misma fila conserva su nombre y su historial. Deja de anunciarse a los clientes y pasa a controlarse por la API de su panel. Su último estado conocido se borra hasta el primer sondeo.",
+        "fillRequired": "Rellena lo que necesita el nuevo rol",
+        "changed": "Rol cambiado"
+      },
       "name": "Nombre",
       "namePlaceholder": "p. ej. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com o 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "Actualización iniciada en {ok} nodo(s), {failed} fallaron",
         "updateNoneEligible": "Selecciona al menos un nodo en línea y habilitado",
         "saveMtls": "Guardar mTLS del nodo",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "Cambiar el rol del nodo"
       },
       "tlsVerifyMode": "Verificación TLS",
       "tlsVerifyModeHint": "Cómo valida el panel el certificado HTTPS del nodo. Fijar u Omitir son para certificados autofirmados (solo nodos https).",

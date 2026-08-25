@@ -940,6 +940,17 @@
       "avgLatency": "Ortalama Gecikme",
       "roleNode": "Yönetilen düğümler",
       "roleMaster": "Ana paneller",
+      "role": {
+        "makeMaster": "Ana panel yap",
+        "makeNode": "Düğüm olarak yönet",
+        "selfLocked": "Bu satır bu panelin kendisi",
+        "toMasterTitle": "\"{name}\" ana panele dönüştürülsün",
+        "toNodeTitle": "\"{name}\" düğüm olarak yönetilsin",
+        "toMasterHint": "Aynı satır adını ve geçmişini korur. Düğüm API'si üzerinden yönetilmeyi bırakır ve istemcilere yedek abonelik olarak duyurulmaya başlar. Bilinen son durumu ilk yoklamaya kadar temizlenir.",
+        "toNodeHint": "Aynı satır adını ve geçmişini korur. İstemcilere duyurulmayı bırakır ve kendi panel API'si üzerinden yönetilmeye başlar. Bilinen son durumu ilk yoklamaya kadar temizlenir.",
+        "fillRequired": "Yeni rolün gerektirdiği alanları doldurun",
+        "changed": "Rol değiştirildi"
+      },
       "name": "Ad",
       "namePlaceholder": "ör. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com veya 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "{ok} düğümde güncelleme başlatıldı, {failed} başarısız",
         "updateNoneEligible": "En az bir çevrimiçi ve etkin düğüm seçin",
         "saveMtls": "Düğüm mTLS kaydet",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "Düğüm rolünü değiştir"
       },
       "tlsVerifyMode": "TLS Doğrulaması",
       "tlsVerifyModeHint": "Panelin düğümün HTTPS sertifikasını nasıl doğrulayacağını belirler. Sabitle veya Atla, kendinden imzalı sertifikalar içindir (yalnızca https düğümleri).",

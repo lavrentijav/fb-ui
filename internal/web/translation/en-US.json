@@ -1058,6 +1058,17 @@
       "avgLatency": "Avg Latency",
       "roleNode": "Managed nodes",
       "roleMaster": "Master panels",
+      "role": {
+        "makeMaster": "Make it a master",
+        "makeNode": "Manage it as a node",
+        "selfLocked": "This row is this panel itself",
+        "toMasterTitle": "Turn \"{name}\" into a master panel",
+        "toNodeTitle": "Manage \"{name}\" as a node",
+        "toMasterHint": "The same row keeps its name and history. It stops being controlled over the node API and starts being advertised to clients as a subscription fallback. Its last known health is cleared until the first probe.",
+        "toNodeHint": "The same row keeps its name and history. It stops being advertised to clients and starts being controlled over its panel API. Its last known health is cleared until the first probe.",
+        "fillRequired": "Fill in what the new role needs",
+        "changed": "Role changed"
+      },
       "name": "Name",
       "namePlaceholder": "e.g. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com or 1.2.3.4",
@@ -1134,7 +1145,8 @@
         "updateResult": "Update triggered on {ok} node(s), {failed} failed",
         "updateNoneEligible": "Select at least one online, enabled node",
         "saveMtls": "Save node mTLS",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "Change node role"
       },
       "tlsVerifyMode": "TLS verification",
       "tlsVerifyModeHint": "How the panel validates the node's HTTPS certificate. Pin or Skip are for self-signed certs (https nodes only).",

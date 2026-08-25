@@ -940,6 +940,17 @@
       "avgLatency": "Latensi Rata-rata",
       "roleNode": "Node terkelola",
       "roleMaster": "Panel master",
+      "role": {
+        "makeMaster": "Jadikan master",
+        "makeNode": "Kelola sebagai node",
+        "selfLocked": "Baris ini adalah panel ini sendiri",
+        "toMasterTitle": "Jadikan \"{name}\" panel master",
+        "toNodeTitle": "Kelola \"{name}\" sebagai node",
+        "toMasterHint": "Baris yang sama tetap dengan nama dan riwayatnya. Ia berhenti dikendalikan lewat API node dan mulai diiklankan ke klien sebagai langganan cadangan. Status terakhir yang diketahui dihapus sampai probe pertama.",
+        "toNodeHint": "Baris yang sama tetap dengan nama dan riwayatnya. Ia berhenti diiklankan ke klien dan mulai dikendalikan lewat API panelnya. Status terakhir yang diketahui dihapus sampai probe pertama.",
+        "fillRequired": "Isi yang dibutuhkan peran baru",
+        "changed": "Peran diubah"
+      },
       "name": "Nama",
       "namePlaceholder": "mis. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com atau 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "Pembaruan dipicu pada {ok} node, {failed} gagal",
         "updateNoneEligible": "Pilih minimal satu node online dan aktif",
         "saveMtls": "Simpan mTLS node",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "Ubah peran node"
       },
       "tlsVerifyMode": "Verifikasi TLS",
       "tlsVerifyModeHint": "Cara panel memvalidasi sertifikat HTTPS node. Pin atau Lewati untuk sertifikat self-signed (hanya node https).",

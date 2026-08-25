@@ -97,6 +97,36 @@ export const NodeFormSchema = z
     }
   });
 
+// Role change asks only for the target role's own fields; which of them are
+// required depends on that role, so the check lives in a superRefine.
+export const NodeRoleFormSchema = z
+  .object({
+    role: z.enum(['node', 'master']),
+    scheme: z.enum(['http', 'https']),
+    basePath: z.string(),
+    allowPrivateAddress: z.boolean(),
+    address: z.string().trim(),
+    port: z.number().int().min(1).max(65535),
+    apiToken: z.string().trim(),
+    tlsVerifyMode: z.enum(['verify', 'skip', 'pin', 'mtls']),
+    pinnedCertSha256: z.string(),
+    subDomain: z.string().trim(),
+    subPort: z.number().int().min(1).max(65535),
+    subPath: z.string(),
+    ipsText: z.string(),
+  })
+  .superRefine((val, ctx) => {
+    const missing = (path: string) =>
+      ctx.addIssue({ code: 'custom', path: [path], message: 'pages.nodes.role.fillRequired' });
+    if (val.role === 'master') {
+      if (!val.subDomain) missing('subDomain');
+      return;
+    }
+    if (!val.address) missing('address');
+    if (!val.apiToken && val.tlsVerifyMode !== 'mtls') missing('apiToken');
+  });
+
 export type NodeRecord = z.infer<typeof NodeRecordSchema>;
 export type ProbeResult = z.infer<typeof ProbeResultSchema>;
 export type NodeFormValues = z.infer<typeof NodeFormSchema>;
+export type NodeRoleFormValues = z.infer<typeof NodeRoleFormSchema>;

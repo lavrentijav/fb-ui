@@ -696,6 +696,23 @@ export const NodeMutationRequestSchema = z.object({
 });
 export type NodeMutationRequest = z.infer<typeof NodeMutationRequestSchema>;
 
+export const NodeRoleChangeRequestSchema = z.object({
+  address: z.string(),
+  allowPrivateAddress: z.boolean(),
+  apiToken: z.string(),
+  basePath: z.string(),
+  pinnedCertSha256: z.string(),
+  port: z.number().int().min(1).max(65535),
+  role: z.enum(['master', 'node']),
+  scheme: z.enum(['http', 'https']),
+  subDomain: z.string(),
+  subIps: z.array(z.string()),
+  subPath: z.string(),
+  subPort: z.number().int().min(1).max(65535),
+  tlsVerifyMode: z.enum(['verify', 'skip', 'pin', 'mtls']),
+});
+export type NodeRoleChangeRequest = z.infer<typeof NodeRoleChangeRequestSchema>;
+
 export const NodeViewSchema = z.object({
   activeCount: z.number().int(),
   address: z.string(),

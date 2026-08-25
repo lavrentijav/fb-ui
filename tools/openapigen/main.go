@@ -93,6 +93,7 @@ func run(root, outDir string) error {
 			StructAllow: setOf(
 				"InboundOption",
 				"NodeMutationRequest",
+				"NodeRoleChangeRequest",
 				"NodeView",
 				"ProbeResultUI",
 				"RealityScanResult",

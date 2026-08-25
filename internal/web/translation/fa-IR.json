@@ -940,6 +940,17 @@
       "avgLatency": "میانگین تاخیر",
       "roleNode": "نودهای مدیریت‌شده",
       "roleMaster": "پنل‌های مستر",
+      "role": {
+        "makeMaster": "تبدیل به مستر",
+        "makeNode": "مدیریت به‌عنوان نود",
+        "selfLocked": "این ردیف خودِ همین پنل است",
+        "toMasterTitle": "تبدیل «{name}» به پنل مستر",
+        "toNodeTitle": "مدیریت «{name}» به‌عنوان نود",
+        "toMasterHint": "همان ردیف با نام و تاریخچه‌اش باقی می‌ماند. کنترل آن از طریق API نود متوقف می‌شود و به‌عنوان اشتراک پشتیبان به کلاینت‌ها اعلام می‌شود. آخرین وضعیت شناخته‌شده تا اولین بررسی پاک می‌شود.",
+        "toNodeHint": "همان ردیف با نام و تاریخچه‌اش باقی می‌ماند. اعلام آن به کلاینت‌ها متوقف می‌شود و از طریق API پنل خودش کنترل می‌شود. آخرین وضعیت شناخته‌شده تا اولین بررسی پاک می‌شود.",
+        "fillRequired": "آنچه نقش جدید لازم دارد را پر کنید",
+        "changed": "نقش تغییر کرد"
+      },
       "name": "نام",
       "namePlaceholder": "مثلاً de-frankfurt-1",
       "addressPlaceholder": "panel.example.com یا 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "به‌روزرسانی روی {ok} نود آغاز شد، {failed} ناموفق",
         "updateNoneEligible": "حداقل یک نود آنلاین و فعال انتخاب کنید",
         "saveMtls": "ذخیره mTLS نود",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "تغییر نقش نود"
       },
       "tlsVerifyMode": "اعتبارسنجی TLS",
       "tlsVerifyModeHint": "اینکه پنل گواهی HTTPS نود را چطور بررسی کند. Pin یا Skip برای گواهی‌های self-signed است (فقط نودهای https).",

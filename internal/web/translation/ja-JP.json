@@ -940,6 +940,17 @@
       "avgLatency": "平均レイテンシ",
       "roleNode": "管理ノード",
       "roleMaster": "マスターパネル",
+      "role": {
+        "makeMaster": "マスターにする",
+        "makeNode": "ノードとして管理",
+        "selfLocked": "この行はこのパネル自身です",
+        "toMasterTitle": "「{name}」をマスターパネルにする",
+        "toNodeTitle": "「{name}」をノードとして管理する",
+        "toMasterHint": "同じ行のまま、名前と履歴は保持されます。ノード API での制御をやめ、クライアントへフォールバック購読として通知されるようになります。最後に観測した状態は最初のプローブまでクリアされます。",
+        "toNodeHint": "同じ行のまま、名前と履歴は保持されます。クライアントへの通知をやめ、そのパネル API 経由で制御されるようになります。最後に観測した状態は最初のプローブまでクリアされます。",
+        "fillRequired": "新しいロールに必要な項目を入力してください",
+        "changed": "ロールを変更しました"
+      },
       "name": "名前",
       "namePlaceholder": "例: de-frankfurt-1",
       "addressPlaceholder": "panel.example.com または 1.2.3.4",
@@ -1016,7 +1027,8 @@
         "updateResult": "{ok} 個のノードで更新を開始、{failed} 個失敗",
         "updateNoneEligible": "オンラインで有効なノードを少なくとも1つ選択してください",
         "saveMtls": "ノード mTLS を保存",
-        "reloadMtls": "Reload master mTLS credential"
+        "reloadMtls": "Reload master mTLS credential",
+        "setRole": "ノードのロール変更"
       },
       "tlsVerifyMode": "TLS 検証",
       "tlsVerifyModeHint": "パネルがノードの HTTPS 証明書を検証する方法。ピン留めやスキップは自己署名証明書向け（https ノードのみ）。",
