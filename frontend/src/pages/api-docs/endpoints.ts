@@ -1509,6 +1509,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
+        path: '/panel/api/network/link/update/:id',
+        summary:
+          'Rewrite an edge. outboundTag names the outbound on the source panel this link routes onto \u2014 leave it empty to wait for a generated one, which the panel cannot build yet, so the link stays pending. Whether the edge reached a config is owned by the config generator and is not writable here.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Link ID.' }],
+        body: '{\n  "remark": "RU entry to FI exit",\n  "sourcePanelId": 0,\n  "sourceInboundTag": "in-39101-tcp",\n  "targetPanelId": 2,\n  "targetInboundId": 7,\n  "targetClientEmail": "",\n  "outboundTag": "to-fi2",\n  "enable": true\n}',
+      },
+      {
+        method: 'POST',
         path: '/panel/api/network/link/del/:id',
         summary: 'Remove a cascade edge and re-push the source panel.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'Cascade link ID.' }],

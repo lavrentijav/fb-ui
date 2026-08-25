@@ -2046,7 +2046,10 @@
         "filterHint": "Arrástrala y conéctala tras una fuente u otra capa.",
         "blockHint": "Terminal del tráfico que una capa bloquea.",
         "directHint": "Terminal del tráfico que una capa saca localmente."
-      }
+      },
+      "linkOutbound": "Outbound",
+      "linkOutboundPlaceholder": "etiqueta de un outbound del panel de origen",
+      "linkOutboundHint": "El outbound por el que va esta arista. Vacío espera uno generado, que el panel aún no sabe construir."
     },
     "filters": {
       "listsTitle": "Listas de coincidencia",

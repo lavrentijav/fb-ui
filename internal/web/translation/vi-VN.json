@@ -2046,7 +2046,10 @@
         "filterHint": "Kéo ra và nối sau một nguồn hoặc một lớp khác.",
         "blockHint": "Đầu cuối cho lưu lượng bị lớp chặn.",
         "directHint": "Đầu cuối cho lưu lượng lớp cho ra cục bộ."
-      }
+      },
+      "linkOutbound": "Outbound",
+      "linkOutboundPlaceholder": "tag của một outbound trên bảng nguồn",
+      "linkOutboundHint": "Outbound mà cạnh này đi qua. Để trống là chờ cái được sinh ra, mà bảng chưa dựng được."
     },
     "filters": {
       "listsTitle": "Danh sách khớp",

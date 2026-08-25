@@ -248,6 +248,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "createdAt": 0,
     "enable": true,
     "id": 1,
+    "outboundTag": "to-fi2",
     "remark": "",
     "sourceInboundTag": "in-39101-tcp",
     "sourcePanelId": 2,

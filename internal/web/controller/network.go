@@ -25,6 +25,7 @@ func (a *NetworkController) initRouter(g *gin.RouterGroup) {
 	g.GET("/graph", a.graph)
 
 	g.POST("/link", a.addLink)
+	g.POST("/link/update/:id", a.updateLink)
 	g.POST("/link/del/:id", a.delLink)
 	g.POST("/link/setEnable/:id", a.setLinkEnable)
 }
@@ -49,6 +50,24 @@ func (a *NetworkController) addLink(c *gin.Context) {
 	}
 	a.xrayService.SetToNeedRestart()
 	jsonMsgObj(c, I18nWeb(c, "pages.network.toasts.link"), link, nil)
+}
+
+func (a *NetworkController) updateLink(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	link, ok := middleware.BindAndValidate[model.CascadeLink](c)
+	if !ok {
+		return
+	}
+	if err := a.networkService.UpdateLink(id, link); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.network.toasts.link"), err)
+		return
+	}
+	a.xrayService.SetToNeedRestart()
+	jsonMsg(c, I18nWeb(c, "pages.network.toasts.link"), nil)
 }
 
 func (a *NetworkController) delLink(c *gin.Context) {

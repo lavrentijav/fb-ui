@@ -280,6 +280,7 @@ export const CascadeLinkSchema = z.object({
   createdAt: z.number().int(),
   enable: z.boolean(),
   id: z.number().int(),
+  outboundTag: z.string(),
   remark: z.string(),
   sourceInboundTag: z.string(),
   sourcePanelId: z.number().int(),

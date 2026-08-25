@@ -2046,7 +2046,10 @@
         "filterHint": "ドラッグしてソースや別の層の後ろに接続します。",
         "blockHint": "層がブロックした通信の終端。",
         "directHint": "層がローカルに出す通信の終端。"
-      }
+      },
+      "linkOutbound": "アウトバウンド",
+      "linkOutboundPlaceholder": "送信元パネルのアウトバウンドのタグ",
+      "linkOutboundHint": "この辺が通るアウトバウンド。空にすると生成されたものを待ちますが、パネルはまだ生成できません。"
     },
     "filters": {
       "listsTitle": "マッチリスト",

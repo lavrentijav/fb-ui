@@ -2046,7 +2046,10 @@
         "filterHint": "拖出后接在某个源或另一层之后。",
         "blockHint": "被该层阻断的流量终点。",
         "directHint": "该层本机直出的流量终点。"
-      }
+      },
+      "linkOutbound": "出站",
+      "linkOutboundPlaceholder": "源面板上某个出站的标签",
+      "linkOutboundHint": "这条边所走的出站。留空表示等待自动生成，而面板目前还不会生成。"
     },
     "filters": {
       "listsTitle": "匹配列表",

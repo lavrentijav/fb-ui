@@ -1087,6 +1087,11 @@
             "example": 1,
             "type": "integer"
           },
+          "outboundTag": {
+            "description": "OutboundTag names an existing outbound on the source panel to route this\nlink onto. Empty waits for the panel to generate one from the target\ninbound, which it cannot do yet — such a link stays pending.",
+            "example": "to-fi2",
+            "type": "string"
+          },
           "remark": {
             "type": "string"
           },
@@ -1120,6 +1125,7 @@
           "createdAt",
           "enable",
           "id",
+          "outboundTag",
           "remark",
           "sourceInboundTag",
           "sourcePanelId",
@@ -10446,6 +10452,7 @@
                     "createdAt": 0,
                     "enable": true,
                     "id": 1,
+                    "outboundTag": "to-fi2",
                     "remark": "",
                     "sourceInboundTag": "in-39101-tcp",
                     "sourcePanelId": 2,
@@ -10453,6 +10460,67 @@
                     "targetInboundId": 7,
                     "targetPanelId": 0,
                     "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/network/link/update/{id}": {
+      "post": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Rewrite an edge. outboundTag names the outbound on the source panel this link routes onto — leave it empty to wait for a generated one, which the panel cannot build yet, so the link stays pending. Whether the edge reached a config is owned by the config generator and is not writable here.",
+        "operationId": "post_panel_api_network_link_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Link ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "remark": "RU entry to FI exit",
+                "sourcePanelId": 0,
+                "sourceInboundTag": "in-39101-tcp",
+                "targetPanelId": 2,
+                "targetInboundId": 7,
+                "targetClientEmail": "",
+                "outboundTag": "to-fi2",
+                "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
                   }
                 }
               }

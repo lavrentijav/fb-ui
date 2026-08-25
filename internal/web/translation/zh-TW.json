@@ -2046,7 +2046,10 @@
         "filterHint": "拖出後接在某個來源或另一層之後。",
         "blockHint": "被該層阻擋的流量終點。",
         "directHint": "該層本機直出的流量終點。"
-      }
+      },
+      "linkOutbound": "出站",
+      "linkOutboundPlaceholder": "來源面板上某個出站的標籤",
+      "linkOutboundHint": "這條邊所走的出站。留空表示等待自動產生，而面板目前還不會產生。"
     },
     "filters": {
       "listsTitle": "比對清單",

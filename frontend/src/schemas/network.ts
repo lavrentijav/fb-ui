@@ -32,6 +32,7 @@ export const CascadeLinkSchema = z.object({
   targetPanelId: z.number(),
   targetInboundId: z.number(),
   targetClientEmail: z.string().optional(),
+  outboundTag: z.string().optional(),
   enable: z.boolean().optional(),
   applied: z.number().optional(),
 });

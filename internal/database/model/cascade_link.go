@@ -23,6 +23,11 @@ type CascadeLink struct {
 	// with. Empty means the first enabled client on the target inbound.
 	TargetClientEmail string `json:"targetClientEmail" form:"targetClientEmail" gorm:"column:target_client_email"`
 
+	// OutboundTag names an existing outbound on the source panel to route this
+	// link onto. Empty waits for the panel to generate one from the target
+	// inbound, which it cannot do yet — such a link stays pending.
+	OutboundTag string `json:"outboundTag" form:"outboundTag" gorm:"column:outbound_tag" example:"to-fi2"`
+
 	Enable bool `json:"enable" form:"enable" gorm:"default:true" example:"true"`
 
 	// Applied records the last time the link was materialized into the source
@@ -34,9 +39,18 @@ type CascadeLink struct {
 
 func (CascadeLink) TableName() string { return "cascade_links" }
 
-// OutboundTag is the tag the generated outbound carries on the source panel.
+// GeneratedOutboundTag is the tag a panel-generated outbound would carry.
 // Deterministic so re-applying a link replaces its own outbound instead of
 // piling up duplicates.
-func (l CascadeLink) OutboundTag() string {
+func (l CascadeLink) GeneratedOutboundTag() string {
 	return "cascade-" + strconv.Itoa(l.Id)
+}
+
+// EffectiveOutboundTag is what routing targets: the outbound the operator
+// pointed the link at, or the generated one when they left it to the panel.
+func (l CascadeLink) EffectiveOutboundTag() string {
+	if l.OutboundTag != "" {
+		return l.OutboundTag
+	}
+	return l.GeneratedOutboundTag()
 }

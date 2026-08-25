@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Button, Descriptions, Drawer, Empty, Space, Switch, Tag, Typography } from 'antd';
+import { Button, Descriptions, Drawer, Empty, Input, Space, Switch, Tag, Typography } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -9,6 +9,8 @@ import {
   SwapOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+
+import { useState } from 'react';
 
 import type { FilterList, FilterRule } from '@/schemas/filter';
 import type { CascadeLink, GraphPanel } from '@/schemas/network';
@@ -31,6 +33,7 @@ export interface InspectorActions {
   toggleFilter: (rule: FilterRule, next: boolean) => void;
   deleteFilter: (rule: FilterRule) => void;
   toggleLink: (link: CascadeLink, next: boolean) => void;
+  setLinkOutbound: (link: CascadeLink, tag: string) => void;
   deleteLink: (link: CascadeLink) => void;
   filterLink: (link: CascadeLink) => void;
 }
@@ -57,6 +60,7 @@ export default function NetworkInspector({
   onClose,
 }: NetworkInspectorProps) {
   const { t } = useTranslation();
+  const [outboundDraft, setOutboundDraft] = useState<{ id: number; tag: string } | null>(null);
   const panel = selection?.kind === 'panel' ? panels.find((p) => p.id === selection.id) : undefined;
   const rule =
     selection?.kind === 'filter' ? filters.find((f) => f.id === selection.id) : undefined;
@@ -199,6 +203,31 @@ export default function NetworkInspector({
               {(link.applied ?? 0) > 0 ? t('pages.network.appliedYes') : t('pages.network.pending')}
             </Descriptions.Item>
           </Descriptions>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Typography.Text>{t('pages.network.linkOutbound')}</Typography.Text>
+            <Space.Compact style={{ width: '100%' }}>
+              <Input
+                value={outboundDraft?.id === link.id ? outboundDraft.tag : (link.outboundTag ?? '')}
+                placeholder={t('pages.network.linkOutboundPlaceholder')}
+                onChange={(e) => setOutboundDraft({ id: link.id, tag: e.target.value })}
+              />
+              <Button
+                type="primary"
+                onClick={() => {
+                  actions.setLinkOutbound(
+                    link,
+                    outboundDraft?.id === link.id ? outboundDraft.tag : (link.outboundTag ?? ''),
+                  );
+                  setOutboundDraft(null);
+                }}
+              >
+                {t('save')}
+              </Button>
+            </Space.Compact>
+            <Typography.Text type="secondary">
+              {t('pages.network.linkOutboundHint')}
+            </Typography.Text>
+          </Space>
           <Space>
             <Typography.Text>{t('enable')}</Typography.Text>
             <Switch

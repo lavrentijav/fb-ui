@@ -32,15 +32,15 @@ func injectClusterRouting(
 	lists []*model.FilterList,
 	links []*model.CascadeLink,
 	localInboundTags []string,
-) []int {
-	if len(rules) == 0 {
-		return nil
+) (appliedRules []int, appliedLinks []int) {
+	if len(rules) == 0 && len(links) == 0 {
+		return nil, nil
 	}
 	routing := map[string]any{}
 	if len(cfg.RouterConfig) > 0 {
 		if err := json.Unmarshal(cfg.RouterConfig, &routing); err != nil {
 			logger.Warning("cluster routing: routing section is unparsable, skipping injection:", err)
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -53,7 +53,7 @@ func injectClusterRouting(
 		linkById[link.Id] = link
 	}
 
-	newRules := make([]any, 0, len(rules))
+	newRules := make([]any, 0, len(rules)+len(links))
 	applied := make([]int, 0, len(rules))
 	for _, rule := range rules {
 		if !rule.Enable || rule.PanelId != SelfPanelId {
@@ -99,18 +99,43 @@ func injectClusterRouting(
 		applied = append(applied, rule.Id)
 	}
 
+	// The links come after the layers: a layer decides about part of an
+	// inbound's traffic, the link is what happens to the rest of it.
+	appliedLinks = make([]int, 0, len(links))
+	for _, link := range links {
+		if !link.Enable || link.SourcePanelId != SelfPanelId || link.SourceInboundTag == "" {
+			continue
+		}
+		tag := link.EffectiveOutboundTag()
+		if !routingTargetExists(routing, cfg.OutboundConfigs, tag) {
+			logger.Warning("cluster routing: outbound [", tag, "] for cascade link ", link.Id, " does not exist, link stays pending")
+			continue
+		}
+		entry := map[string]any{
+			"type":       "field",
+			"inboundTag": []any{link.SourceInboundTag},
+		}
+		if routingTagIsBalancer(routing, tag) {
+			entry["balancerTag"] = tag
+		} else {
+			entry["outboundTag"] = tag
+		}
+		newRules = append(newRules, entry)
+		appliedLinks = append(appliedLinks, link.Id)
+	}
+
 	if len(newRules) == 0 {
-		return nil
+		return nil, nil
 	}
 	existing, _ := routing["rules"].([]any)
 	routing["rules"] = append(newRules, existing...)
 	encoded, err := json.Marshal(routing)
 	if err != nil {
 		logger.Warning("cluster routing: failed to rebuild routing section, skipping injection:", err)
-		return nil
+		return nil, nil
 	}
 	cfg.RouterConfig = json_util.RawMessage(encoded)
-	return applied
+	return applied, appliedLinks
 }
 
 // ruleMatchers splits the entries of a rule's lists into the two matcher arrays
@@ -147,7 +172,7 @@ func ruleOutboundTag(
 		if !link.Enable {
 			return "", false
 		}
-		tag := link.OutboundTag()
+		tag := link.EffectiveOutboundTag()
 		if !routingTargetExists(routing, cfg.OutboundConfigs, tag) {
 			// The cascade outbound is not generated yet; the rule stays pending
 			// instead of silently routing traffic somewhere else.
@@ -183,9 +208,16 @@ func toAnySlice(values []string) []any {
 // markClusterApplied records which of this panel's filter rules are in the
 // config that just started. Anything that did not make it goes back to pending
 // rather than keeping a stale "applied" from an earlier config.
-func markClusterApplied(appliedIds []int) error {
+func markClusterApplied(ruleIds, linkIds []int) error {
+	if err := markApplied(&model.FilterRule{}, "panel_id = ?", ruleIds); err != nil {
+		return err
+	}
+	return markApplied(&model.CascadeLink{}, "source_panel_id = ?", linkIds)
+}
+
+func markApplied(table any, ownerColumn string, appliedIds []int) error {
 	db := database.GetDB()
-	pending := db.Model(model.FilterRule{}).Where("panel_id = ?", SelfPanelId)
+	pending := db.Model(table).Where(ownerColumn, SelfPanelId)
 	if len(appliedIds) > 0 {
 		pending = pending.Where("id NOT IN ?", appliedIds)
 	}
@@ -195,6 +227,6 @@ func markClusterApplied(appliedIds []int) error {
 	if len(appliedIds) == 0 {
 		return nil
 	}
-	return db.Model(model.FilterRule{}).Where("id IN ?", appliedIds).
+	return db.Model(table).Where("id IN ?", appliedIds).
 		Update("applied", time.Now().Unix()).Error
 }

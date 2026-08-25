@@ -2046,7 +2046,10 @@
         "filterHint": "Drag out and wire it after a source or another layer.",
         "blockHint": "Terminal for traffic a layer blocks.",
         "directHint": "Terminal for traffic a layer sends out locally."
-      }
+      },
+      "linkOutbound": "Outbound",
+      "linkOutboundPlaceholder": "tag of an outbound on the source panel",
+      "linkOutboundHint": "The outbound this edge routes onto. Empty waits for a generated one, which the panel cannot build yet."
     },
     "filters": {
       "listsTitle": "Matcher lists",

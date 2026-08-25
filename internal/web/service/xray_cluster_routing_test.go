@@ -65,7 +65,7 @@ func TestClusterRoutingEmitsTheChainInOrder(t *testing.T) {
 		{Id: 2, Name: "ru direct", PanelId: SelfPanelId, SourceInboundTags: []string{"in-a"}, ListIds: []int{2}, Action: model.FilterActionDirect, Enable: true},
 	}
 
-	applied := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"})
+	applied, _ := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"})
 	if len(applied) != 2 || applied[0] != 1 || applied[1] != 2 {
 		t.Fatalf("applied = %v, want both rules in order", applied)
 	}
@@ -100,7 +100,7 @@ func TestClusterRoutingSkipsARuleWithNoMatchers(t *testing.T) {
 	rules := []*model.FilterRule{
 		{Id: 1, Name: "empty", PanelId: SelfPanelId, ListIds: []int{3}, Action: model.FilterActionBlock, Enable: true},
 	}
-	if applied := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"}); len(applied) != 0 {
+	if applied, _ := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"}); len(applied) != 0 {
 		t.Fatalf("applied = %v, want the matcher-less rule skipped", applied)
 	}
 	if got := len(routingRules(t, cfg)); got != 1 {
@@ -154,7 +154,7 @@ func TestClusterRoutingLeavesForeignAndUnbackedRulesPending(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := clusterTestConfig(t)
-			applied := injectClusterRouting(cfg, []*model.FilterRule{tt.rule}, clusterLists(), links, []string{"in-a"})
+			applied, _ := injectClusterRouting(cfg, []*model.FilterRule{tt.rule}, clusterLists(), links, []string{"in-a"})
 			if len(applied) != 0 {
 				t.Fatalf("applied = %v, want it left pending", applied)
 			}
@@ -177,7 +177,7 @@ func TestClusterRoutingUsesTheCascadeOutboundWhenItExists(t *testing.T) {
 		ListIds: []int{1}, Action: model.FilterActionCascade, CascadeLinkId: link.Id, Enable: true,
 	}
 
-	applied := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"})
+	applied, _ := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"})
 	if len(applied) != 1 || applied[0] != 3 {
 		t.Fatalf("applied = %v, want the cascade layer", applied)
 	}
@@ -237,7 +237,7 @@ func TestGeneratedConfigCarriesTheFilterChain(t *testing.T) {
 		t.Fatal("generating a config marked the layer applied before it was running")
 	}
 
-	if err := markClusterApplied(s.materializedRules); err != nil {
+	if err := markClusterApplied(s.materializedRules, s.materializedLinks); err != nil {
 		t.Fatalf("markClusterApplied: %v", err)
 	}
 	if stored, err = filters.RuleById(rule.Id); err != nil {
@@ -248,13 +248,105 @@ func TestGeneratedConfigCarriesTheFilterChain(t *testing.T) {
 	}
 
 	// A layer that stops reaching the config goes back to pending.
-	if err := markClusterApplied(nil); err != nil {
-		t.Fatalf("markClusterApplied(nil): %v", err)
+	if err := markClusterApplied(nil, nil); err != nil {
+		t.Fatalf("markClusterApplied(nil, nil): %v", err)
 	}
 	if stored, err = filters.RuleById(rule.Id); err != nil {
 		t.Fatalf("RuleById: %v", err)
 	}
 	if stored.Applied != 0 {
 		t.Fatal("a layer that left the config kept a stale applied mark")
+	}
+}
+
+// A link is what happens to the traffic of its inbound that no layer claimed,
+// so it has to be a rule of its own — and it has to come after the layers.
+func TestClusterRoutingEmitsLinksAfterTheLayers(t *testing.T) {
+	cfg := clusterTestConfig(t)
+	cfg.OutboundConfigs = json_util.RawMessage(
+		`[{"tag":"direct","protocol":"freedom"},{"tag":"blocked","protocol":"blackhole"},{"tag":"to-fi2","protocol":"vless"}]`,
+	)
+	rules := []*model.FilterRule{
+		{Id: 1, Name: "block ads", PanelId: SelfPanelId, SourceInboundTags: []string{"in-a"}, ListIds: []int{1}, Action: model.FilterActionBlock, Enable: true},
+	}
+	links := []*model.CascadeLink{
+		{Id: 4, SourcePanelId: SelfPanelId, SourceInboundTag: "in-a", OutboundTag: "to-fi2", Enable: true},
+	}
+
+	appliedRules, appliedLinks := injectClusterRouting(cfg, rules, clusterLists(), links, []string{"in-a"})
+	if len(appliedRules) != 1 || len(appliedLinks) != 1 || appliedLinks[0] != 4 {
+		t.Fatalf("applied rules=%v links=%v, want both", appliedRules, appliedLinks)
+	}
+
+	emitted := routingRules(t, cfg)
+	if emitted[0]["outboundTag"] != "blocked" {
+		t.Fatalf("first rule = %+v, want the layer to win", emitted[0])
+	}
+	if emitted[1]["outboundTag"] != "to-fi2" {
+		t.Fatalf("second rule = %+v, want the link", emitted[1])
+	}
+	if got := matcherStrings(t, emitted[1], "inboundTag"); len(got) != 1 || got[0] != "in-a" {
+		t.Fatalf("link rule watches %v, want its source inbound", got)
+	}
+	if _, hasMatchers := emitted[1]["domain"]; hasMatchers {
+		t.Fatal("the link rule carries matchers; it is meant to take the rest")
+	}
+}
+
+func TestClusterRoutingLeavesLinksWithoutAnOutboundPending(t *testing.T) {
+	tests := []struct {
+		name string
+		link *model.CascadeLink
+	}{
+		{
+			name: "outbound not in this config",
+			link: &model.CascadeLink{Id: 4, SourcePanelId: SelfPanelId, SourceInboundTag: "in-a", OutboundTag: "missing", Enable: true},
+		},
+		{
+			// Nothing generates the outbound yet, so an unnamed one is pending.
+			name: "left for the panel to generate",
+			link: &model.CascadeLink{Id: 5, SourcePanelId: SelfPanelId, SourceInboundTag: "in-a", Enable: true},
+		},
+		{
+			name: "another panel's link",
+			link: &model.CascadeLink{Id: 6, SourcePanelId: 3, SourceInboundTag: "in-a", OutboundTag: "direct", Enable: true},
+		},
+		{
+			name: "paused link",
+			link: &model.CascadeLink{Id: 7, SourcePanelId: SelfPanelId, SourceInboundTag: "in-a", OutboundTag: "direct"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := clusterTestConfig(t)
+			_, appliedLinks := injectClusterRouting(cfg, nil, clusterLists(), []*model.CascadeLink{tt.link}, []string{"in-a"})
+			if len(appliedLinks) != 0 {
+				t.Fatalf("applied = %v, want it left pending", appliedLinks)
+			}
+			if got := len(routingRules(t, cfg)); got != 1 {
+				t.Fatalf("rules = %d, want the config untouched", got)
+			}
+		})
+	}
+}
+
+// A layer that names its link routes onto the outbound that link points at.
+func TestClusterRoutingCascadeLayerFollowsTheLinksOutbound(t *testing.T) {
+	cfg := clusterTestConfig(t)
+	cfg.OutboundConfigs = json_util.RawMessage(
+		`[{"tag":"direct","protocol":"freedom"},{"tag":"blocked","protocol":"blackhole"},{"tag":"to-fi2","protocol":"vless"}]`,
+	)
+	link := &model.CascadeLink{Id: 4, SourcePanelId: SelfPanelId, SourceInboundTag: "in-a", OutboundTag: "to-fi2", Enable: true}
+	rule := &model.FilterRule{
+		Id: 1, Name: "ru to exit", PanelId: SelfPanelId, SourceInboundTags: []string{"in-a"},
+		ListIds: []int{2}, Action: model.FilterActionCascade, CascadeLinkId: link.Id, Enable: true,
+	}
+
+	appliedRules, _ := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"})
+	if len(appliedRules) != 1 {
+		t.Fatalf("applied = %v, want the cascade layer", appliedRules)
+	}
+	if got := routingRules(t, cfg)[0]["outboundTag"]; got != "to-fi2" {
+		t.Fatalf("outboundTag = %v, want the link's outbound", got)
 	}
 }

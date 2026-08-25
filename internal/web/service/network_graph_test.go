@@ -201,7 +201,7 @@ func TestNetworkLinkRoundTrip(t *testing.T) {
 	if link.Id == 0 {
 		t.Fatal("stored link has no id")
 	}
-	if tag := link.OutboundTag(); tag == "cascade-0" {
+	if tag := link.GeneratedOutboundTag(); tag == "cascade-0" {
 		t.Fatalf("outbound tag = %q, want it keyed by the stored id", tag)
 	}
 

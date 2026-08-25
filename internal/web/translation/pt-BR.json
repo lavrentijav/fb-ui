@@ -2046,7 +2046,10 @@
         "filterHint": "Arraste e ligue depois de uma fonte ou de outra camada.",
         "blockHint": "Terminal do tráfego que uma camada bloqueia.",
         "directHint": "Terminal do tráfego que uma camada envia localmente."
-      }
+      },
+      "linkOutbound": "Outbound",
+      "linkOutboundPlaceholder": "tag de um outbound no painel de origem",
+      "linkOutboundHint": "O outbound por onde esta aresta passa. Vazio espera um gerado, que o painel ainda não sabe construir."
     },
     "filters": {
       "listsTitle": "Listas de correspondência",

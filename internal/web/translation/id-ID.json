@@ -2046,7 +2046,10 @@
         "filterHint": "Seret keluar dan sambungkan setelah sumber atau lapisan lain.",
         "blockHint": "Terminal untuk trafik yang diblokir lapisan.",
         "directHint": "Terminal untuk trafik yang dikeluarkan lokal."
-      }
+      },
+      "linkOutbound": "Outbound",
+      "linkOutboundPlaceholder": "tag outbound di panel sumber",
+      "linkOutboundHint": "Outbound yang dilewati sisi ini. Kosong menunggu yang dibuat otomatis, yang belum bisa dibuat panel."
     },
     "filters": {
       "listsTitle": "Daftar pencocokan",

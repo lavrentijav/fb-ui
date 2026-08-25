@@ -148,6 +148,39 @@ func (s *NetworkService) AddLink(link *model.CascadeLink) error {
 	return s.markSourceDirty(link.SourcePanelId)
 }
 
+// UpdateLink rewrites the operator-owned half of an edge. Observed state
+// (whether it reached a config) is owned by the config generator.
+func (s *NetworkService) UpdateLink(id int, in *model.CascadeLink) error {
+	db := database.GetDB()
+	existing := &model.CascadeLink{}
+	if err := db.Where("id = ?", id).First(existing).Error; err != nil {
+		return err
+	}
+	in.Id = id
+	if err := s.validateLink(in); err != nil {
+		return err
+	}
+	if err := db.Model(model.CascadeLink{}).Where("id = ?", id).Updates(map[string]any{
+		"remark":              in.Remark,
+		"source_panel_id":     in.SourcePanelId,
+		"source_inbound_tag":  in.SourceInboundTag,
+		"target_panel_id":     in.TargetPanelId,
+		"target_inbound_id":   in.TargetInboundId,
+		"target_client_email": in.TargetClientEmail,
+		"outbound_tag":        in.OutboundTag,
+		"enable":              in.Enable,
+		"applied":             0,
+	}).Error; err != nil {
+		return err
+	}
+	if existing.SourcePanelId != in.SourcePanelId {
+		if err := s.markSourceDirty(existing.SourcePanelId); err != nil {
+			return err
+		}
+	}
+	return s.markSourceDirty(in.SourcePanelId)
+}
+
 func (s *NetworkService) DeleteLink(id int) error {
 	db := database.GetDB()
 	link := &model.CascadeLink{}
@@ -188,6 +221,8 @@ func (s *NetworkService) SetLinkEnable(id int, enable bool) error {
 
 func (s *NetworkService) validateLink(link *model.CascadeLink) error {
 	link.SourceInboundTag = strings.TrimSpace(link.SourceInboundTag)
+	link.OutboundTag = strings.TrimSpace(link.OutboundTag)
+	link.Remark = strings.TrimSpace(link.Remark)
 	if link.SourceInboundTag == "" {
 		return common.NewError("cascade link needs a source inbound")
 	}

@@ -107,8 +107,17 @@ function NetworkCanvas() {
     setMessageInstance(messageApi);
   }, [messageApi]);
 
-  const { graph, loading, fetched, fetchError, refetch, addLink, removeLink, setLinkEnable } =
-    useNetworkGraph();
+  const {
+    graph,
+    loading,
+    fetched,
+    fetchError,
+    refetch,
+    addLink,
+    updateLink,
+    removeLink,
+    setLinkEnable,
+  } = useNetworkGraph();
   const { lists, createList, createRule, updateRule, removeRule, setRuleEnable, reorderRules } =
     useFilters();
   const nodeMutations = useNodeMutations();
@@ -451,6 +460,13 @@ function NetworkCanvas() {
           },
         ),
       toggleLink: (link: CascadeLink, next: boolean) => setLinkEnable(link.id, next),
+      setLinkOutbound: async (link: CascadeLink, tag: string) => {
+        const msg = await updateLink(link.id, { ...link, outboundTag: tag.trim() });
+        if (msg?.success) {
+          messageApi.success(t('pages.network.toasts.layerAction'));
+          refetch();
+        }
+      },
       deleteLink: (link: CascadeLink) =>
         confirmDelete(
           t('pages.network.unlinkConfirmTitle'),
@@ -505,6 +521,7 @@ function NetworkCanvas() {
       setLinkEnable,
       setRuleEnable,
       t,
+      updateLink,
     ],
   );
 

@@ -72,7 +72,9 @@ type XrayService struct {
 	// lastFlushed keeps the pending-restart job, which runs every 30 seconds,
 	// from rewriting the same marks forever.
 	materializedRules []int
+	materializedLinks []int
 	lastFlushed       []int
+	lastFlushedLinks  []int
 	lastFlushedSet    bool
 }
 
@@ -397,32 +399,32 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 
 	// Filter layers this panel owns become routing rules of this config. Which
 	// ones made it is remembered here and written back once the config is live.
-	s.materializedRules = s.injectFilterChain(xrayConfig, localInboundTags)
+	s.materializedRules, s.materializedLinks = s.injectFilterChain(xrayConfig, localInboundTags)
 
 	return xrayConfig, nil
 }
 
 // injectFilterChain reads the stored chain and materializes it, tolerating a
 // read failure: a config without the filters is better than no config at all.
-func (s *XrayService) injectFilterChain(cfg *xray.Config, localInboundTags []string) []int {
+func (s *XrayService) injectFilterChain(cfg *xray.Config, localInboundTags []string) ([]int, []int) {
 	filters := FilterService{}
 	rules, err := filters.Rules()
 	if err != nil {
 		logger.Warning("cluster routing: read filter rules failed:", err)
-		return nil
-	}
-	if len(rules) == 0 {
-		return nil
+		return nil, nil
 	}
 	lists, err := filters.Lists()
 	if err != nil {
 		logger.Warning("cluster routing: read filter lists failed:", err)
-		return nil
+		return nil, nil
 	}
 	var links []*model.CascadeLink
-	if err := database.GetDB().Model(model.CascadeLink{}).Find(&links).Error; err != nil {
+	if err := database.GetDB().Model(model.CascadeLink{}).Order("id asc").Find(&links).Error; err != nil {
 		logger.Warning("cluster routing: read cascade links failed:", err)
-		return nil
+		return nil, nil
+	}
+	if len(rules) == 0 && len(links) == 0 {
+		return nil, nil
 	}
 	return injectClusterRouting(cfg, rules, lists, links, localInboundTags)
 }
@@ -1144,14 +1146,17 @@ func (s *XrayService) RestartXray(isForce bool) error {
 // carries. It runs only after the config is live, so the panel never shows a
 // layer as applied because of a config that failed to start.
 func (s *XrayService) flushMaterialized() {
-	if s.lastFlushedSet && sameIds(s.lastFlushed, s.materializedRules) {
+	if s.lastFlushedSet &&
+		sameIds(s.lastFlushed, s.materializedRules) &&
+		sameIds(s.lastFlushedLinks, s.materializedLinks) {
 		return
 	}
-	if err := markClusterApplied(s.materializedRules); err != nil {
+	if err := markClusterApplied(s.materializedRules, s.materializedLinks); err != nil {
 		logger.Warning("cluster routing: failed to record applied filter rules:", err)
 		return
 	}
 	s.lastFlushed = append([]int(nil), s.materializedRules...)
+	s.lastFlushedLinks = append([]int(nil), s.materializedLinks...)
 	s.lastFlushedSet = true
 }
 

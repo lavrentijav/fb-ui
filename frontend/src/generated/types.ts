@@ -260,6 +260,7 @@ export interface CascadeLink {
   createdAt: number;
   enable: boolean;
   id: number;
+  outboundTag: string;
   remark: string;
   sourceInboundTag: string;
   sourcePanelId: number;

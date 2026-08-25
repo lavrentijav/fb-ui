@@ -2046,7 +2046,10 @@
         "filterHint": "Sürükleyin ve bir kaynağın ya da başka bir katmanın ardına bağlayın.",
         "blockHint": "Bir katmanın engellediği trafiğin ucu.",
         "directHint": "Bir katmanın yerelden çıkardığı trafiğin ucu."
-      }
+      },
+      "linkOutbound": "Outbound",
+      "linkOutboundPlaceholder": "kaynak paneldeki bir outbound etiketi",
+      "linkOutboundHint": "Bu kenarın gittiği outbound. Boş bırakılırsa üretilen biri beklenir; panel bunu henüz üretemiyor."
     },
     "filters": {
       "listsTitle": "Eşleşme listeleri",

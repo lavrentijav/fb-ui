@@ -28,6 +28,14 @@ export function useNetworkGraph() {
     },
   });
 
+  const updateLinkMut = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CascadeLink> }) =>
+      HttpUtil.post(`/panel/api/network/link/update/${id}`, payload),
+    onSuccess: (msg) => {
+      if (msg?.success) invalidate();
+    },
+  });
+
   const removeLinkMut = useMutation({
     mutationFn: (id: number) => HttpUtil.post(`/panel/api/network/link/del/${id}`),
     onSuccess: (msg) => {
@@ -50,6 +58,8 @@ export function useNetworkGraph() {
     fetchError: query.error ? (query.error as Error).message : '',
     refetch: query.refetch,
     addLink: (payload: Partial<CascadeLink>) => addLinkMut.mutateAsync(payload),
+    updateLink: (id: number, payload: Partial<CascadeLink>) =>
+      updateLinkMut.mutateAsync({ id, payload }),
     removeLink: (id: number) => removeLinkMut.mutateAsync(id),
     setLinkEnable: (id: number, enable: boolean) => setLinkEnableMut.mutateAsync({ id, enable }),
   };

@@ -1061,6 +1061,11 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": 1,
         "type": "integer"
       },
+      "outboundTag": {
+        "description": "OutboundTag names an existing outbound on the source panel to route this\nlink onto. Empty waits for the panel to generate one from the target\ninbound, which it cannot do yet — such a link stays pending.",
+        "example": "to-fi2",
+        "type": "string"
+      },
       "remark": {
         "type": "string"
       },
@@ -1094,6 +1099,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "createdAt",
       "enable",
       "id",
+      "outboundTag",
       "remark",
       "sourceInboundTag",
       "sourcePanelId",
