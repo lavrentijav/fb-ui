@@ -2014,7 +2014,9 @@
         "dragHint": "Seret dari inbound ke inbound",
         "samePanel": "Kaskade harus menghubungkan dua panel berbeda",
         "allInboundsHint": "Port \"semua inbound\" hanya memberi makan filter — seret dari satu inbound untuk cascade.",
-        "panelMissing": "Data panel ini gagal dimuat; segarkan lalu coba lagi."
+        "panelMissing": "Data panel ini gagal dimuat; segarkan lalu coba lagi.",
+        "cascadeNeedsOneInbound": "Cascade butuh sumber dengan tepat satu inbound.",
+        "layerAction": "Lapisan diperbarui"
       },
       "allInbounds": "semua inbound",
       "applied": "Konfig",
@@ -2029,7 +2031,22 @@
       "roleLabel": "Peran",
       "selfHint": "Ini panel tempat Anda masuk; dikelola dari pengaturannya sendiri.",
       "sinkBlock": "Diblokir",
-      "sinkDirect": "Langsung"
+      "sinkDirect": "Langsung",
+      "addToCanvas": "Tambahkan ke kanvas",
+      "draftFilter": "Filter baru",
+      "draftFilterHint": "Hubungkan sumber inbound ke sini untuk mengaturnya.",
+      "matchHint": "Yang cocok di lapisan ini keluar dari sini.",
+      "pass": "lanjut",
+      "passHint": "Yang tidak cocok diteruskan ke lapisan berikutnya.",
+      "palette": {
+        "title": "Palet node",
+        "source": "Sumber inbound",
+        "sourceHint": "Seret keluar, lalu pilih panel dan inbound-nya.",
+        "filter": "Lapisan filter",
+        "filterHint": "Seret keluar dan sambungkan setelah sumber atau lapisan lain.",
+        "blockHint": "Terminal untuk trafik yang diblokir lapisan.",
+        "directHint": "Terminal untuk trafik yang dikeluarkan lokal."
+      }
     },
     "filters": {
       "listsTitle": "Daftar pencocokan",

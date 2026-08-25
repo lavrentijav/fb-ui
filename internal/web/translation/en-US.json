@@ -2014,7 +2014,9 @@
         "dragHint": "Drag from an inbound to an inbound",
         "samePanel": "A cascade must join two different panels",
         "allInboundsHint": "The \"all inbounds\" port only feeds filters — drag from a single inbound to cascade.",
-        "panelMissing": "This panel's record could not be loaded; refresh and try again."
+        "panelMissing": "This panel's record could not be loaded; refresh and try again.",
+        "cascadeNeedsOneInbound": "A cascade needs a source with exactly one inbound.",
+        "layerAction": "Layer updated"
       },
       "allInbounds": "all inbounds",
       "applied": "Config",
@@ -2029,7 +2031,22 @@
       "roleLabel": "Role",
       "selfHint": "This is the panel you are logged into; it is managed from its own settings.",
       "sinkBlock": "Blocked",
-      "sinkDirect": "Direct"
+      "sinkDirect": "Direct",
+      "addToCanvas": "Add to canvas",
+      "draftFilter": "New filter",
+      "draftFilterHint": "Wire an inbound source into it to set it up.",
+      "matchHint": "What this layer matches leaves here.",
+      "pass": "pass",
+      "passHint": "What it does not match passes to the next layer.",
+      "palette": {
+        "title": "Node palette",
+        "source": "Inbound source",
+        "sourceHint": "Drag out, then pick a panel and its inbounds.",
+        "filter": "Filter layer",
+        "filterHint": "Drag out and wire it after a source or another layer.",
+        "blockHint": "Terminal for traffic a layer blocks.",
+        "directHint": "Terminal for traffic a layer sends out locally."
+      }
     },
     "filters": {
       "listsTitle": "Matcher lists",

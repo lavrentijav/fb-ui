@@ -2014,7 +2014,9 @@
         "dragHint": "Gelen bağlantıdan gelen bağlantıya sürükleyin",
         "samePanel": "Zincir iki farklı paneli birleştirmeli",
         "allInboundsHint": "\"Tüm gelenler\" portu yalnızca filtre besler — kaskad için tek bir gelenden sürükleyin.",
-        "panelMissing": "Bu panelin kaydı yüklenemedi; yenileyip tekrar deneyin."
+        "panelMissing": "Bu panelin kaydı yüklenemedi; yenileyip tekrar deneyin.",
+        "cascadeNeedsOneInbound": "Kaskad için tam olarak tek gelenli bir kaynak gerekir.",
+        "layerAction": "Katman güncellendi"
       },
       "allInbounds": "tüm gelenler",
       "applied": "Yapılandırma",
@@ -2029,7 +2031,22 @@
       "roleLabel": "Rol",
       "selfHint": "Bu, oturum açtığınız panel; kendi ayarlarından yönetilir.",
       "sinkBlock": "Engellendi",
-      "sinkDirect": "Doğrudan"
+      "sinkDirect": "Doğrudan",
+      "addToCanvas": "Tuvale ekle",
+      "draftFilter": "Yeni filtre",
+      "draftFilterHint": "Kurmak için ona bir gelen kaynağı bağlayın.",
+      "matchHint": "Bu katmanın eşlediği trafik buradan çıkar.",
+      "pass": "geç",
+      "passHint": "Eşleşmeyen trafik bir sonraki katmana geçer.",
+      "palette": {
+        "title": "Düğüm paleti",
+        "source": "Gelen kaynağı",
+        "sourceHint": "Sürükleyin, sonra bir panel ve gelenlerini seçin.",
+        "filter": "Filtre katmanı",
+        "filterHint": "Sürükleyin ve bir kaynağın ya da başka bir katmanın ardına bağlayın.",
+        "blockHint": "Bir katmanın engellediği trafiğin ucu.",
+        "directHint": "Bir katmanın yerelden çıkardığı trafiğin ucu."
+      }
     },
     "filters": {
       "listsTitle": "Eşleşme listeleri",

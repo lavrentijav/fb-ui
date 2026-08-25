@@ -2014,7 +2014,9 @@
         "dragHint": "Arraste de uma entrada para outra entrada",
         "samePanel": "Uma cascata deve unir dois painéis diferentes",
         "allInboundsHint": "A porta \"todos os inbounds\" só alimenta filtros — arraste de um inbound específico para cascatear.",
-        "panelMissing": "Não foi possível carregar o registro deste painel; atualize e tente de novo."
+        "panelMissing": "Não foi possível carregar o registro deste painel; atualize e tente de novo.",
+        "cascadeNeedsOneInbound": "Uma cascata precisa de uma fonte com exatamente um inbound.",
+        "layerAction": "Camada atualizada"
       },
       "allInbounds": "todos os inbounds",
       "applied": "Config",
@@ -2029,7 +2031,22 @@
       "roleLabel": "Papel",
       "selfHint": "Este é o painel em que você entrou; ele é gerenciado nas próprias configurações.",
       "sinkBlock": "Bloqueado",
-      "sinkDirect": "Direto"
+      "sinkDirect": "Direto",
+      "addToCanvas": "Adicionar à tela",
+      "draftFilter": "Novo filtro",
+      "draftFilterHint": "Ligue uma fonte de inbounds a ele para configurá-lo.",
+      "matchHint": "O que esta camada casa sai por aqui.",
+      "pass": "passa",
+      "passHint": "O que não casa passa para a próxima camada.",
+      "palette": {
+        "title": "Paleta de nós",
+        "source": "Fonte de inbounds",
+        "sourceHint": "Arraste e escolha um painel e seus inbounds.",
+        "filter": "Camada de filtro",
+        "filterHint": "Arraste e ligue depois de uma fonte ou de outra camada.",
+        "blockHint": "Terminal do tráfego que uma camada bloqueia.",
+        "directHint": "Terminal do tráfego que uma camada envia localmente."
+      }
     },
     "filters": {
       "listsTitle": "Listas de correspondência",

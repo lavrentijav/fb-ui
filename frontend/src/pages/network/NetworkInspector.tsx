@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Button, Descriptions, Drawer, Empty, Space, Switch, Tag, Typography } from 'antd';
 import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
   DeleteOutlined,
   EditOutlined,
   FilterOutlined,
@@ -25,6 +27,7 @@ export interface InspectorActions {
   deletePanel: (panel: GraphPanel) => void;
   openInbounds: (panel: GraphPanel) => void;
   editFilter: (rule: FilterRule) => void;
+  moveFilter: (rule: FilterRule, delta: number) => void;
   toggleFilter: (rule: FilterRule, next: boolean) => void;
   deleteFilter: (rule: FilterRule) => void;
   toggleLink: (link: CascadeLink, next: boolean) => void;
@@ -166,6 +169,12 @@ export default function NetworkInspector({
           <Space wrap>
             <Button icon={<EditOutlined />} onClick={() => actions.editFilter(rule)}>
               {t('edit')}
+            </Button>
+            <Button icon={<ArrowUpOutlined />} onClick={() => actions.moveFilter(rule, -1)}>
+              {t('pages.hosts.moveUp')}
+            </Button>
+            <Button icon={<ArrowDownOutlined />} onClick={() => actions.moveFilter(rule, 1)}>
+              {t('pages.hosts.moveDown')}
             </Button>
             <Button danger icon={<DeleteOutlined />} onClick={() => actions.deleteFilter(rule)}>
               {t('delete')}

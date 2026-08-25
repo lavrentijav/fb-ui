@@ -33,6 +33,7 @@ func (a *FilterController) initRouter(g *gin.RouterGroup) {
 	g.POST("/rules/update/:id", a.updateRule)
 	g.POST("/rules/del/:id", a.delRule)
 	g.POST("/rules/setEnable/:id", a.setRuleEnable)
+	g.POST("/rules/reorder", a.reorderRules)
 }
 
 func (a *FilterController) lists(c *gin.Context) {
@@ -163,6 +164,23 @@ func (a *FilterController) delRule(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.deleteRule"), nil)
+}
+
+// reorderRules rewrites the order of a filter chain in one call: the layers are
+// evaluated top to bottom, so their order is part of what they do.
+func (a *FilterController) reorderRules(c *gin.Context) {
+	body := struct {
+		Ids []int `json:"ids" form:"ids"`
+	}{}
+	if err := c.ShouldBind(&body); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.update"), err)
+		return
+	}
+	if err := a.filterService.ReorderRules(body.Ids); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.filters.toasts.update"), err)
+		return
+	}
+	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.update"), nil)
 }
 
 func (a *FilterController) setRuleEnable(c *gin.Context) {

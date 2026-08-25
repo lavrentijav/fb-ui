@@ -74,6 +74,13 @@ export function useFilters() {
     },
   });
 
+  const reorderRulesMut = useMutation({
+    mutationFn: (ids: number[]) => HttpUtil.post('/panel/api/filters/rules/reorder', { ids }),
+    onSuccess: (msg) => {
+      if (msg?.success) invalidate();
+    },
+  });
+
   const removeRuleMut = useMutation({
     mutationFn: (id: number) => HttpUtil.post(`/panel/api/filters/rules/del/${id}`),
     onSuccess: (msg) => {
@@ -106,6 +113,7 @@ export function useFilters() {
     createRule: (payload: Partial<FilterRule>) => createRuleMut.mutateAsync(payload),
     updateRule: (id: number, payload: Partial<FilterRule>) =>
       updateRuleMut.mutateAsync({ id, payload }),
+    reorderRules: (ids: number[]) => reorderRulesMut.mutateAsync(ids),
     removeRule: (id: number) => removeRuleMut.mutateAsync(id),
     setRuleEnable: (id: number, enable: boolean) => setRuleEnableMut.mutateAsync({ id, enable }),
   };

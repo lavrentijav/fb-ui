@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import {
@@ -9,6 +9,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -39,7 +40,13 @@ import type { FilterRule } from '@/schemas/filter';
 import type { CascadeLink, GraphPanel } from '@/schemas/network';
 import {
   ALL_INBOUNDS_HANDLE,
+  BLOCK_SINK_ID,
+  DIRECT_SINK_ID,
   buildGraphElements,
+  elementRef,
+  scopeKey,
+  type DraftFilter,
+  type DraftNode,
   type StoredPositions,
 } from '@/lib/network/graph-elements';
 import AppSidebar from '@/layouts/AppSidebar';
@@ -52,11 +59,14 @@ import FilterListModal from '@/pages/filters/FilterListModal';
 import PanelNode from './PanelNode';
 import FilterNode from './FilterNode';
 import SinkNode from './SinkNode';
+import SourceNode from './SourceNode';
+import NodePalette from './NodePalette';
+import SourcePickerModal from './SourcePickerModal';
 import NetworkInspector, { type Selection } from './NetworkInspector';
 import './NetworkPage.css';
 
 const POSITIONS_KEY = 'network-graph-positions';
-const nodeTypes = { panel: PanelNode, filter: FilterNode, sink: SinkNode };
+const nodeTypes = { panel: PanelNode, filter: FilterNode, sink: SinkNode, source: SourceNode };
 
 function loadPositions(): StoredPositions {
   try {
@@ -78,12 +88,12 @@ function savePositions(nodes: Node[]): void {
 }
 
 function selectionOf(elementId: string): Selection {
-  const [kind, id] = elementId.split(':');
-  if (kind === 'panel') return { kind: 'panel', id: Number(id) };
-  if (kind === 'filter') return { kind: 'filter', id: Number(id) };
-  if (kind === 'link') return { kind: 'link', id: Number(id) };
-  // Both edges of a filter belong to the rule, so clicking either selects it.
-  if (kind === 'rule-in' || kind === 'rule-out') return { kind: 'filter', id: Number(id) };
+  const { kind, rest } = elementRef(elementId);
+  if (kind === 'panel') return { kind: 'panel', id: Number(rest) };
+  if (kind === 'filter') return { kind: 'filter', id: Number(rest) };
+  if (kind === 'link') return { kind: 'link', id: Number(rest) };
+  // Both edges of a layer belong to its rule, so clicking either selects it.
+  if (kind === 'pass' || kind === 'match') return { kind: 'filter', id: Number(rest) };
   return null;
 }
 
@@ -99,7 +109,8 @@ function NetworkCanvas() {
 
   const { graph, loading, fetched, fetchError, refetch, addLink, removeLink, setLinkEnable } =
     useNetworkGraph();
-  const { lists, createList, createRule, updateRule, removeRule, setRuleEnable } = useFilters();
+  const { lists, createList, createRule, updateRule, removeRule, setRuleEnable, reorderRules } =
+    useFilters();
   const nodeMutations = useNodeMutations();
   const peerMutations = usePeerMutations();
   const { nodes: nodeRecords } = useNodesQuery();
@@ -123,19 +134,195 @@ function NetworkCanvas() {
   const [ruleMode, setRuleMode] = useState<'add' | 'edit'>('add');
   const [ruleRecord, setRuleRecord] = useState<FilterRule | null>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [drafts, setDrafts] = useState<DraftNode[]>([]);
+  const [sinks, setSinks] = useState<{ block?: boolean; direct?: boolean }>({});
+  const [dropPoint, setDropPoint] = useState<{ x: number; y: number } | null>(null);
+  const [draftBeingSaved, setDraftBeingSaved] = useState<string | null>(null);
+  const { screenToFlowPosition } = useReactFlow();
+  const draftSeq = useRef(0);
 
   useEffect(() => {
-    const { nodes: nextNodes, edges: nextEdges } = buildGraphElements(graph, loadPositions());
+    const { nodes: nextNodes, edges: nextEdges } = buildGraphElements(graph, {
+      positions: loadPositions(),
+      drafts,
+      sinks,
+    });
     setNodes(nextNodes);
     setEdges(nextEdges);
-  }, [graph, setNodes, setEdges]);
+  }, [graph, drafts, sinks, setNodes, setEdges]);
+
+  const rules = useMemo(() => graph.filters ?? [], [graph.filters]);
+
+  // Rules over the same panel and inbounds are one chain, in the order the
+  // server sent them — which is the order Xray will evaluate them in.
+  const chainOf = useCallback(
+    (panelId: number, tags: string[]) => {
+      const key = scopeKey(panelId, tags);
+      return rules.filter((rule) => scopeKey(rule.panelId ?? 0, rule.sourceInboundTags) === key);
+    },
+    [rules],
+  );
+
+  const dropDraft = useCallback((kind: string, position: { x: number; y: number }) => {
+    draftSeq.current += 1;
+    if (kind === 'filter') {
+      setDrafts((current) => [
+        ...current,
+        { kind: 'filter', id: `draft-filter:${draftSeq.current}`, position },
+      ]);
+      return;
+    }
+    if (kind === 'block') setSinks((current) => ({ ...current, block: true }));
+    if (kind === 'direct') setSinks((current) => ({ ...current, direct: true }));
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const kind = event.dataTransfer.getData('application/x-network-node');
+      if (!kind) return;
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      if (kind === 'source') {
+        setDropPoint(position);
+        return;
+      }
+      dropDraft(kind, position);
+    },
+    [dropDraft, screenToFlowPosition],
+  );
+
+  const onPickSource = useCallback(
+    (panelId: number, tags: string[]) => {
+      draftSeq.current += 1;
+      setDrafts((current) => [
+        ...current,
+        {
+          kind: 'source',
+          id: `draft-source:${draftSeq.current}`,
+          panelId,
+          tags,
+          position: dropPoint ?? { x: 380, y: 0 },
+        },
+      ]);
+      setDropPoint(null);
+    },
+    [dropPoint],
+  );
+
+  // Wiring a layer's match output at a panel is what turns it into a cascade:
+  // the edge it needs is created here if it does not exist yet.
+  const cascadeFromLayer = useCallback(
+    async (ruleId: number, targetPanelId: number, targetHandle: string) => {
+      const rule = rules.find((r) => r.id === ruleId);
+      const targetInboundId = Number(targetHandle.replace(/^in:/, ''));
+      if (!rule || !targetInboundId) return;
+      const tags = rule.sourceInboundTags ?? [];
+      if (tags.length !== 1) {
+        messageApi.error(t('pages.network.toasts.cascadeNeedsOneInbound'));
+        return;
+      }
+      const sourcePanelId = rule.panelId ?? 0;
+      let linkId = (graph.links ?? []).find(
+        (link) =>
+          link.sourcePanelId === sourcePanelId &&
+          link.sourceInboundTag === tags[0] &&
+          link.targetPanelId === targetPanelId &&
+          link.targetInboundId === targetInboundId,
+      )?.id;
+      if (!linkId) {
+        const created = await addLink({
+          sourcePanelId,
+          sourceInboundTag: tags[0],
+          targetPanelId,
+          targetInboundId,
+          enable: true,
+        });
+        if (!created?.success) return;
+        linkId = (created.obj as CascadeLink | undefined)?.id;
+      }
+      if (!linkId) return;
+      const msg = await updateRule(rule.id, { ...rule, action: 'cascade', cascadeLinkId: linkId });
+      if (msg?.success) messageApi.success(t('pages.network.toasts.layerAction'));
+    },
+    [addLink, graph.links, messageApi, rules, t, updateRule],
+  );
+
+  // Opens the rule form for a draft layer with everything the wiring already
+  // decided filled in: which inbounds feed it, what it does, where it sits.
+  const configureDraft = useCallback(
+    (draft: DraftFilter, panelId: number, tags: string[], action?: string) => {
+      const chain = chainOf(panelId, tags);
+      const last = chain[chain.length - 1];
+      setRuleMode('add');
+      setRuleRecord({
+        id: 0,
+        name: '',
+        panelId,
+        sourceInboundTags: tags,
+        listIds: [],
+        action: (action ?? draft.action ?? 'block') as FilterRule['action'],
+        sortOrder: (last?.sortOrder ?? chain.length - 1) + 1,
+        enable: true,
+      });
+      setDraftBeingSaved(draft.id);
+      setRuleOpen(true);
+    },
+    [chainOf],
+  );
 
   const onConnect = useCallback(
     async (connection: Connection) => {
-      if (connection.sourceHandle === ALL_INBOUNDS_HANDLE) {
+      const from = elementRef(connection.source);
+      const to = elementRef(connection.target);
+      const draftTarget = drafts.find(
+        (d): d is DraftFilter => d.kind === 'filter' && d.id === connection.target,
+      );
+
+      // An inbound source, or the layer before it, hands its scope to a draft.
+      if (draftTarget && (from.kind === 'source' || from.kind === 'filter')) {
+        if (from.kind === 'source') {
+          const [panelPart, tagPart] = from.rest.split('|');
+          configureDraft(draftTarget, Number(panelPart), tagPart ? tagPart.split(',') : []);
+          return;
+        }
+        const previous = rules.find((rule) => rule.id === Number(from.rest));
+        if (!previous) return;
+        configureDraft(draftTarget, previous.panelId ?? 0, previous.sourceInboundTags ?? []);
+        return;
+      }
+
+      // A layer's match output picks what that layer does.
+      if (from.kind === 'filter' && connection.sourceHandle === 'match') {
+        const action = connection.target === BLOCK_SINK_ID ? 'block' : 'direct';
+        if (connection.target === BLOCK_SINK_ID || connection.target === DIRECT_SINK_ID) {
+          const draft = drafts.find(
+            (d): d is DraftFilter => d.kind === 'filter' && d.id === connection.source,
+          );
+          if (draft) {
+            setDrafts((current) => current.map((d) => (d.id === draft.id ? { ...d, action } : d)));
+            return;
+          }
+          const rule = rules.find((r) => r.id === Number(from.rest));
+          if (!rule) return;
+          const msg = await updateRule(rule.id, { ...rule, action, cascadeLinkId: 0 });
+          if (msg?.success) messageApi.success(t('pages.network.toasts.layerAction'));
+          return;
+        }
+        if (to.kind === 'panel') {
+          await cascadeFromLayer(Number(from.rest), Number(to.rest), connection.targetHandle ?? '');
+          return;
+        }
+      }
+
+      if (connection.sourceHandle === ALL_INBOUNDS_HANDLE && to.kind === 'panel') {
         messageApi.error(t('pages.network.toasts.allInboundsHint'));
         return;
       }
+      if (from.kind !== 'panel' || to.kind !== 'panel') {
+        messageApi.error(t('pages.network.toasts.dragHint'));
+        return;
+      }
+
       const sourceTag = connection.sourceHandle?.replace(/^out:/, '') ?? '';
       const targetInboundId = Number(connection.targetHandle?.replace(/^in:/, '') ?? '');
       if (!sourceTag || !targetInboundId) {
@@ -149,9 +336,9 @@ function NetworkCanvas() {
       setBusy(true);
       try {
         const msg = await addLink({
-          sourcePanelId: Number(connection.source.replace(/^panel:/, '')),
+          sourcePanelId: Number(from.rest),
           sourceInboundTag: sourceTag,
-          targetPanelId: Number(connection.target.replace(/^panel:/, '')),
+          targetPanelId: Number(to.rest),
           targetInboundId,
           enable: true,
         });
@@ -160,7 +347,7 @@ function NetworkCanvas() {
         setBusy(false);
       }
     },
-    [addLink, messageApi, t],
+    [addLink, cascadeFromLayer, configureDraft, drafts, messageApi, rules, t, updateRule],
   );
 
   const confirmDelete = useCallback(
@@ -276,6 +463,16 @@ function NetworkCanvas() {
             }
           },
         ),
+      moveFilter: async (rule: FilterRule, delta: number) => {
+        const chain = chainOf(rule.panelId ?? 0, rule.sourceInboundTags ?? []);
+        const at = chain.findIndex((r) => r.id === rule.id);
+        const to = at + delta;
+        if (at < 0 || to < 0 || to >= chain.length) return;
+        const ids = chain.map((r) => r.id);
+        [ids[at], ids[to]] = [ids[to], ids[at]];
+        const msg = await reorderRules(ids);
+        if (msg?.success) refetch();
+      },
       // Pre-wires the new rule to the link the operator clicked, so the filter
       // lands on that exact edge instead of being described again by hand.
       filterLink: (link: CascadeLink) => {
@@ -294,6 +491,7 @@ function NetworkCanvas() {
       },
     }),
     [
+      chainOf,
       confirmDelete,
       messageApi,
       navigate,
@@ -303,6 +501,7 @@ function NetworkCanvas() {
       refetch,
       removeLink,
       removeRule,
+      reorderRules,
       setLinkEnable,
       setRuleEnable,
       t,
@@ -321,10 +520,16 @@ function NetworkCanvas() {
         ruleMode === 'edit' && ruleRecord?.id
           ? await updateRule(ruleRecord.id, payload)
           : await createRule(payload);
-      if (msg?.success) refetch();
+      if (msg?.success) {
+        if (draftBeingSaved) {
+          setDrafts((current) => current.filter((d) => d.id !== draftBeingSaved));
+          setDraftBeingSaved(null);
+        }
+        refetch();
+      }
       return msg;
     },
-    [ruleMode, ruleRecord, updateRule, createRule, refetch],
+    [ruleMode, ruleRecord, updateRule, createRule, refetch, draftBeingSaved],
   );
 
   const savePanel = useCallback(
@@ -417,7 +622,14 @@ function NetworkCanvas() {
                     className="network-hint"
                     title={t('pages.network.hint')}
                   />
-                  <div className="network-canvas">
+                  <div
+                    className="network-canvas"
+                    onDrop={onDrop}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                    }}
+                  >
                     <ReactFlow
                       nodes={nodes}
                       edges={edges}
@@ -438,6 +650,7 @@ function NetworkCanvas() {
                       <MiniMap pannable zoomable />
                     </ReactFlow>
                   </div>
+                  <NodePalette />
                 </Card>
               )}
             </Spin>
@@ -452,6 +665,13 @@ function NetworkCanvas() {
           lists={lists}
           actions={actions}
           onClose={() => setSelection(null)}
+        />
+
+        <SourcePickerModal
+          open={dropPoint !== null}
+          panels={graph.panels}
+          onCancel={() => setDropPoint(null)}
+          onPick={onPickSource}
         />
 
         <FilterRuleModal

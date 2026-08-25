@@ -206,3 +206,55 @@ func TestNetworkGraphCarriesFilters(t *testing.T) {
 		t.Fatalf("graph lists = %+v, want the referenced list", graph.Lists)
 	}
 }
+
+// Xray takes the first matching routing rule, so the order of a filter chain is
+// what the layers do — reordering has to rewrite it as one step.
+func TestFilterRuleReorderRewritesTheChain(t *testing.T) {
+	initFilterTestDB(t)
+	s := FilterService{}
+	list := &model.FilterList{Name: "ads", Kind: model.FilterKindDomain, Entries: []string{"ads.example.com"}, Enable: true}
+	if err := s.CreateList(list); err != nil {
+		t.Fatalf("CreateList: %v", err)
+	}
+	ids := make([]int, 0, 3)
+	for _, name := range []string{"first", "second", "third"} {
+		rule := &model.FilterRule{
+			Name: name, PanelId: SelfPanelId, ListIds: []int{list.Id},
+			Action: model.FilterActionBlock, Enable: true,
+		}
+		if err := s.CreateRule(rule); err != nil {
+			t.Fatalf("CreateRule %s: %v", name, err)
+		}
+		ids = append(ids, rule.Id)
+	}
+
+	if err := s.ReorderRules([]int{ids[2], ids[0], ids[1]}); err != nil {
+		t.Fatalf("ReorderRules: %v", err)
+	}
+	rules, err := s.Rules()
+	if err != nil {
+		t.Fatalf("Rules: %v", err)
+	}
+	got := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		got = append(got, rule.Name)
+	}
+	want := []string{"third", "first", "second"}
+	for i := range want {
+		if i >= len(got) || got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+
+	// A chain that names a rule that is gone must not half-apply.
+	if err := s.ReorderRules([]int{ids[1], 4242}); err == nil {
+		t.Fatal("ReorderRules accepted an unknown rule")
+	}
+	rules, err = s.Rules()
+	if err != nil {
+		t.Fatalf("Rules: %v", err)
+	}
+	if rules[0].Name != "third" {
+		t.Fatalf("a refused reorder changed the chain: %s is first", rules[0].Name)
+	}
+}

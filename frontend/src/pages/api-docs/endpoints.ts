@@ -1607,6 +1607,13 @@ export const sections: readonly Section[] = [
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'Rule ID.' }],
         body: '{\n  "enable": true\n}',
       },
+      {
+        method: 'POST',
+        path: '/panel/api/filters/rules/reorder',
+        summary:
+          'Rewrite the evaluation order of the filter chain in one call: sortOrder is assigned by position in the list. Xray takes the first matching routing rule, so this is what decides which layer wins. Every id must exist or nothing is changed.',
+        body: '{\n  "ids": [3, 1, 2]\n}',
+      },
     ],
   },
 

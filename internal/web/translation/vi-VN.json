@@ -2014,7 +2014,9 @@
         "dragHint": "Hãy kéo từ inbound sang inbound",
         "samePanel": "Chuỗi phải nối hai bảng khác nhau",
         "allInboundsHint": "Cổng \"tất cả inbound\" chỉ dẫn vào bộ lọc — kéo từ một inbound cụ thể để tạo tầng.",
-        "panelMissing": "Không tải được bản ghi của bảng này; hãy làm mới rồi thử lại."
+        "panelMissing": "Không tải được bản ghi của bảng này; hãy làm mới rồi thử lại.",
+        "cascadeNeedsOneInbound": "Tầng cần một nguồn có đúng một inbound.",
+        "layerAction": "Đã cập nhật lớp"
       },
       "allInbounds": "tất cả inbound",
       "applied": "Cấu hình",
@@ -2029,7 +2031,22 @@
       "roleLabel": "Vai trò",
       "selfHint": "Đây là bảng bạn đang đăng nhập; nó được quản lý trong phần cài đặt của chính nó.",
       "sinkBlock": "Bị chặn",
-      "sinkDirect": "Trực tiếp"
+      "sinkDirect": "Trực tiếp",
+      "addToCanvas": "Thêm vào canvas",
+      "draftFilter": "Bộ lọc mới",
+      "draftFilterHint": "Nối một nguồn inbound vào để thiết lập.",
+      "matchHint": "Phần lớp này khớp sẽ đi ra từ đây.",
+      "pass": "chuyển tiếp",
+      "passHint": "Phần không khớp chuyển sang lớp kế tiếp.",
+      "palette": {
+        "title": "Bảng nút",
+        "source": "Nguồn inbound",
+        "sourceHint": "Kéo ra rồi chọn bảng và các inbound của nó.",
+        "filter": "Lớp bộ lọc",
+        "filterHint": "Kéo ra và nối sau một nguồn hoặc một lớp khác.",
+        "blockHint": "Đầu cuối cho lưu lượng bị lớp chặn.",
+        "directHint": "Đầu cuối cho lưu lượng lớp cho ra cục bộ."
+      }
     },
     "filters": {
       "listsTitle": "Danh sách khớp",

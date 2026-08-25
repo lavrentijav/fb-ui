@@ -2014,7 +2014,9 @@
         "dragHint": "Arrastra de una entrada a otra entrada",
         "samePanel": "Una cascada debe unir dos paneles distintos",
         "allInboundsHint": "El puerto «todos los inbounds» solo alimenta filtros: arrastra desde un inbound concreto para una cascada.",
-        "panelMissing": "No se pudo cargar el registro de este panel; actualiza e inténtalo de nuevo."
+        "panelMissing": "No se pudo cargar el registro de este panel; actualiza e inténtalo de nuevo.",
+        "cascadeNeedsOneInbound": "Una cascada necesita una fuente con exactamente un inbound.",
+        "layerAction": "Capa actualizada"
       },
       "allInbounds": "todos los inbounds",
       "applied": "Config",
@@ -2029,7 +2031,22 @@
       "roleLabel": "Rol",
       "selfHint": "Este es el panel en el que has iniciado sesión; se gestiona desde sus propios ajustes.",
       "sinkBlock": "Bloqueado",
-      "sinkDirect": "Directo"
+      "sinkDirect": "Directo",
+      "addToCanvas": "Añadir al lienzo",
+      "draftFilter": "Filtro nuevo",
+      "draftFilterHint": "Conéctale una fuente de inbounds para configurarlo.",
+      "matchHint": "Lo que esta capa detecta sale por aquí.",
+      "pass": "pasa",
+      "passHint": "Lo que no detecta pasa a la capa siguiente.",
+      "palette": {
+        "title": "Paleta de nodos",
+        "source": "Fuente de inbounds",
+        "sourceHint": "Arrástrala y elige un panel y sus inbounds.",
+        "filter": "Capa de filtro",
+        "filterHint": "Arrástrala y conéctala tras una fuente u otra capa.",
+        "blockHint": "Terminal del tráfico que una capa bloquea.",
+        "directHint": "Terminal del tráfico que una capa saca localmente."
+      }
     },
     "filters": {
       "listsTitle": "Listas de coincidencia",

@@ -4,6 +4,8 @@ import (
 	"net"
 	"strings"
 
+	"gorm.io/gorm"
+
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
@@ -233,6 +235,42 @@ func (s *FilterService) DeleteRule(id int) error {
 		return err
 	}
 	return (&NetworkService{}).markSourceDirty(rule.PanelId)
+}
+
+// ReorderRules rewrites the evaluation order of a filter chain. Xray takes the
+// first matching routing rule, so the order of the layers is what they do.
+func (s *FilterService) ReorderRules(ids []int) error {
+	if len(ids) == 0 {
+		return common.NewError("no rules to reorder")
+	}
+	db := database.GetDB()
+	rules := make([]*model.FilterRule, 0, len(ids))
+	for _, id := range ids {
+		rule := &model.FilterRule{}
+		if err := db.Where("id = ?", id).First(rule).Error; err != nil {
+			return common.NewErrorf("filter rule %d not found", id)
+		}
+		rules = append(rules, rule)
+	}
+	panels := make(map[int]struct{}, len(rules))
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		for order, rule := range rules {
+			if err := tx.Model(model.FilterRule{}).Where("id = ?", rule.Id).
+				Updates(map[string]any{"sort_order": order, "applied": 0}).Error; err != nil {
+				return err
+			}
+			panels[rule.PanelId] = struct{}{}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	for panelId := range panels {
+		if err := (&NetworkService{}).markSourceDirty(panelId); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *FilterService) SetRuleEnable(id int, enable bool) error {

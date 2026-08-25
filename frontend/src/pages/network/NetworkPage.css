@@ -178,3 +178,117 @@
 .direct-edge.is-paused {
   opacity: 0.45;
 }
+
+.node-palette {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.node-palette-title {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.node-palette-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.node-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px dashed var(--ant-color-border);
+  border-radius: var(--ant-border-radius, 6px);
+  background: var(--ant-color-bg-container);
+  cursor: grab;
+  font-size: 12px;
+  user-select: none;
+}
+
+.node-palette-item:active {
+  cursor: grabbing;
+}
+
+.node-palette-item.is-block {
+  color: var(--ant-color-error);
+}
+
+.node-palette-item.is-direct {
+  color: var(--ant-color-success);
+}
+
+.source-node {
+  position: relative;
+  min-width: 180px;
+  max-width: 230px;
+  padding: 8px 10px;
+  border: 1px solid var(--ant-color-border);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-bg-container);
+  box-shadow: var(--ant-box-shadow-tertiary, 0 1px 2px rgba(0, 0, 0, 0.06));
+}
+
+.source-node.is-draft,
+.filter-node.is-draft {
+  border-style: dashed;
+}
+
+.source-node.is-selected {
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 2px var(--ant-color-primary-border, rgba(22, 119, 255, 0.3));
+}
+
+.source-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.source-node-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.filter-node-layer {
+  margin: 0;
+}
+
+.filter-node-outputs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.filter-node-output.is-pass {
+  color: var(--ant-color-text-tertiary);
+}
+
+.filter-handle-match {
+  top: 62%;
+}
+
+.filter-handle-pass {
+  top: 86%;
+}
+
+.pass-edge {
+  stroke-dasharray: 4 3;
+}
+
+.feed-edge {
+  opacity: 0.7;
+}

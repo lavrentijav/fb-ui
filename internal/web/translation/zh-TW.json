@@ -2014,7 +2014,9 @@
         "dragHint": "請從入站拖到入站",
         "samePanel": "串接必須連接兩個不同的面板",
         "allInboundsHint": "「所有入站」連接埠只接過濾節點——級聯請從單一入站拖出。",
-        "panelMissing": "無法載入該面板的記錄，請重新整理後再試。"
+        "panelMissing": "無法載入該面板的記錄，請重新整理後再試。",
+        "cascadeNeedsOneInbound": "級聯需要剛好只有一個入站的來源。",
+        "layerAction": "已更新該層"
       },
       "allInbounds": "所有入站",
       "applied": "設定",
@@ -2029,7 +2031,22 @@
       "roleLabel": "角色",
       "selfHint": "這是你登入的面板，在它自己的設定裡管理。",
       "sinkBlock": "已阻擋",
-      "sinkDirect": "直連"
+      "sinkDirect": "直連",
+      "addToCanvas": "加入畫布",
+      "draftFilter": "新過濾",
+      "draftFilterHint": "接上一個入站來源即可設定。",
+      "matchHint": "本層匹配到的流量從這裡出去。",
+      "pass": "放行",
+      "passHint": "未匹配的流量進入下一層。",
+      "palette": {
+        "title": "節點面板",
+        "source": "入站來源",
+        "sourceHint": "拖出後選擇面板及其入站。",
+        "filter": "過濾層",
+        "filterHint": "拖出後接在某個來源或另一層之後。",
+        "blockHint": "被該層阻擋的流量終點。",
+        "directHint": "該層本機直出的流量終點。"
+      }
     },
     "filters": {
       "listsTitle": "比對清單",

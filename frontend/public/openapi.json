@@ -11195,6 +11195,53 @@
         }
       }
     },
+    "/panel/api/filters/rules/reorder": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Rewrite the evaluation order of the filter chain in one call: sortOrder is assigned by position in the list. Xray takes the first matching routing rule, so this is what decides which layer wins. Every id must exist or nothing is changed.",
+        "operationId": "post_panel_api_filters_rules_reorder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "ids": [
+                  3,
+                  1,
+                  2
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/hosts/list": {
       "get": {
         "tags": [
