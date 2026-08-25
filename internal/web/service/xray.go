@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
+	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/json_util"
@@ -65,6 +66,10 @@ type XrayService struct {
 	settingService SettingService
 	nodeService    NodeService
 	xrayAPI        xray.XrayAPI
+
+	// materializedRules carries the filter layers of the config this receiver
+	// last generated over to the point where that config is known to be live.
+	materializedRules []int
 }
 
 // IsXrayRunning checks if the Xray process is currently running.
@@ -165,6 +170,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	localInboundTags := make([]string, 0, len(inbounds))
 	for _, inbound := range inbounds {
 		if !inbound.Enable {
 			continue
@@ -344,6 +350,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 
 		inboundConfig := inbound.GenXrayInboundConfig()
 		xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, *inboundConfig)
+		localInboundTags = append(localInboundTags, inbound.Tag)
 	}
 
 	// Merge subscription-derived outbounds (if any) into the final outbounds array.
@@ -384,7 +391,36 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 		injectNodeEgresses(xrayConfig, nodes)
 	}
 
+	// Filter layers this panel owns become routing rules of this config. Which
+	// ones made it is remembered here and written back once the config is live.
+	s.materializedRules = s.injectFilterChain(xrayConfig, localInboundTags)
+
 	return xrayConfig, nil
+}
+
+// injectFilterChain reads the stored chain and materializes it, tolerating a
+// read failure: a config without the filters is better than no config at all.
+func (s *XrayService) injectFilterChain(cfg *xray.Config, localInboundTags []string) []int {
+	filters := FilterService{}
+	rules, err := filters.Rules()
+	if err != nil {
+		logger.Warning("cluster routing: read filter rules failed:", err)
+		return nil
+	}
+	if len(rules) == 0 {
+		return nil
+	}
+	lists, err := filters.Lists()
+	if err != nil {
+		logger.Warning("cluster routing: read filter lists failed:", err)
+		return nil
+	}
+	var links []*model.CascadeLink
+	if err := database.GetDB().Model(model.CascadeLink{}).Find(&links).Error; err != nil {
+		logger.Warning("cluster routing: read cascade links failed:", err)
+		return nil
+	}
+	return injectClusterRouting(cfg, rules, lists, links, localInboundTags)
 }
 
 // PanelEgressInboundTag is the tag of the loopback SOCKS inbound injected into
@@ -1077,10 +1113,12 @@ func (s *XrayService) RestartXray(isForce bool) error {
 		configUnchanged := process.GetConfig().Equals(xrayConfig)
 		if !isForce && configUnchanged && !isNeedXrayRestart.Load() {
 			logger.Debug("It does not need to restart Xray")
+			s.flushMaterialized()
 			return nil
 		}
 		if !isForce && !configUnchanged && s.tryHotApply(process, xrayConfig) {
 			logger.Info("Xray config changes applied through the core API, no restart needed")
+			s.flushMaterialized()
 			return nil
 		}
 		_ = process.Stop()
@@ -1093,8 +1131,18 @@ func (s *XrayService) RestartXray(isForce bool) error {
 	if err != nil {
 		return err
 	}
+	s.flushMaterialized()
 
 	return nil
+}
+
+// flushMaterialized writes back which filter layers the running config
+// carries. It runs only after the config is live, so the panel never shows a
+// layer as applied because of a config that failed to start.
+func (s *XrayService) flushMaterialized() {
+	if err := markClusterApplied(s.materializedRules); err != nil {
+		logger.Warning("cluster routing: failed to record applied filter rules:", err)
+	}
 }
 
 // tryHotApply attempts to reconcile the running Xray instance with newCfg
