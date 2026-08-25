@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { Spin } from 'antd';
 
 import PanelLayout from '@/layouts/PanelLayout';
@@ -9,7 +9,6 @@ const InboundsPage = lazy(() => import('@/pages/inbounds/InboundsPage'));
 const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
 const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
-const PeersPage = lazy(() => import('@/pages/peers/PeersPage'));
 const NetworkPage = lazy(() => import('@/pages/network/NetworkPage'));
 const FiltersPage = lazy(() => import('@/pages/filters/FiltersPage'));
 const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
@@ -48,7 +47,7 @@ const routes: RouteObject[] = [
       { path: 'clients', element: withSuspense(<ClientsPage />) },
       { path: 'groups', element: withSuspense(<GroupsPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
-      { path: 'peers', element: withSuspense(<PeersPage />) },
+      { path: 'peers', element: <Navigate to="/nodes?role=master" replace /> },
       { path: 'network', element: withSuspense(<NetworkPage />) },
       { path: 'filters', element: withSuspense(<FiltersPage />) },
       { path: 'hosts', element: withSuspense(<HostsPage />) },

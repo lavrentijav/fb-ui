@@ -114,7 +114,6 @@
     "pinSidebar": "Kenar çubuğunu sabitle",
     "unpinSidebar": "Kenar çubuğu sabitlemesini kaldır",
     "subFormats": "Sub Formats",
-    "peers": "Eşler",
     "network": "Ağ",
     "filters": "Filtreler"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "Çevrimiçi",
       "offlineNodes": "Çevrimdışı",
       "avgLatency": "Ortalama Gecikme",
+      "roleNode": "Yönetilen düğümler",
+      "roleMaster": "Ana paneller",
       "name": "Ad",
       "namePlaceholder": "ör. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com veya 1.2.3.4",

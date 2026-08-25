@@ -449,7 +449,11 @@ export default function SubscriptionGeneralTab({
                   onChange={(e) => updateSetting({ subEmergencyUrl: e.target.value })}
                 />
               </SettingListItem>
-              <Button type="link" onClick={() => navigate('/peers')} style={{ paddingInline: 0 }}>
+              <Button
+                type="link"
+                onClick={() => navigate('/nodes?role=master')}
+                style={{ paddingInline: 0 }}
+              >
                 {t('pages.settings.subManagePeers')}
               </Button>
             </>

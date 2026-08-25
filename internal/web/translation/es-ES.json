@@ -114,7 +114,6 @@
     "pinSidebar": "Fijar barra lateral",
     "unpinSidebar": "Desfijar barra lateral",
     "subFormats": "Sub Formats",
-    "peers": "Pares",
     "network": "Red",
     "filters": "Filtros"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "En línea",
       "offlineNodes": "Sin conexión",
       "avgLatency": "Latencia media",
+      "roleNode": "Nodos gestionados",
+      "roleMaster": "Paneles maestros",
       "name": "Nombre",
       "namePlaceholder": "p. ej. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com o 1.2.3.4",

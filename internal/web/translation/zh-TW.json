@@ -114,7 +114,6 @@
     "pinSidebar": "固定側邊欄",
     "unpinSidebar": "取消固定側邊欄",
     "subFormats": "Sub Formats",
-    "peers": "對等面板",
     "network": "網路",
     "filters": "過濾"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "上線",
       "offlineNodes": "離線",
       "avgLatency": "平均延遲",
+      "roleNode": "受管節點",
+      "roleMaster": "主面板",
       "name": "名稱",
       "namePlaceholder": "例如：de-frankfurt-1",
       "addressPlaceholder": "panel.example.com 或 1.2.3.4",

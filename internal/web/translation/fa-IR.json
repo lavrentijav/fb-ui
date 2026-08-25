@@ -114,7 +114,6 @@
     "pinSidebar": "ثابت کردن نوار کناری",
     "unpinSidebar": "برداشتن تثبیت نوار کناری",
     "subFormats": "Sub Formats",
-    "peers": "همتاها",
     "network": "شبکه",
     "filters": "فیلترها"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "آنلاین",
       "offlineNodes": "آفلاین",
       "avgLatency": "میانگین تاخیر",
+      "roleNode": "نودهای مدیریت‌شده",
+      "roleMaster": "پنل‌های مستر",
       "name": "نام",
       "namePlaceholder": "مثلاً de-frankfurt-1",
       "addressPlaceholder": "panel.example.com یا 1.2.3.4",

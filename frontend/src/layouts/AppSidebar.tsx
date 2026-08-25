@@ -12,7 +12,6 @@ import {
   CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
-  DeploymentUnitOutlined,
   ExportOutlined,
   FilterOutlined,
   GithubOutlined,
@@ -62,7 +61,6 @@ type IconName =
   | 'setting'
   | 'tool'
   | 'cluster'
-  | 'peers'
   | 'network'
   | 'filters'
   | 'hosts'
@@ -79,7 +77,6 @@ const iconByName: Record<IconName, ComponentType> = {
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
-  peers: DeploymentUnitOutlined,
   network: PartitionOutlined,
   filters: FilterOutlined,
   hosts: GlobalOutlined,
@@ -226,7 +223,6 @@ export default function AppSidebar() {
       { key: '/clients', icon: 'team', title: t('menu.clients') },
       { key: '/groups', icon: 'groups', title: t('menu.groups') },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
-      { key: '/peers', icon: 'peers', title: t('menu.peers') },
       { key: '/network', icon: 'network', title: t('menu.network') },
       { key: '/filters', icon: 'filters', title: t('menu.filters') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },

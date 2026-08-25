@@ -114,7 +114,6 @@
     "pinSidebar": "固定侧边栏",
     "unpinSidebar": "取消固定侧边栏",
     "subFormats": "Sub Formats",
-    "peers": "对等面板",
     "network": "网络",
     "filters": "过滤"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "在线",
       "offlineNodes": "离线",
       "avgLatency": "平均延迟",
+      "roleNode": "受管节点",
+      "roleMaster": "主面板",
       "name": "名称",
       "namePlaceholder": "例如：de-frankfurt-1",
       "addressPlaceholder": "panel.example.com 或 1.2.3.4",

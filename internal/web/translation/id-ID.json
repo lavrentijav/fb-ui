@@ -114,7 +114,6 @@
     "pinSidebar": "Sematkan bilah sisi",
     "unpinSidebar": "Lepas sematan bilah sisi",
     "subFormats": "Sub Formats",
-    "peers": "Peer",
     "network": "Jaringan",
     "filters": "Filter"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "Online",
       "offlineNodes": "Offline",
       "avgLatency": "Latensi Rata-rata",
+      "roleNode": "Node terkelola",
+      "roleMaster": "Panel master",
       "name": "Nama",
       "namePlaceholder": "mis. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com atau 1.2.3.4",

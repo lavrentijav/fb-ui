@@ -114,7 +114,6 @@
     "pinSidebar": "تثبيت الشريط الجانبي",
     "unpinSidebar": "إلغاء تثبيت الشريط الجانبي",
     "subFormats": "Sub Formats",
-    "peers": "النظائر",
     "network": "الشبكة",
     "filters": "المرشحات"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "متصل",
       "offlineNodes": "غير متصل",
       "avgLatency": "متوسط الكمون",
+      "roleNode": "النودز المُدارة",
+      "roleMaster": "اللوحات الرئيسية",
       "name": "الاسم",
       "namePlaceholder": "مثال: de-frankfurt-1",
       "addressPlaceholder": "panel.example.com أو 1.2.3.4",

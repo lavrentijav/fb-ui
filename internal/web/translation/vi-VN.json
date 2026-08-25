@@ -114,7 +114,6 @@
     "pinSidebar": "Ghim thanh bên",
     "unpinSidebar": "Bỏ ghim thanh bên",
     "subFormats": "Sub Formats",
-    "peers": "Máy ngang hàng",
     "network": "Mạng",
     "filters": "Bộ lọc"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "Trực tuyến",
       "offlineNodes": "Ngoại tuyến",
       "avgLatency": "Độ trễ trung bình",
+      "roleNode": "Nút được quản lý",
+      "roleMaster": "Bảng điều khiển chính",
       "name": "Tên",
       "namePlaceholder": "vd: de-frankfurt-1",
       "addressPlaceholder": "panel.example.com hoặc 1.2.3.4",

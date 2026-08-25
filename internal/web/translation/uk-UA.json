@@ -114,7 +114,6 @@
     "pinSidebar": "Закріпити бічну панель",
     "unpinSidebar": "Відкріпити бічну панель",
     "subFormats": "Формати підписки",
-    "peers": "Піри",
     "network": "Мережа",
     "filters": "Фільтри"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "У мережі",
       "offlineNodes": "Не в мережі",
       "avgLatency": "Середня затримка",
+      "roleNode": "Керовані вузли",
+      "roleMaster": "Майстер-панелі",
       "name": "Назва",
       "namePlaceholder": "напр. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com або 1.2.3.4",

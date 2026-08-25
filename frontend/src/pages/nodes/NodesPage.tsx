@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
@@ -13,6 +14,7 @@ import {
   Modal,
   Result,
   Row,
+  Segmented,
   Spin,
   Statistic,
   Typography,
@@ -22,6 +24,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   CloudServerOutlined,
+  ClusterOutlined,
+  DeploymentUnitOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 
@@ -33,6 +37,7 @@ import { useNodeMutations } from '@/api/queries/useNodeMutations';
 import AppSidebar from '@/layouts/AppSidebar';
 import NodeList from './NodeList';
 import NodeFormModal from './NodeFormModal';
+import PeerPanels from './PeerPanels';
 import { setMessageInstance } from '@/utils/messageBus';
 import { HttpUtil } from '@/utils';
 import type { PanelUpdateInfo } from '../index/PanelUpdateModal';
@@ -76,6 +81,17 @@ export default function NodesPage() {
   useEffect(() => {
     setMessageInstance(messageApi);
   }, [messageApi]);
+
+  // A master is the same row in `nodes` with role=master, so it is a view of
+  // this page rather than a tab of its own; the query param keeps it linkable.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const role = searchParams.get('role') === 'master' ? 'master' : 'node';
+  const onRoleChange = useCallback(
+    (next: string) => {
+      setSearchParams(next === 'master' ? { role: 'master' } : {}, { replace: true });
+    },
+    [setSearchParams],
+  );
 
   const { nodes, loading, fetched, fetchError, refetch, totals } = useNodesQuery();
   const {
@@ -290,82 +306,101 @@ export default function NodesPage() {
 
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
-            <Spin spinning={!fetched} delay={200} description={t('loading')} size="large">
-              {!fetched ? (
-                <div className="loading-spacer" />
-              ) : fetchError ? (
-                <Result
-                  status="error"
-                  title={t('somethingWentWrong')}
-                  subTitle={fetchError}
-                  extra={
-                    <Button type="primary" loading={loading} onClick={() => refetch()}>
-                      {t('refresh')}
-                    </Button>
-                  }
-                />
-              ) : (
-                <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 12]}>
-                  <Col span={24}>
-                    <Card size="small" hoverable className="summary-card">
-                      <Row gutter={[16, isMobile ? 16 : 12]}>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.nodes.totalNodes')}
-                            value={String(totals.total)}
-                            prefix={<CloudServerOutlined />}
-                          />
-                        </Col>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.nodes.onlineNodes')}
-                            value={String(totals.online)}
-                            prefix={
-                              <CheckCircleOutlined style={{ color: 'var(--ant-color-success)' }} />
-                            }
-                          />
-                        </Col>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.nodes.offlineNodes')}
-                            value={String(totals.offline)}
-                            prefix={
-                              <CloseCircleOutlined style={{ color: 'var(--ant-color-error)' }} />
-                            }
-                          />
-                        </Col>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.nodes.avgLatency')}
-                            value={totals.avgLatency > 0 ? `${totals.avgLatency} ms` : '-'}
-                            prefix={<ThunderboltOutlined />}
-                          />
-                        </Col>
-                      </Row>
-                    </Card>
-                  </Col>
+            <Segmented
+              value={role}
+              onChange={onRoleChange}
+              style={{ marginBottom: 12 }}
+              options={[
+                { value: 'node', label: t('pages.nodes.roleNode'), icon: <ClusterOutlined /> },
+                {
+                  value: 'master',
+                  label: t('pages.nodes.roleMaster'),
+                  icon: <DeploymentUnitOutlined />,
+                },
+              ]}
+            />
+            {role === 'master' ? (
+              <PeerPanels isMobile={isMobile} />
+            ) : (
+              <Spin spinning={!fetched} delay={200} description={t('loading')} size="large">
+                {!fetched ? (
+                  <div className="loading-spacer" />
+                ) : fetchError ? (
+                  <Result
+                    status="error"
+                    title={t('somethingWentWrong')}
+                    subTitle={fetchError}
+                    extra={
+                      <Button type="primary" loading={loading} onClick={() => refetch()}>
+                        {t('refresh')}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 12]}>
+                    <Col span={24}>
+                      <Card size="small" hoverable className="summary-card">
+                        <Row gutter={[16, isMobile ? 16 : 12]}>
+                          <Col xs={12} sm={12} md={6}>
+                            <Statistic
+                              title={t('pages.nodes.totalNodes')}
+                              value={String(totals.total)}
+                              prefix={<CloudServerOutlined />}
+                            />
+                          </Col>
+                          <Col xs={12} sm={12} md={6}>
+                            <Statistic
+                              title={t('pages.nodes.onlineNodes')}
+                              value={String(totals.online)}
+                              prefix={
+                                <CheckCircleOutlined
+                                  style={{ color: 'var(--ant-color-success)' }}
+                                />
+                              }
+                            />
+                          </Col>
+                          <Col xs={12} sm={12} md={6}>
+                            <Statistic
+                              title={t('pages.nodes.offlineNodes')}
+                              value={String(totals.offline)}
+                              prefix={
+                                <CloseCircleOutlined style={{ color: 'var(--ant-color-error)' }} />
+                              }
+                            />
+                          </Col>
+                          <Col xs={12} sm={12} md={6}>
+                            <Statistic
+                              title={t('pages.nodes.avgLatency')}
+                              value={totals.avgLatency > 0 ? `${totals.avgLatency} ms` : '-'}
+                              prefix={<ThunderboltOutlined />}
+                            />
+                          </Col>
+                        </Row>
+                      </Card>
+                    </Col>
 
-                  <Col span={24}>
-                    <NodeList
-                      nodes={nodes}
-                      loading={loading}
-                      isMobile={isMobile}
-                      latestVersion={latestVersion}
-                      selectedIds={selectedIds}
-                      onSelectionChange={setSelectedIds}
-                      onAdd={onAdd}
-                      onMtls={() => setMtlsOpen(true)}
-                      onEdit={onEdit}
-                      onDelete={onDelete}
-                      onProbe={onProbe}
-                      onToggleEnable={onToggleEnable}
-                      onUpdateNode={onUpdateNode}
-                      onUpdateSelected={onUpdateSelected}
-                    />
-                  </Col>
-                </Row>
-              )}
-            </Spin>
+                    <Col span={24}>
+                      <NodeList
+                        nodes={nodes}
+                        loading={loading}
+                        isMobile={isMobile}
+                        latestVersion={latestVersion}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onAdd={onAdd}
+                        onMtls={() => setMtlsOpen(true)}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onProbe={onProbe}
+                        onToggleEnable={onToggleEnable}
+                        onUpdateNode={onUpdateNode}
+                        onUpdateSelected={onUpdateSelected}
+                      />
+                    </Col>
+                  </Row>
+                )}
+              </Spin>
+            )}
           </Layout.Content>
         </Layout>
 

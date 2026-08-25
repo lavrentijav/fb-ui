@@ -114,7 +114,6 @@
     "pinSidebar": "Закрепить боковую панель",
     "unpinSidebar": "Открепить боковую панель",
     "subFormats": "Форматы подписки",
-    "peers": "Пиры",
     "network": "Сеть",
     "filters": "Фильтры"
   },
@@ -939,6 +938,8 @@
       "onlineNodes": "В сети",
       "offlineNodes": "Не в сети",
       "avgLatency": "Средняя задержка",
+      "roleNode": "Управляемые узлы",
+      "roleMaster": "Мастер-панели",
       "name": "Имя",
       "namePlaceholder": "напр. de-frankfurt-1",
       "addressPlaceholder": "panel.example.com или 1.2.3.4",
