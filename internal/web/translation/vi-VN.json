@@ -2102,6 +2102,15 @@
       "ruleActionHint": "Chặn loại bỏ lưu lượng, Trực tiếp cho ra cục bộ, Tầng chuyển tiếp qua liên kết đã chọn.",
       "ruleLink": "Liên kết tầng",
       "ruleLinkHint": "Liên kết mà lưu lượng khớp được chuyển tiếp qua."
+    },
+    "cluster": {
+      "leader": "Dẫn bởi {name}",
+      "leaderIsSelf": "Bảng này đang dẫn",
+      "noLeader": "Chưa có bảng dẫn",
+      "leaderHint": "Bảng nào chạy phần việc chỉ cần làm một lần cho cả cơ sở dữ liệu. Quyền dẫn là một hợp đồng thuê mà bên giữ liên tục gia hạn.",
+      "toasts": {
+        "list": "Không tải được cụm"
+      }
     }
   },
   "tgbot": {

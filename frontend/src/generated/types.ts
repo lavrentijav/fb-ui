@@ -720,6 +720,19 @@ export interface OutboundTraffics {
   up: number;
 }
 
+export interface Panel {
+  address: string;
+  createdAt: number;
+  guid: string;
+  id: number;
+  lastSeen: number;
+  leaderTerm: number;
+  leaderUntil: number;
+  name: string;
+  updatedAt: number;
+  version: string;
+}
+
 export interface PanelUpdateStatus {
   exitCode: number;
   finishedAt: number;

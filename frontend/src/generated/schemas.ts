@@ -3215,6 +3215,70 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "Panel": {
+    "description": "Panel is one panel sharing this database, and which of them is in charge.\n\nLeadership is a lease, not a flag: LeaderUntil is a deadline the leader keeps\npushing forward. A panel that dies stops renewing and the next tick lets\nanother one take over, where a plain \"is_leader\" column would leave the\ncluster leaderless until a human noticed.",
+    "properties": {
+      "address": {
+        "example": "msk1.example.com",
+        "type": "string"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "guid": {
+        "description": "Guid is the panel's own stable identifier (its panelGuid setting), which\nis how a panel finds its own row again across restarts and renames.",
+        "example": "7f3a1c02-...",
+        "type": "string"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "lastSeen": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
+      "leaderTerm": {
+        "description": "LeaderTerm counts handovers, so a log can tell a renewal from a takeover.",
+        "example": 3,
+        "format": "int64",
+        "type": "integer"
+      },
+      "leaderUntil": {
+        "description": "LeaderUntil is when this panel's claim on the lead expires, in unix\nseconds. The leader is the row whose deadline has not passed yet; at most\none row can hold a live one.",
+        "example": 1700000030,
+        "format": "int64",
+        "type": "integer"
+      },
+      "name": {
+        "example": "msk1-moscow",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "version": {
+        "example": "v3.2.0",
+        "type": "string"
+      }
+    },
+    "required": [
+      "address",
+      "createdAt",
+      "guid",
+      "id",
+      "lastSeen",
+      "leaderTerm",
+      "leaderUntil",
+      "name",
+      "updatedAt",
+      "version"
+    ],
+    "type": "object"
+  },
   "PanelUpdateStatus": {
     "description": "PanelUpdateStatus reports the outcome of the most recently launched panel\nself-update. RunID lets the caller confirm this status belongs to the\nupdate it started rather than a stale result left over from an earlier\nrun; State is one of \"pending\", \"success\", or \"failed\". RunID is a decimal\nstring, not a JSON number: it's a formatted UnixNano timestamp, and\nJavaScript's number type can't represent that precisely (it exceeds\nNumber.MAX_SAFE_INTEGER), which would let two different runs round to the\nsame value on the wire and defeat the whole point of this field.",
     "properties": {

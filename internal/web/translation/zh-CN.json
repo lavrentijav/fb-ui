@@ -2102,6 +2102,15 @@
       "ruleActionHint": "阻断会丢弃匹配流量，直连从本机出站，级联则经所选连接转发。",
       "ruleLink": "级联连接",
       "ruleLinkHint": "匹配流量经由转发的连接。"
+    },
+    "cluster": {
+      "leader": "由 {name} 主导",
+      "leaderIsSelf": "本面板主导",
+      "noLeader": "暂无主导面板",
+      "leaderHint": "哪个面板执行整个数据库只需做一次的工作。主导权是持有者不断续期的租约。",
+      "toasts": {
+        "list": "加载集群失败"
+      }
     }
   },
   "tgbot": {

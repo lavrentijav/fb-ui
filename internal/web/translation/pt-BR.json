@@ -2102,6 +2102,15 @@
       "ruleActionHint": "Bloquear descarta o tráfego, Direto o envia localmente, Cascata o encaminha pelo link escolhido.",
       "ruleLink": "Link em cascata",
       "ruleLinkHint": "O link por onde o tráfego correspondente é encaminhado."
+    },
+    "cluster": {
+      "leader": "Liderado por {name}",
+      "leaderIsSelf": "Este painel lidera",
+      "noLeader": "Sem líder",
+      "leaderHint": "Qual painel executa o trabalho que deve acontecer uma vez para todo o banco. A liderança é um arrendamento que o titular renova.",
+      "toasts": {
+        "list": "Falha ao carregar o cluster"
+      }
     }
   },
   "tgbot": {

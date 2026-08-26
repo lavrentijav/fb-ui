@@ -25,12 +25,15 @@ import {
   Result,
   Space,
   Spin,
+  Tag,
+  Tooltip,
   message,
 } from 'antd';
 import { FilterOutlined, PlusOutlined, TagsOutlined } from '@ant-design/icons';
 
 import { useTheme } from '@/hooks/useTheme';
 import { useNetworkGraph } from '@/api/queries/useNetworkGraph';
+import { useClusterPanels } from '@/api/queries/useClusterPanels';
 import { useFilters } from '@/api/queries/useFilters';
 import { useNodeMutations } from '@/api/queries/useNodeMutations';
 import { usePeerMutations } from '@/api/queries/usePeerMutations';
@@ -123,6 +126,7 @@ function NetworkCanvas() {
   const nodeMutations = useNodeMutations();
   const peerMutations = usePeerMutations();
   const { nodes: nodeRecords } = useNodesQuery();
+  const { leader, leadsHere, fetched: clusterFetched } = useClusterPanels();
   const { peers: peerRecords } = usePeersQuery();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -601,6 +605,20 @@ function NetworkCanvas() {
                   title={t('pages.network.title')}
                   extra={
                     <Space wrap>
+                      {clusterFetched && (
+                        <Tooltip title={t('pages.cluster.leaderHint')}>
+                          <Tag color={leadsHere ? 'green' : 'default'}>
+                            {leader
+                              ? t(
+                                  leadsHere ? 'pages.cluster.leaderIsSelf' : 'pages.cluster.leader',
+                                  {
+                                    name: leader.name || leader.guid,
+                                  },
+                                )
+                              : t('pages.cluster.noLeader')}
+                          </Tag>
+                        </Tooltip>
+                      )}
                       <Button
                         icon={<PlusOutlined />}
                         onClick={() => {

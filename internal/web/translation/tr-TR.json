@@ -2102,6 +2102,15 @@
       "ruleActionHint": "Engelle eşleşen trafiği düşürür, Doğrudan yerelden çıkarır, Kaskad seçilen bağlantıdan iletir.",
       "ruleLink": "Kaskad bağlantısı",
       "ruleLinkHint": "Eşleşen trafiğin iletildiği bağlantı."
+    },
+    "cluster": {
+      "leader": "Lider: {name}",
+      "leaderIsSelf": "Bu panel lider",
+      "noLeader": "Lider yok",
+      "leaderHint": "Tüm veritabanı için bir kez yapılması gereken işi hangi panelin yürüttüğü. Liderlik, sahibinin yenilediği bir kiralamadır.",
+      "toasts": {
+        "list": "Küme yüklenemedi"
+      }
     }
   },
   "tgbot": {

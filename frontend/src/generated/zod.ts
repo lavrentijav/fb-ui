@@ -768,6 +768,20 @@ export const OutboundTrafficsSchema = z.object({
 });
 export type OutboundTraffics = z.infer<typeof OutboundTrafficsSchema>;
 
+export const PanelSchema = z.object({
+  address: z.string(),
+  createdAt: z.number().int(),
+  guid: z.string(),
+  id: z.number().int(),
+  lastSeen: z.number().int(),
+  leaderTerm: z.number().int(),
+  leaderUntil: z.number().int(),
+  name: z.string(),
+  updatedAt: z.number().int(),
+  version: z.string(),
+});
+export type Panel = z.infer<typeof PanelSchema>;
+
 export const PanelUpdateStatusSchema = z.object({
   exitCode: z.number().int(),
   finishedAt: z.number().int(),

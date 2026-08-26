@@ -12,6 +12,10 @@ export const keys = {
     lists: () => ['filters', 'lists'] as const,
     rules: () => ['filters', 'rules'] as const,
   },
+  cluster: {
+    root: () => ['cluster'] as const,
+    panels: () => ['cluster', 'panels'] as const,
+  },
   network: {
     root: () => ['network'] as const,
     graph: () => ['network', 'graph'] as const,

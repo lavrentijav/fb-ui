@@ -758,6 +758,18 @@ export const EXAMPLES: Record<string, unknown> = {
     "total": 0,
     "up": 0
   },
+  "Panel": {
+    "address": "msk1.example.com",
+    "createdAt": 0,
+    "guid": "7f3a1c02-...",
+    "id": 1,
+    "lastSeen": 1700000000,
+    "leaderTerm": 3,
+    "leaderUntil": 1700000030,
+    "name": "msk1-moscow",
+    "updatedAt": 0,
+    "version": "v3.2.0"
+  },
   "PanelUpdateStatus": {
     "exitCode": 0,
     "finishedAt": 1735689612,

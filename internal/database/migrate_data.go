@@ -60,6 +60,7 @@ func migrationModels() []any {
 		&model.CascadeLink{},
 		&model.FilterList{},
 		&model.FilterRule{},
+		&model.Panel{},
 	}
 }
 

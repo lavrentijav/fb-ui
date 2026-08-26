@@ -1417,6 +1417,23 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'cluster',
+    title: 'Cluster',
+    description:
+      'The panels sharing this database and which of them is in charge. Leadership is a lease a panel keeps renewing, not a flag: a panel that dies stops renewing and the next one takes over a tick after the deadline passes, so work that must happen once per cluster rather than once per panel has an owner without a human choosing one. All endpoints under /panel/api/cluster.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/cluster/panels',
+        summary:
+          'List every panel registered against this database, the leader first, with the guid of the leader and of the panel answering the request. leaderUntil is when the current claim lapses, in unix seconds.',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "panels": [\n      {\n        "id": 1,\n        "guid": "7f3a1c02-...",\n        "name": "msk1-moscow",\n        "address": "msk1.example.com",\n        "version": "v3.2.0",\n        "leaderUntil": 1700000030,\n        "leaderTerm": 3,\n        "lastSeen": 1700000000\n      }\n    ],\n    "leaderGuid": "7f3a1c02-...",\n    "selfGuid": "7f3a1c02-..."\n  }\n}',
+      },
+    ],
+  },
+
+  {
     id: 'peers',
     title: 'Peers',
     description:

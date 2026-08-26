@@ -3241,6 +3241,70 @@
         ],
         "type": "object"
       },
+      "Panel": {
+        "description": "Panel is one panel sharing this database, and which of them is in charge.\n\nLeadership is a lease, not a flag: LeaderUntil is a deadline the leader keeps\npushing forward. A panel that dies stops renewing and the next tick lets\nanother one take over, where a plain \"is_leader\" column would leave the\ncluster leaderless until a human noticed.",
+        "properties": {
+          "address": {
+            "example": "msk1.example.com",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "guid": {
+            "description": "Guid is the panel's own stable identifier (its panelGuid setting), which\nis how a panel finds its own row again across restarts and renames.",
+            "example": "7f3a1c02-...",
+            "type": "string"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "lastSeen": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "leaderTerm": {
+            "description": "LeaderTerm counts handovers, so a log can tell a renewal from a takeover.",
+            "example": 3,
+            "format": "int64",
+            "type": "integer"
+          },
+          "leaderUntil": {
+            "description": "LeaderUntil is when this panel's claim on the lead expires, in unix\nseconds. The leader is the row whose deadline has not passed yet; at most\none row can hold a live one.",
+            "example": 1700000030,
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "example": "msk1-moscow",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "version": {
+            "example": "v3.2.0",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "createdAt",
+          "guid",
+          "id",
+          "lastSeen",
+          "leaderTerm",
+          "leaderUntil",
+          "name",
+          "updatedAt",
+          "version"
+        ],
+        "type": "object"
+      },
       "PanelUpdateStatus": {
         "description": "PanelUpdateStatus reports the outcome of the most recently launched panel\nself-update. RunID lets the caller confirm this status belongs to the\nupdate it started rather than a stale result left over from an earlier\nrun; State is one of \"pending\", \"success\", or \"failed\". RunID is a decimal\nstring, not a JSON number: it's a formatted UnixNano timestamp, and\nJavaScript's number type can't represent that precisely (it exceeds\nNumber.MAX_SAFE_INTEGER), which would let two different runs round to the\nsame value on the wire and defeat the whole point of this field.",
         "properties": {
@@ -3580,6 +3644,10 @@
     {
       "name": "Nodes",
       "description": "Manage remote 3x-ui panels acting as nodes for a central panel. All endpoints under /panel/api/nodes."
+    },
+    {
+      "name": "Cluster",
+      "description": "The panels sharing this database and which of them is in charge. Leadership is a lease a panel keeps renewing, not a flag: a panel that dies stops renewing and the next one takes over a tick after the deadline passes, so work that must happen once per cluster rather than once per panel has an owner without a human choosing one. All endpoints under /panel/api/cluster."
     },
     {
       "name": "Peers",
@@ -9780,6 +9848,55 @@
                       "type": "string"
                     },
                     "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/cluster/panels": {
+      "get": {
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "List every panel registered against this database, the leader first, with the guid of the leader and of the panel answering the request. leaderUntil is when the current claim lapses, in unix seconds.",
+        "operationId": "get_panel_api_cluster_panels",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "panels": [
+                      {
+                        "id": 1,
+                        "guid": "7f3a1c02-...",
+                        "name": "msk1-moscow",
+                        "address": "msk1.example.com",
+                        "version": "v3.2.0",
+                        "leaderUntil": 1700000030,
+                        "leaderTerm": 3,
+                        "lastSeen": 1700000000
+                      }
+                    ],
+                    "leaderGuid": "7f3a1c02-...",
+                    "selfGuid": "7f3a1c02-..."
                   }
                 }
               }

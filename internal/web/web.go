@@ -120,6 +120,7 @@ type Server struct {
 	xrayService    service.XrayService
 	settingService service.SettingService
 	tgbotService   tgbot.Tgbot
+	panelRegistry  *service.PanelRegistryService
 
 	wsHub *websocket.Hub
 
@@ -134,8 +135,9 @@ type Server struct {
 func NewServer() *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
-		ctx:    ctx,
-		cancel: cancel,
+		ctx:           ctx,
+		cancel:        cancel,
+		panelRegistry: service.NewPanelRegistry(""),
 	}
 }
 
@@ -295,6 +297,7 @@ const (
 	cadenceNodeHeartbeat = "@every 5s"
 	cadenceNodeTraffic   = "@every 5s"
 	cadencePeerHealth    = "@every 30s"
+	cadencePanelLease    = "@every 10s"
 	cadenceOutboundSub   = "@every 5m"
 	cadenceReapOrphans   = "@every 5m"
 	cadenceRemoteRouting = "@every 5m"
@@ -335,6 +338,10 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 
 	// check client ips from log file every 10 sec
 	_, _ = s.cron.AddJob(cadenceClientIPScan, job.NewCheckClientIpJob())
+
+	// Who is in charge of the shared database. The tick is well inside the
+	// lease so a healthy leader never lets it lapse.
+	_, _ = s.cron.AddJob(cadencePanelLease, job.NewPanelLeaseJob(s.panelRegistry))
 
 	_, _ = s.cron.AddJob(cadenceNodeHeartbeat, job.NewNodeHeartbeatJob())
 
@@ -699,6 +706,12 @@ func (s *Server) stop(stopXray bool, stopTgBot bool) error {
 	}
 	if s.cron != nil {
 		s.cron.Stop()
+	}
+	// Hand the lead back rather than holding it for the rest of the lease.
+	if s.panelRegistry != nil {
+		if err := s.panelRegistry.Release(); err != nil {
+			logger.Warning("panel registry: release the lead on shutdown failed:", err)
+		}
 	}
 	if s.bus != nil {
 		s.bus.Stop()

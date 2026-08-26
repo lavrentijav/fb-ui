@@ -87,6 +87,7 @@ func allModels() []any {
 		&model.CascadeLink{},
 		&model.FilterList{},
 		&model.FilterRule{},
+		&model.Panel{},
 	}
 }
 

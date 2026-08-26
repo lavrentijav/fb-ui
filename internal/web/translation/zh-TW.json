@@ -2102,6 +2102,15 @@
       "ruleActionHint": "阻擋會丟棄匹配流量，直連從本機出站，級聯則經所選連線轉發。",
       "ruleLink": "級聯連線",
       "ruleLinkHint": "匹配流量經由轉發的連線。"
+    },
+    "cluster": {
+      "leader": "由 {name} 主導",
+      "leaderIsSelf": "本面板主導",
+      "noLeader": "暫無主導面板",
+      "leaderHint": "哪個面板執行整個資料庫只需做一次的工作。主導權是持有者不斷續期的租約。",
+      "toasts": {
+        "list": "載入叢集失敗"
+      }
     }
   },
   "tgbot": {

@@ -2102,6 +2102,15 @@
       "ruleActionHint": "Block drops matched traffic, Direct sends it out locally, Cascade forwards it over the chosen link.",
       "ruleLink": "Cascade link",
       "ruleLinkHint": "The link matched traffic is forwarded over."
+    },
+    "cluster": {
+      "leader": "Led by {name}",
+      "leaderIsSelf": "This panel leads",
+      "noLeader": "No leader",
+      "leaderHint": "Which panel runs the work that must happen once for the whole database. The lead is a lease the holder keeps renewing.",
+      "toasts": {
+        "list": "Failed to load the cluster"
+      }
     }
   },
   "tgbot": {

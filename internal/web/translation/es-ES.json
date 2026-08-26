@@ -2102,6 +2102,15 @@
       "ruleActionHint": "Bloquear descarta el tráfico, Directo lo saca localmente, Cascada lo reenvía por el enlace elegido.",
       "ruleLink": "Enlace en cascada",
       "ruleLinkHint": "El enlace por el que se reenvía el tráfico coincidente."
+    },
+    "cluster": {
+      "leader": "Lidera {name}",
+      "leaderIsSelf": "Lidera este panel",
+      "noLeader": "Sin líder",
+      "leaderHint": "Qué panel ejecuta el trabajo que debe pasar una vez para toda la base de datos. El liderazgo es un arrendamiento que su titular renueva.",
+      "toasts": {
+        "list": "No se pudo cargar el clúster"
+      }
     }
   },
   "tgbot": {

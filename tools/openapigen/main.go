@@ -42,6 +42,7 @@ func run(root, outDir string) error {
 				"CascadeLink",
 				"FilterList",
 				"FilterRule",
+				"Panel",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
