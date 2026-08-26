@@ -11,6 +11,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	xrayout "github.com/mhsanaei/3x-ui/v3/internal/xray/outbound"
 )
 
 // initMutDB spins up a real temp SQLite DB for tests that exercise DB-backed
@@ -71,12 +72,12 @@ func TestSubJsonService_MuxAttachedWhenConfigured(t *testing.T) {
 		wantMux  bool
 		protocol model.Protocol
 	}{
-		{"vmess mux", NewSubJsonService(mux, "", "", nil).genVnext(&model.Inbound{Protocol: model.VMESS, Settings: `{}`}, nil, client, mux), true, model.VMESS},
-		{"vless mux", NewSubJsonService(mux, "", "", nil).genVless(&SubService{}, &model.Inbound{Protocol: model.VLESS, Settings: `{}`}, nil, client, mux), true, model.VLESS},
-		{"server mux", NewSubJsonService(mux, "", "", nil).genServer(&SubService{}, &model.Inbound{Protocol: model.Trojan, Settings: `{}`}, nil, client, mux), true, model.Trojan},
-		{"vmess no mux", NewSubJsonService("", "", "", nil).genVnext(&model.Inbound{Protocol: model.VMESS, Settings: `{}`}, nil, client, ""), false, model.VMESS},
-		{"vless no mux", NewSubJsonService("", "", "", nil).genVless(&SubService{}, &model.Inbound{Protocol: model.VLESS, Settings: `{}`}, nil, client, ""), false, model.VLESS},
-		{"server no mux", NewSubJsonService("", "", "", nil).genServer(&SubService{}, &model.Inbound{Protocol: model.Trojan, Settings: `{}`}, nil, client, ""), false, model.Trojan},
+		{"vmess mux", xrayout.Vnext(&model.Inbound{Protocol: model.VMESS, Settings: `{}`}, nil, client, mux, proxyOutboundTag), true, model.VMESS},
+		{"vless mux", xrayout.Vless(&model.Inbound{Protocol: model.VLESS, Settings: `{}`}, nil, client, mux, proxyOutboundTag), true, model.VLESS},
+		{"server mux", xrayout.Server(&model.Inbound{Protocol: model.Trojan, Settings: `{}`}, nil, client, mux, proxyOutboundTag), true, model.Trojan},
+		{"vmess no mux", xrayout.Vnext(&model.Inbound{Protocol: model.VMESS, Settings: `{}`}, nil, client, "", proxyOutboundTag), false, model.VMESS},
+		{"vless no mux", xrayout.Vless(&model.Inbound{Protocol: model.VLESS, Settings: `{}`}, nil, client, "", proxyOutboundTag), false, model.VLESS},
+		{"server no mux", xrayout.Server(&model.Inbound{Protocol: model.Trojan, Settings: `{}`}, nil, client, "", proxyOutboundTag), false, model.Trojan},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -108,7 +109,7 @@ func TestSubJsonService_FinalMaskMergingToEmptyNotAdded(t *testing.T) {
 	// key is an empty tcp slice, which mergeFinalMask drops → merged is empty,
 	// so applyGlobalFinalMask must NOT set finalmask.
 	svc := NewSubJsonService("", "", `{"tcp":[]}`, nil)
-	stream := svc.streamData(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "")
+	stream := xrayout.Stream(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "", svc.finalMask)
 	if _, ok := stream["finalmask"]; ok {
 		t.Fatalf("finalMask merging to empty must not add a finalmask key: %#v", stream["finalmask"])
 	}
@@ -116,7 +117,7 @@ func TestSubJsonService_FinalMaskMergingToEmptyNotAdded(t *testing.T) {
 	// Sanity: a finalMask that DOES merge to something still gets set, so the
 	// guard is the only distinguishing factor.
 	svc2 := NewSubJsonService("", "", `{"tcp":[{"type":"fragment"}]}`, nil)
-	stream2 := svc2.streamData(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "")
+	stream2 := xrayout.Stream(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "", svc2.finalMask)
 	if _, ok := stream2["finalmask"]; !ok {
 		t.Fatal("non-empty finalMask must be set")
 	}
@@ -127,7 +128,7 @@ func TestSubJsonService_FinalMaskMergingToEmptyNotAdded(t *testing.T) {
 func TestMergeFinalMask_EmptyExtraTcpKeepsBase(t *testing.T) {
 	base := map[string]any{"tcp": []any{map[string]any{"type": "keep"}}}
 	extra := map[string]any{"tcp": []any{}} // empty → must be ignored
-	merged := mergeFinalMask(base, extra)
+	merged := xrayout.MergeFinalMask(base, extra)
 	tcp, _ := merged["tcp"].([]any)
 	if len(tcp) != 1 {
 		t.Fatalf("tcp len = %d, want 1 (empty extra must not drop or append)", len(tcp))
@@ -138,7 +139,7 @@ func TestMergeFinalMask_EmptyExtraTcpKeepsBase(t *testing.T) {
 	// Sanity: a non-empty extra DOES append, so the guard is the only thing
 	// distinguishing the two paths.
 	extra2 := map[string]any{"tcp": []any{map[string]any{"type": "add"}}}
-	merged2 := mergeFinalMask(base, extra2)
+	merged2 := xrayout.MergeFinalMask(base, extra2)
 	if tcp2, _ := merged2["tcp"].([]any); len(tcp2) != 2 {
 		t.Fatalf("non-empty extra must append: len = %d, want 2", len(tcp2))
 	}

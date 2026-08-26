@@ -26,6 +26,7 @@ import (
 	wgutil "github.com/mhsanaei/3x-ui/v3/internal/util/wireguard"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	xrayout "github.com/mhsanaei/3x-ui/v3/internal/xray/outbound"
 )
 
 var salamanderWarningSeen sync.Map
@@ -732,7 +733,7 @@ func (s *SubService) genVmessLink(inbound *model.Inbound, email string) string {
 		return ""
 	}
 	obj["id"] = client.ID
-	obj["scy"] = normalizeVmessSecurity(client.Security)
+	obj["scy"] = xrayout.NormalizeVmessSecurity(client.Security)
 
 	externalProxies, _ := stream["externalProxy"].([]any)
 
@@ -742,18 +743,6 @@ func (s *SubService) genVmessLink(inbound *model.Inbound, email string) string {
 
 	obj["ps"] = s.genRemark(inbound, email, "", network)
 	return buildVmessLink(obj)
-}
-
-// normalizeVmessSecurity maps the vmess security values xray-core v26.7.11
-// removed ("none"/"zero"), plus the legacy empty string, to "auto" so links
-// and subscriptions stop advertising values the upgraded server rejects on
-// the wire.
-func normalizeVmessSecurity(security string) string {
-	switch security {
-	case "", "none", "zero":
-		return "auto"
-	}
-	return security
 }
 
 // vlessEncryptionEnabled reports whether the VLESS inbound settings enable
@@ -818,7 +807,7 @@ func (s *SubService) genVlessLink(inbound *model.Inbound, email string) string {
 	case "tls":
 		applyShareTLSParams(stream, params)
 	case "reality":
-		applyShareRealityParams(stream, params, subKey(client))
+		applyShareRealityParams(stream, params, xrayout.ClientKey(client))
 	default:
 		params["security"] = "none"
 	}
@@ -871,7 +860,7 @@ func (s *SubService) genTrojanLink(inbound *model.Inbound, email string) string 
 	case "tls":
 		applyShareTLSParams(stream, params)
 	case "reality":
-		applyShareRealityParams(stream, params, subKey(client))
+		applyShareRealityParams(stream, params, xrayout.ClientKey(client))
 		if streamNetwork == "tcp" && len(client.Flow) > 0 && !inbound.DisableFlow {
 			params["flow"] = client.Flow
 		}
@@ -1032,10 +1021,10 @@ func (s *SubService) genHysteriaLink(inbound *model.Inbound, email string) strin
 				params["ech"] = ech
 			}
 		}
-		if vcn, ok := verifyPeerCertByNameValue(tlsSettings); ok {
+		if vcn, ok := xrayout.VerifyPeerCertByNameValue(tlsSettings); ok {
 			params["vcn"] = vcn
 		}
-		if pins, ok := pinnedSha256List(tlsSettings); ok {
+		if pins, ok := xrayout.PinnedSha256List(tlsSettings); ok {
 			for i, p := range pins {
 				pins[i] = hysteriaPinHex(p)
 			}
@@ -1358,10 +1347,10 @@ func applyShareTLSParams(stream map[string]any, params map[string]string) {
 				params["ech"] = ech
 			}
 		}
-		if vcn, ok := verifyPeerCertByNameValue(tlsSettings); ok {
+		if vcn, ok := xrayout.VerifyPeerCertByNameValue(tlsSettings); ok {
 			params["vcn"] = vcn
 		}
-		if pins, ok := pinnedSha256List(tlsSettings); ok {
+		if pins, ok := xrayout.PinnedSha256List(tlsSettings); ok {
 			params["pcs"] = strings.Join(pins, ",")
 		}
 	}
@@ -1393,59 +1382,13 @@ func applyVmessTLSParams(stream map[string]any, obj map[string]any) {
 				obj["ech"] = ech
 			}
 		}
-		if vcn, ok := verifyPeerCertByNameValue(tlsSettings); ok {
+		if vcn, ok := xrayout.VerifyPeerCertByNameValue(tlsSettings); ok {
 			obj["vcn"] = vcn
 		}
-		if pins, ok := pinnedSha256List(tlsSettings); ok {
+		if pins, ok := xrayout.PinnedSha256List(tlsSettings); ok {
 			obj["pcs"] = strings.Join(pins, ",")
 		}
 	}
-}
-
-// verifyPeerCertByNameValue extracts tlsSettings.settings.verifyPeerCertByName
-// (the v2rayN `vcn` param) as a trimmed string. Like pinnedPeerCertSha256 it is
-// panel-only and flows into share links so clients verify the server
-// certificate by this name — the replacement for the removed allowInsecure.
-func verifyPeerCertByNameValue(tlsClientSettings any) (string, bool) {
-	raw, ok := searchKey(tlsClientSettings, "verifyPeerCertByName")
-	if !ok {
-		return "", false
-	}
-	s, ok := raw.(string)
-	if !ok {
-		return "", false
-	}
-	if s = strings.TrimSpace(s); s == "" {
-		return "", false
-	}
-	return s, true
-}
-
-// pinnedSha256List extracts tlsSettings.settings.pinnedPeerCertSha256 as a
-// []string. The field is panel-only (stripped before the run-config reaches
-// xray-core via internal/web/service/xray.go) but flows into share links so clients
-// can pin the server's certificate hash.
-func pinnedSha256List(tlsClientSettings any) ([]string, bool) {
-	raw, ok := searchKey(tlsClientSettings, "pinnedPeerCertSha256")
-	if !ok {
-		return nil, false
-	}
-	arr, ok := raw.([]any)
-	if !ok || len(arr) == 0 {
-		return nil, false
-	}
-	out := make([]string, 0, len(arr))
-	for _, v := range arr {
-		s, ok := v.(string)
-		if !ok || s == "" {
-			continue
-		}
-		out = append(out, s)
-	}
-	if len(out) == 0 {
-		return nil, false
-	}
-	return out, true
 }
 
 // hysteriaPinHex normalises a pinnedPeerCertSha256 entry into the 64-character
@@ -1510,27 +1453,8 @@ func applyShareRealityParams(stream map[string]any, params map[string]string, cl
 		if spxValue, ok := searchKey(realitySettings, "spiderX"); ok {
 			seed, _ = spxValue.(string)
 		}
-		params["spx"] = deriveSpiderX(seed, clientKey)
+		params["spx"] = xrayout.DeriveSpiderX(seed, clientKey)
 	}
-}
-
-// subKey returns a stable per-client identity for deterministic derivations,
-// preferring the subscription id and falling back to the (unique) email.
-func subKey(c model.Client) string {
-	if c.SubID != "" {
-		return c.SubID
-	}
-	return c.Email
-}
-
-// deriveSpiderX maps the inbound's spiderX seed plus a stable client key to a
-// deterministic per-client "/path"; frontend/src/lib/xray/spider-x.ts mirrors it.
-func deriveSpiderX(seed, clientKey string) string {
-	if seed == "" && clientKey == "" {
-		return "/" + random.Seq(15)
-	}
-	sum := sha256.Sum256([]byte(seed + "|" + clientKey))
-	return "/" + hex.EncodeToString(sum[:])[:15]
 }
 
 func buildVmessLink(obj map[string]any) string {

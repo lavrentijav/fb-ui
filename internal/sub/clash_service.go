@@ -11,6 +11,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	wgutil "github.com/mhsanaei/3x-ui/v3/internal/util/wireguard"
+	xrayout "github.com/mhsanaei/3x-ui/v3/internal/xray/outbound"
 )
 
 type SubClashService struct {
@@ -250,7 +251,7 @@ func (s *SubClashService) buildProxy(subReq *SubService, inbound *model.Inbound,
 		proxy["type"] = "vmess"
 		proxy["uuid"] = client.ID
 		proxy["alterId"] = 0
-		proxy["cipher"] = normalizeVmessSecurity(client.Security)
+		proxy["cipher"] = xrayout.NormalizeVmessSecurity(client.Security)
 	case model.VLESS:
 		proxy["type"] = "vless"
 		proxy["uuid"] = applyVlessRoute(client.ID, hostVlessRoute(ep))

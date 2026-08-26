@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	xrayout "github.com/mhsanaei/3x-ui/v3/internal/xray/outbound"
 )
 
 // shareLinkInbound builds a VLESS inbound with one client and the given stream
@@ -143,20 +144,20 @@ func TestGenVlessLink_RealitySpiderXPerClientStable(t *testing.T) {
 }
 
 func TestDeriveSpiderX(t *testing.T) {
-	if got := deriveSpiderX("seed", "clientA"); got != deriveSpiderX("seed", "clientA") {
+	if got := xrayout.DeriveSpiderX("seed", "clientA"); got != xrayout.DeriveSpiderX("seed", "clientA") {
 		t.Fatalf("deriveSpiderX not deterministic: %q", got)
 	}
-	if deriveSpiderX("seed", "clientA") == deriveSpiderX("seed", "clientB") {
+	if xrayout.DeriveSpiderX("seed", "clientA") == xrayout.DeriveSpiderX("seed", "clientB") {
 		t.Fatal("deriveSpiderX must differ per client")
 	}
-	if deriveSpiderX("seedA", "clientA") == deriveSpiderX("seedB", "clientA") {
+	if xrayout.DeriveSpiderX("seedA", "clientA") == xrayout.DeriveSpiderX("seedB", "clientA") {
 		t.Fatal("rotating the seed must rotate a client's spx")
 	}
-	got := deriveSpiderX("seed", "clientA")
+	got := xrayout.DeriveSpiderX("seed", "clientA")
 	if len(got) != 16 || got[0] != '/' {
 		t.Fatalf("deriveSpiderX shape = %q, want /-prefixed 15-char path", got)
 	}
-	if fallback := deriveSpiderX("", ""); len(fallback) != 16 || fallback[0] != '/' {
+	if fallback := xrayout.DeriveSpiderX("", ""); len(fallback) != 16 || fallback[0] != '/' {
 		t.Fatalf("empty-input fallback = %q, want /-prefixed path", fallback)
 	}
 }
@@ -170,8 +171,8 @@ func TestDeriveSpiderXMatchesFrontendVectors(t *testing.T) {
 	}
 	for name, v := range vectors {
 		t.Run(name, func(t *testing.T) {
-			if got := deriveSpiderX(v.seed, v.clientKey); got != v.want {
-				t.Fatalf("deriveSpiderX(%q, %q) = %q, want %q (must match frontend/src/lib/xray/spider-x.ts)", v.seed, v.clientKey, got, v.want)
+			if got := xrayout.DeriveSpiderX(v.seed, v.clientKey); got != v.want {
+				t.Fatalf("xrayout.DeriveSpiderX(%q, %q) = %q, want %q (must match frontend/src/lib/xray/spider-x.ts)", v.seed, v.clientKey, got, v.want)
 			}
 		})
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	xrayout "github.com/mhsanaei/3x-ui/v3/internal/xray/outbound"
 )
 
 // hostEndpoints loads an inbound's enabled hosts for the given subscription
@@ -150,7 +151,7 @@ func applyHostStreamOverrides(ep map[string]any, stream map[string]any) {
 	if fm, ok := ep["finalMask"].(string); ok && fm != "" {
 		var masks map[string]any
 		if json.Unmarshal([]byte(fm), &masks) == nil && len(masks) > 0 {
-			merged := mergeFinalMask(stream["finalmask"], masks)
+			merged := xrayout.MergeFinalMask(stream["finalmask"], masks)
 			if len(merged) > 0 {
 				stream["finalmask"] = merged
 			}
@@ -354,7 +355,7 @@ func endpointFinalMask(e ShareEndpoint, baseFm string) (string, bool) {
 			base = baseMap
 		}
 	}
-	return marshalFinalMask(mergeFinalMask(base, masks))
+	return marshalFinalMask(xrayout.MergeFinalMask(base, masks))
 }
 
 // applyEndpointHostPathObj is applyEndpointHostPath for the VMess object form.
