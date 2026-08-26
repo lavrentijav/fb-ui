@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -137,12 +138,12 @@ func (s *PanelRegistryService) Elect() (bool, error) {
 		case err == nil && holder.Guid != self.Guid:
 			// Somebody else holds a live lease; nothing to do this tick.
 			return nil
-		case err != nil && err != gorm.ErrRecordNotFound:
+		case err != nil && !errors.Is(err, gorm.ErrRecordNotFound):
 			return err
 		}
 
 		term := self.LeaderTerm
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			term++ // taking a vacant lead, not renewing our own
 		}
 		res := tx.Model(model.Panel{}).
