@@ -426,6 +426,8 @@ func (s *XrayService) injectFilterChain(cfg *xray.Config, localInboundTags []str
 	if len(rules) == 0 && len(links) == 0 {
 		return nil, nil
 	}
+	// The outbounds have to exist before the routing pass looks for their tags.
+	injectCascadeOutbounds(cfg, links)
 	return injectClusterRouting(cfg, rules, lists, links, localInboundTags)
 }
 
