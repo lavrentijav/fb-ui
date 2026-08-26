@@ -1,0 +1,6 @@
+import sqlite3, json
+c = sqlite3.connect("/opt/xui-test/db/x-ui.db")
+for row in c.execute("select id, tag, port, protocol, stream_settings from inbounds"):
+    print("  inbound", row[0], row[1], row[2], row[3], "| stream", row[4][:90])
+for row in c.execute("select id, email, enable from clients limit 5"):
+    print("  client", row)

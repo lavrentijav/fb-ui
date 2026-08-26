@@ -350,3 +350,55 @@ func TestClusterRoutingCascadeLayerFollowsTheLinksOutbound(t *testing.T) {
 		t.Fatalf("outboundTag = %v, want the link's outbound", got)
 	}
 }
+
+// An edit resets "applied" behind the config generator's back, so the flush
+// cannot skip a write just because the same ids are live as last time.
+func TestMaterializedFlushRewritesAfterAnEdit(t *testing.T) {
+	initFilterTestDB(t)
+	db := database.GetDB()
+	if err := db.Where("1 = 1").Delete(&model.Inbound{}).Error; err != nil {
+		t.Fatalf("clear inbounds: %v", err)
+	}
+	inbound := &model.Inbound{
+		UserId: 1, Tag: "in-local", Enable: true, Port: 34568, Protocol: model.VLESS,
+		Settings: `{"clients":[],"decryption":"none"}`, StreamSettings: `{"network":"tcp","security":"none"}`,
+	}
+	if err := db.Create(inbound).Error; err != nil {
+		t.Fatalf("seed inbound: %v", err)
+	}
+	filters := FilterService{}
+	list := &model.FilterList{Name: "ads", Kind: model.FilterKindDomain, Entries: []string{"ads.example.com"}, Enable: true}
+	if err := filters.CreateList(list); err != nil {
+		t.Fatalf("CreateList: %v", err)
+	}
+	rule := &model.FilterRule{
+		Name: "block ads", PanelId: SelfPanelId, SourceInboundTags: []string{"in-local"},
+		ListIds: []int{list.Id}, Action: model.FilterActionBlock, Enable: true,
+	}
+	if err := filters.CreateRule(rule); err != nil {
+		t.Fatalf("CreateRule: %v", err)
+	}
+
+	s := &XrayService{}
+	if _, err := s.GetXrayConfig(); err != nil {
+		t.Fatalf("GetXrayConfig: %v", err)
+	}
+	s.flushMaterialized()
+
+	// An unrelated edit puts the same rule back to pending.
+	if err := db.Model(model.FilterRule{}).Where("id = ?", rule.Id).Update("applied", 0).Error; err != nil {
+		t.Fatalf("reset applied: %v", err)
+	}
+	if _, err := s.GetXrayConfig(); err != nil {
+		t.Fatalf("GetXrayConfig: %v", err)
+	}
+	s.flushMaterialized()
+
+	stored, err := filters.RuleById(rule.Id)
+	if err != nil {
+		t.Fatalf("RuleById: %v", err)
+	}
+	if stored.Applied == 0 {
+		t.Fatal("the layer is in the running config but still reads as pending")
+	}
+}
