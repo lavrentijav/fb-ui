@@ -12,6 +12,7 @@ const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const NetworkPage = lazy(() => import('@/pages/network/NetworkPage'));
 const FiltersPage = lazy(() => import('@/pages/filters/FiltersPage'));
 const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
+const CertsPage = lazy(() => import('@/pages/certs/CertsPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const XrayPage = lazy(() => import('@/pages/xray/XrayPage'));
 const ApiDocsPage = lazy(() => import('@/pages/api-docs/ApiDocsPage'));
@@ -51,6 +52,7 @@ const routes: RouteObject[] = [
       { path: 'network', element: withSuspense(<NetworkPage />) },
       { path: 'filters', element: withSuspense(<FiltersPage />) },
       { path: 'hosts', element: withSuspense(<HostsPage />) },
+      { path: 'certs', element: withSuspense(<CertsPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'xray', element: withSuspense(<XrayPage />) },
       { path: 'outbound', element: withSuspense(<XrayPage />) },

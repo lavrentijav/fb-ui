@@ -8,6 +8,17 @@ export type staticEgressResolver = string;
 export type trafficLocalApplyAction = number;
 export type transportBits = number;
 
+export interface AcmeAccountRequest {
+  directory: string;
+  email: string;
+}
+
+export interface AcmeAccountView {
+  directory: string;
+  email: string;
+  registered: boolean;
+}
+
 export interface AllSetting {
   datepicker: string;
   expireDiff: number;
@@ -270,6 +281,31 @@ export interface CascadeLink {
   updatedAt: number;
 }
 
+export interface Certificate {
+  autoRenew: boolean;
+  certFile: string;
+  challenge: string;
+  createdAt: number;
+  dnsProviderId: number;
+  domains: string[];
+  id: number;
+  issuer: string;
+  keyFile: string;
+  lastAttemptAt: number;
+  lastError: string;
+  notAfter: number;
+  notBefore: number;
+  status: string;
+  updatedAt: number;
+}
+
+export interface CertificateRequest {
+  autoRenew?: boolean | null;
+  challenge: string;
+  dnsProviderId: number;
+  domains: string[];
+}
+
 export interface Client {
   adTag?: string;
   allowedIPs?: string[];
@@ -364,6 +400,25 @@ export interface ClientTraffic {
   total: number;
   up: number;
   uuid: string;
+}
+
+export interface DnsProvider {
+  apiUrl: string;
+  createdAt: number;
+  hasCredential: boolean;
+  id: number;
+  name: string;
+  type: string;
+  updatedAt: number;
+  zone: string;
+}
+
+export interface DnsProviderRequest {
+  apiUrl: string;
+  credential: string;
+  name: string;
+  type: string;
+  zone: string;
 }
 
 export interface FallbackParentInfo {

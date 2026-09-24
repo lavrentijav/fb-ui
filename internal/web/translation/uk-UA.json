@@ -115,7 +115,8 @@
     "unpinSidebar": "Відкріпити бічну панель",
     "subFormats": "Формати підписки",
     "network": "Мережа",
-    "filters": "Фільтри"
+    "filters": "Фільтри",
+    "certs": "Сертифікати"
   },
   "pages": {
     "login": {
@@ -1408,7 +1409,10 @@
       "subSignEnableDesc": "Додавати ed25519-підпис X-Subscription-Signature за тілом відповіді. Публічний ключ надається за адресою /sub/pubkey.",
       "subEmergencyUrl": "Аварійне посилання",
       "subEmergencyUrlDesc": "Публікується в payload ?format=meta як останнє джерело свіжих адрес.",
-      "subManagePeers": "Керування пірами"
+      "subManagePeers": "Керування пірами",
+      "eventGroupCert": "Сертифікати",
+      "eventCertExpiring": "Сертифікат закінчується",
+      "eventCertRenewFailed": "Продовження не вдалося"
     },
     "xray": {
       "save": "Зберегти",
@@ -2111,6 +2115,72 @@
       "toasts": {
         "list": "Не вдалося завантажити кластер"
       }
+    },
+    "certs": {
+      "accountTitle": "ACME-акаунт",
+      "accountHint": "Email, на який Let's Encrypt надсилає нагадування про закінчення, і CA для випуску. Після зміни акаунт перереєструється при наступному випуску.",
+      "actions": "Дії",
+      "addCert": "Додати сертифікат",
+      "addDns": "Додати DNS-зону",
+      "apiUrl": "API URL",
+      "apiUrlHint": "Адреса веб-консолі Technitium, наприклад https://ns1.example.com:53443",
+      "appliedRestart": "Збережено. Перезапустіть панель, щоб вона віддавала цей сертифікат.",
+      "apply": "Використати для",
+      "applySub": "Сервер підписок",
+      "applyWeb": "Панель",
+      "autoRenew": "Автопродовження",
+      "certsTitle": "Сертифікати",
+      "challenge": "Перевірка",
+      "challengeHint": "DNS-01 працює за сайтом-заглушкою і для wildcard; HTTP-01 потребує вільний порт 80.",
+      "credential": "API-токен",
+      "credentialHintCloudflare": "API-токен Cloudflare з правом Zone → DNS → Edit на цю зону.",
+      "credentialHintTechnitium": "API-токен Technitium: Administration → Sessions → Create Token.",
+      "credentialKeep": "Залиште порожнім, щоб зберегти поточний токен",
+      "credentialMissing": "немає",
+      "credentialSet": "збережено",
+      "daysLeft": "залишилось днів: {count}",
+      "deleteCertConfirm": "Забути сертифікат {name}? Файли залишаться на диску.",
+      "deleteDnsConfirm": "Видалити DNS-зону {name}?",
+      "directory": "ACME-каталог",
+      "dnsAuto": "Автоматично (за зоною)",
+      "dnsName": "Назва",
+      "dnsNameHint": "За замовчуванням — ім'я зони",
+      "dnsProvider": "DNS-провайдер",
+      "dnsTest": "Перевірити",
+      "dnsTestOk": "Токен може керувати цією зоною",
+      "dnsTitle": "DNS-зони",
+      "dnsType": "Провайдер",
+      "domains": "Домени",
+      "domainsHint": "По одному в рядку. Перший — основне ім'я; для *.ім'я потрібен DNS-01.",
+      "editCert": "Змінити сертифікат",
+      "editDns": "Змінити DNS-зону",
+      "email": "Email",
+      "expires": "Закінчується",
+      "imported": "імпортовано",
+      "issue": "Випустити",
+      "noCerts": "Сертифікатів поки немає",
+      "noDns": "DNS-зон поки немає",
+      "registered": "зареєстровано",
+      "renew": "Продовжити зараз",
+      "scan": "Імпорт з диска",
+      "scanResult": "Імпортовано сертифікатів з /root/cert: {count}",
+      "status": "Статус",
+      "status_pending": "не випущено",
+      "status_issuing": "випускається…",
+      "status_valid": "дійсний",
+      "status_error": "помилка",
+      "zone": "Зона",
+      "toasts": {
+        "apply": "Застосування сертифіката",
+        "delete": "Видалення",
+        "dnsTest": "Перевірка DNS",
+        "issueStarted": "Випуск запущено",
+        "save": "Збереження",
+        "scan": "Імпорт сертифікатів",
+        "needApiUrl": "Для Technitium потрібен API URL",
+        "needDomain": "Вкажіть хоча б один домен",
+        "needZone": "Вкажіть DNS-зону, наприклад example.com"
+      }
     }
   },
   "tgbot": {
@@ -2225,7 +2295,9 @@
       "eventLoginFallback": "Невдала спроба входу з {{ .Source }}",
       "memoryThreshold": "Використання пам'яті {{ .Percent }}% перевищує порогове значення {{ .Threshold }}%",
       "eventPeerDown": "Пір {{ .Name }} НЕДОСТУПНИЙ",
-      "eventPeerUp": "Пір {{ .Name }} ДОСТУПНИЙ"
+      "eventPeerUp": "Пір {{ .Name }} ДОСТУПНИЙ",
+      "eventCertExpiring": "Сертифікат {{ .Name }} закінчується {{ .Date }}",
+      "eventCertRenewFailed": "Продовження сертифіката {{ .Name }} НЕ ВДАЛОСЯ"
     },
     "buttons": {
       "closeKeyboard": "❌ Закрити клавіатуру",

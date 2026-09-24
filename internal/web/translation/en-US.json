@@ -115,7 +115,8 @@
     "unpinSidebar": "Unpin sidebar",
     "subFormats": "Sub Formats",
     "network": "Network",
-    "filters": "Filters"
+    "filters": "Filters",
+    "certs": "Certificates"
   },
   "pages": {
     "login": {
@@ -1526,7 +1527,10 @@
       "subSignEnableDesc": "Add an ed25519 X-Subscription-Signature over the response body. The public key is served at /sub/pubkey.",
       "subEmergencyUrl": "Emergency URL",
       "subEmergencyUrlDesc": "Published in the ?format=meta payload as a last-resort source of fresh endpoints.",
-      "subManagePeers": "Manage peer panels"
+      "subManagePeers": "Manage peer panels",
+      "eventGroupCert": "Certificates",
+      "eventCertExpiring": "Certificate expiring",
+      "eventCertRenewFailed": "Renewal failed"
     },
     "xray": {
       "save": "Save",
@@ -2111,6 +2115,72 @@
       "toasts": {
         "list": "Failed to load the cluster"
       }
+    },
+    "certs": {
+      "accountTitle": "ACME account",
+      "accountHint": "Contact email Let's Encrypt uses for expiry notices, and the CA to issue from. Changing either registers a new account on the next issue.",
+      "actions": "Actions",
+      "addCert": "Add certificate",
+      "addDns": "Add DNS zone",
+      "apiUrl": "API URL",
+      "apiUrlHint": "Technitium web console address, e.g. https://ns1.example.com:53443",
+      "appliedRestart": "Saved. Restart the panel to serve this certificate.",
+      "apply": "Use for",
+      "applySub": "Subscription server",
+      "applyWeb": "Panel",
+      "autoRenew": "Auto-renew",
+      "certsTitle": "Certificates",
+      "challenge": "Challenge",
+      "challengeHint": "DNS-01 works behind a fallback site and for wildcards; HTTP-01 needs port 80 free.",
+      "credential": "API token",
+      "credentialHintCloudflare": "Cloudflare API token with Zone → DNS → Edit on this zone.",
+      "credentialHintTechnitium": "API token from Technitium: Administration → Sessions → Create Token.",
+      "credentialKeep": "Leave empty to keep the stored token",
+      "credentialMissing": "missing",
+      "credentialSet": "stored",
+      "daysLeft": "{count} days left",
+      "deleteCertConfirm": "Forget certificate {name}? The files stay on disk.",
+      "deleteDnsConfirm": "Delete DNS zone {name}?",
+      "directory": "ACME directory",
+      "dnsAuto": "Automatic (by zone)",
+      "dnsName": "Name",
+      "dnsNameHint": "Defaults to the zone",
+      "dnsProvider": "DNS provider",
+      "dnsTest": "Test",
+      "dnsTestOk": "The token can manage this zone",
+      "dnsTitle": "DNS zones",
+      "dnsType": "Provider",
+      "domains": "Domains",
+      "domainsHint": "One per line. The first is the main name; *.name needs DNS-01.",
+      "editCert": "Edit certificate",
+      "editDns": "Edit DNS zone",
+      "email": "Email",
+      "expires": "Expires",
+      "imported": "imported",
+      "issue": "Issue",
+      "noCerts": "No certificates yet",
+      "noDns": "No DNS zones yet",
+      "registered": "registered",
+      "renew": "Renew now",
+      "scan": "Import from disk",
+      "scanResult": "Imported {count} certificate(s) from /root/cert",
+      "status": "Status",
+      "status_pending": "not issued",
+      "status_issuing": "issuing…",
+      "status_valid": "valid",
+      "status_error": "error",
+      "zone": "Zone",
+      "toasts": {
+        "apply": "Apply certificate",
+        "delete": "Delete",
+        "dnsTest": "DNS check",
+        "issueStarted": "Issuing started",
+        "save": "Save",
+        "scan": "Import certificates",
+        "needApiUrl": "Technitium needs its API URL",
+        "needDomain": "Enter at least one domain",
+        "needZone": "Enter the DNS zone, e.g. example.com"
+      }
     }
   },
   "tgbot": {
@@ -2225,7 +2295,9 @@
       "eventLoginFallback": "Login failed from {{ .Source }}",
       "memoryThreshold": "Memory Load {{ .Percent }}% exceeds the threshold of {{ .Threshold }}%",
       "eventPeerDown": "Peer {{ .Name }} is DOWN",
-      "eventPeerUp": "Peer {{ .Name }} is UP"
+      "eventPeerUp": "Peer {{ .Name }} is UP",
+      "eventCertExpiring": "Certificate {{ .Name }} expires on {{ .Date }}",
+      "eventCertRenewFailed": "Certificate {{ .Name }} renewal FAILED"
     },
     "buttons": {
       "closeKeyboard": "❌ Close Keyboard",

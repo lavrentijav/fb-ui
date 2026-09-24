@@ -156,6 +156,23 @@ func (s *Subscriber) formatMessage(e eventbus.Event) (subject, body string) {
 		}
 		body = wrap(i18n("tgbot.messages.eventPeerUp", "Name=="+e.Source), content)
 
+	case eventbus.EventCertExpiring, eventbus.EventCertRenewFails:
+		key := "tgbot.messages.eventCertRenewFailed"
+		if e.Type == eventbus.EventCertExpiring {
+			key = "tgbot.messages.eventCertExpiring"
+		}
+		content := ""
+		date := ""
+		if data, ok := e.Data.(*eventbus.CertEventData); ok {
+			date = data.NotAfter.Format("2006-01-02")
+			if data.Error != "" {
+				content += kv(i18n("email.labelError"), data.Error)
+			}
+		}
+		title := i18n(key, "Name=="+e.Source, "Date=="+date)
+		subject = host + " " + title
+		body = wrap(title, content)
+
 	case eventbus.EventCPUHigh:
 		if data, ok := e.Data.(*eventbus.SystemMetricData); ok {
 			smtpCpu, err := s.settingService.GetSmtpCpu()

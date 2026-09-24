@@ -125,6 +125,20 @@ func (t *Tgbot) formatEventMessage(e eventbus.Event) string {
 		}
 		return msg
 
+	case eventbus.EventCertExpiring:
+		if data, ok := e.Data.(*eventbus.CertEventData); ok {
+			return header + "⏳ " + t.I18nBot("tgbot.messages.eventCertExpiring",
+				"Name=="+e.Source, "Date=="+data.NotAfter.Format("2006-01-02"))
+		}
+		return ""
+
+	case eventbus.EventCertRenewFails:
+		msg := header + "🔴 " + t.I18nBot("tgbot.messages.eventCertRenewFailed", "Name=="+e.Source)
+		if data, ok := e.Data.(*eventbus.CertEventData); ok && data.Error != "" {
+			msg += "\n" + t.I18nBot("tgbot.messages.eventErrorDetail", "Error=="+data.Error)
+		}
+		return msg
+
 	case eventbus.EventCPUHigh:
 		if data, ok := e.Data.(*eventbus.SystemMetricData); ok {
 			tgCpu, err := t.settingService.GetTgCpu()

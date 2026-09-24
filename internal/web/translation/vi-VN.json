@@ -115,7 +115,8 @@
     "unpinSidebar": "Bỏ ghim thanh bên",
     "subFormats": "Sub Formats",
     "network": "Mạng",
-    "filters": "Bộ lọc"
+    "filters": "Bộ lọc",
+    "certs": "Chứng chỉ"
   },
   "pages": {
     "login": {
@@ -1408,7 +1409,10 @@
       "subSignEnableDesc": "Thêm chữ ký ed25519 trong X-Subscription-Signature trên phần thân phản hồi. Khóa công khai được phục vụ tại /sub/pubkey.",
       "subEmergencyUrl": "URL khẩn cấp",
       "subEmergencyUrlDesc": "Được công bố trong payload ?format=meta như nguồn địa chỉ mới cuối cùng.",
-      "subManagePeers": "Quản lý bảng ngang hàng"
+      "subManagePeers": "Quản lý bảng ngang hàng",
+      "eventGroupCert": "Chứng chỉ",
+      "eventCertExpiring": "Chứng chỉ sắp hết hạn",
+      "eventCertRenewFailed": "Gia hạn thất bại"
     },
     "xray": {
       "importRules": "Nhập quy tắc",
@@ -2111,6 +2115,72 @@
       "toasts": {
         "list": "Không tải được cụm"
       }
+    },
+    "certs": {
+      "accountTitle": "ACME account",
+      "accountHint": "Contact email Let's Encrypt uses for expiry notices, and the CA to issue from. Changing either registers a new account on the next issue.",
+      "actions": "Actions",
+      "addCert": "Add certificate",
+      "addDns": "Add DNS zone",
+      "apiUrl": "API URL",
+      "apiUrlHint": "Technitium web console address, e.g. https://ns1.example.com:53443",
+      "appliedRestart": "Saved. Restart the panel to serve this certificate.",
+      "apply": "Use for",
+      "applySub": "Subscription server",
+      "applyWeb": "Panel",
+      "autoRenew": "Auto-renew",
+      "certsTitle": "Certificates",
+      "challenge": "Challenge",
+      "challengeHint": "DNS-01 works behind a fallback site and for wildcards; HTTP-01 needs port 80 free.",
+      "credential": "API token",
+      "credentialHintCloudflare": "Cloudflare API token with Zone → DNS → Edit on this zone.",
+      "credentialHintTechnitium": "API token from Technitium: Administration → Sessions → Create Token.",
+      "credentialKeep": "Leave empty to keep the stored token",
+      "credentialMissing": "missing",
+      "credentialSet": "stored",
+      "daysLeft": "{count} days left",
+      "deleteCertConfirm": "Forget certificate {name}? The files stay on disk.",
+      "deleteDnsConfirm": "Delete DNS zone {name}?",
+      "directory": "ACME directory",
+      "dnsAuto": "Automatic (by zone)",
+      "dnsName": "Name",
+      "dnsNameHint": "Defaults to the zone",
+      "dnsProvider": "DNS provider",
+      "dnsTest": "Test",
+      "dnsTestOk": "The token can manage this zone",
+      "dnsTitle": "DNS zones",
+      "dnsType": "Provider",
+      "domains": "Domains",
+      "domainsHint": "One per line. The first is the main name; *.name needs DNS-01.",
+      "editCert": "Edit certificate",
+      "editDns": "Edit DNS zone",
+      "email": "Email",
+      "expires": "Expires",
+      "imported": "imported",
+      "issue": "Issue",
+      "noCerts": "No certificates yet",
+      "noDns": "No DNS zones yet",
+      "registered": "registered",
+      "renew": "Renew now",
+      "scan": "Import from disk",
+      "scanResult": "Imported {count} certificate(s) from /root/cert",
+      "status": "Status",
+      "status_pending": "not issued",
+      "status_issuing": "issuing…",
+      "status_valid": "valid",
+      "status_error": "error",
+      "zone": "Zone",
+      "toasts": {
+        "apply": "Apply certificate",
+        "delete": "Delete",
+        "dnsTest": "DNS check",
+        "issueStarted": "Issuing started",
+        "save": "Save",
+        "scan": "Import certificates",
+        "needApiUrl": "Technitium needs its API URL",
+        "needDomain": "Enter at least one domain",
+        "needZone": "Enter the DNS zone, e.g. example.com"
+      }
     }
   },
   "tgbot": {
@@ -2225,7 +2295,9 @@
       "eventLoginFallback": "Đăng nhập thất bại từ {{ .Source }}",
       "memoryThreshold": "Sử dụng bộ nhớ {{ .Percent }}% vượt quá ngưỡng {{ .Threshold }}%",
       "eventPeerDown": "Máy ngang hàng {{ .Name }} đã NGỪNG HOẠT ĐỘNG",
-      "eventPeerUp": "Máy ngang hàng {{ .Name }} đã HOẠT ĐỘNG"
+      "eventPeerUp": "Máy ngang hàng {{ .Name }} đã HOẠT ĐỘNG",
+      "eventCertExpiring": "Chứng chỉ {{ .Name }} hết hạn vào {{ .Date }}",
+      "eventCertRenewFailed": "Gia hạn chứng chỉ {{ .Name }} THẤT BẠI"
     },
     "buttons": {
       "closeKeyboard": "❌ Đóng Bàn Phím",

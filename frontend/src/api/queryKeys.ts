@@ -12,6 +12,12 @@ export const keys = {
     lists: () => ['filters', 'lists'] as const,
     rules: () => ['filters', 'rules'] as const,
   },
+  certs: {
+    root: () => ['certs'] as const,
+    list: () => ['certs', 'list'] as const,
+    dns: () => ['certs', 'dns'] as const,
+    account: () => ['certs', 'account'] as const,
+  },
   cluster: {
     root: () => ['cluster'] as const,
     panels: () => ['cluster', 'panels'] as const,

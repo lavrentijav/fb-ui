@@ -43,6 +43,8 @@ func run(root, outDir string) error {
 				"FilterList",
 				"FilterRule",
 				"Panel",
+				"DnsProvider",
+				"Certificate",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
@@ -100,6 +102,10 @@ func run(root, outDir string) error {
 				"ProbeResultUI",
 				"RealityScanResult",
 				"GeodataTokenIssue",
+				"CertificateRequest",
+				"AcmeAccountView",
+				"AcmeAccountRequest",
+				"DnsProviderRequest",
 			),
 		},
 		{

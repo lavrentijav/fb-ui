@@ -115,7 +115,8 @@
     "unpinSidebar": "Открепить боковую панель",
     "subFormats": "Форматы подписки",
     "network": "Сеть",
-    "filters": "Фильтры"
+    "filters": "Фильтры",
+    "certs": "Сертификаты"
   },
   "pages": {
     "login": {
@@ -1408,7 +1409,10 @@
       "subSignEnableDesc": "Добавлять ed25519-подпись X-Subscription-Signature по телу ответа. Публичный ключ отдаётся по адресу /sub/pubkey.",
       "subEmergencyUrl": "Аварийная ссылка",
       "subEmergencyUrlDesc": "Публикуется в payload ?format=meta как последний источник свежих адресов.",
-      "subManagePeers": "Управление пирами"
+      "subManagePeers": "Управление пирами",
+      "eventGroupCert": "Сертификаты",
+      "eventCertExpiring": "Сертификат истекает",
+      "eventCertRenewFailed": "Продление не удалось"
     },
     "xray": {
       "importRules": "Импорт правил",
@@ -2111,6 +2115,72 @@
       "toasts": {
         "list": "Не удалось загрузить кластер"
       }
+    },
+    "certs": {
+      "accountTitle": "ACME-аккаунт",
+      "accountHint": "Email, на который Let's Encrypt шлёт напоминания об истечении, и CA для выпуска. При смене аккаунт перерегистрируется при следующем выпуске.",
+      "actions": "Действия",
+      "addCert": "Добавить сертификат",
+      "addDns": "Добавить DNS-зону",
+      "apiUrl": "API URL",
+      "apiUrlHint": "Адрес веб-консоли Technitium, например https://ns1.example.com:53443",
+      "appliedRestart": "Сохранено. Перезапустите панель, чтобы она отдавала этот сертификат.",
+      "apply": "Использовать для",
+      "applySub": "Сервер подписок",
+      "applyWeb": "Панель",
+      "autoRenew": "Автопродление",
+      "certsTitle": "Сертификаты",
+      "challenge": "Проверка",
+      "challengeHint": "DNS-01 работает за сайтом-заглушкой и для wildcard; HTTP-01 требует свободный порт 80.",
+      "credential": "API-токен",
+      "credentialHintCloudflare": "API-токен Cloudflare с правом Zone → DNS → Edit на эту зону.",
+      "credentialHintTechnitium": "API-токен Technitium: Administration → Sessions → Create Token.",
+      "credentialKeep": "Оставьте пустым, чтобы сохранить текущий токен",
+      "credentialMissing": "нет",
+      "credentialSet": "сохранён",
+      "daysLeft": "осталось дней: {count}",
+      "deleteCertConfirm": "Забыть сертификат {name}? Файлы останутся на диске.",
+      "deleteDnsConfirm": "Удалить DNS-зону {name}?",
+      "directory": "ACME-каталог",
+      "dnsAuto": "Автоматически (по зоне)",
+      "dnsName": "Название",
+      "dnsNameHint": "По умолчанию — имя зоны",
+      "dnsProvider": "DNS-провайдер",
+      "dnsTest": "Проверить",
+      "dnsTestOk": "Токен может управлять этой зоной",
+      "dnsTitle": "DNS-зоны",
+      "dnsType": "Провайдер",
+      "domains": "Домены",
+      "domainsHint": "По одному в строке. Первый — основное имя; для *.имя нужен DNS-01.",
+      "editCert": "Изменить сертификат",
+      "editDns": "Изменить DNS-зону",
+      "email": "Email",
+      "expires": "Истекает",
+      "imported": "импортирован",
+      "issue": "Выпустить",
+      "noCerts": "Сертификатов пока нет",
+      "noDns": "DNS-зон пока нет",
+      "registered": "зарегистрирован",
+      "renew": "Продлить сейчас",
+      "scan": "Импорт с диска",
+      "scanResult": "Импортировано сертификатов из /root/cert: {count}",
+      "status": "Статус",
+      "status_pending": "не выпущен",
+      "status_issuing": "выпускается…",
+      "status_valid": "действует",
+      "status_error": "ошибка",
+      "zone": "Зона",
+      "toasts": {
+        "apply": "Применение сертификата",
+        "delete": "Удаление",
+        "dnsTest": "Проверка DNS",
+        "issueStarted": "Выпуск запущен",
+        "save": "Сохранение",
+        "scan": "Импорт сертификатов",
+        "needApiUrl": "Для Technitium нужен API URL",
+        "needDomain": "Укажите хотя бы один домен",
+        "needZone": "Укажите DNS-зону, например example.com"
+      }
     }
   },
   "tgbot": {
@@ -2225,7 +2295,9 @@
       "eventLoginFallback": "Неудачный вход с {{ .Source }}",
       "memoryThreshold": "🔴 Использование памяти {{ .Percent }}% превышает пороговое значение {{ .Threshold }}%",
       "eventPeerDown": "Пир {{ .Name }} НЕДОСТУПЕН",
-      "eventPeerUp": "Пир {{ .Name }} ДОСТУПЕН"
+      "eventPeerUp": "Пир {{ .Name }} ДОСТУПЕН",
+      "eventCertExpiring": "Сертификат {{ .Name }} истекает {{ .Date }}",
+      "eventCertRenewFailed": "Продление сертификата {{ .Name }} НЕ УДАЛОСЬ"
     },
     "buttons": {
       "closeKeyboard": "❌ Закрыть клавиатуру",

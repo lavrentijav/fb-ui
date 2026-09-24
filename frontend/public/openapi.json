@@ -26,6 +26,47 @@
       }
     },
     "schemas": {
+      "AcmeAccountRequest": {
+        "description": "AcmeAccountRequest changes the contact email or the CA directory.",
+        "properties": {
+          "directory": {
+            "example": "https://acme-v02.api.letsencrypt.org/directory",
+            "type": "string"
+          },
+          "email": {
+            "example": "ops@example.com",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "email"
+        ],
+        "type": "object"
+      },
+      "AcmeAccountView": {
+        "description": "AcmeAccountView is the account the panel issues under; the key stays private.",
+        "properties": {
+          "directory": {
+            "example": "https://acme-v02.api.letsencrypt.org/directory",
+            "type": "string"
+          },
+          "email": {
+            "example": "ops@example.com",
+            "type": "string"
+          },
+          "registered": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "directory",
+          "email",
+          "registered"
+        ],
+        "type": "object"
+      },
       "AllSetting": {
         "properties": {
           "datepicker": {
@@ -1136,6 +1177,135 @@
         ],
         "type": "object"
       },
+      "Certificate": {
+        "description": "Certificate is a TLS certificate the panel issues and renews, or only\nwatches for expiry. Files live at CertFile/KeyFile so Xray and the panel\nread them exactly as they read a hand-installed certificate.",
+        "properties": {
+          "autoRenew": {
+            "example": true,
+            "type": "boolean"
+          },
+          "certFile": {
+            "example": "/root/cert/msk1.fire-core.ru/fullchain.pem",
+            "type": "string"
+          },
+          "challenge": {
+            "enum": [
+              "dns01",
+              "http01",
+              "imported"
+            ],
+            "example": "dns01",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "dnsProviderId": {
+            "description": "DnsProviderId must own every domain when Challenge is dns01.",
+            "example": 1,
+            "type": "integer"
+          },
+          "domains": {
+            "example": [
+              "msk1.fire-core.ru"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "issuer": {
+            "example": "Let's Encrypt R11",
+            "type": "string"
+          },
+          "keyFile": {
+            "example": "/root/cert/msk1.fire-core.ru/privkey.pem",
+            "type": "string"
+          },
+          "lastAttemptAt": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "notAfter": {
+            "example": 1707776000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "notBefore": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "example": "valid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "autoRenew",
+          "certFile",
+          "challenge",
+          "createdAt",
+          "dnsProviderId",
+          "domains",
+          "id",
+          "issuer",
+          "keyFile",
+          "lastAttemptAt",
+          "lastError",
+          "notAfter",
+          "notBefore",
+          "status",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CertificateRequest": {
+        "description": "CertificateRequest is the add/update payload. DnsProviderId 0 on a dns01\ncertificate means \"pick the provider whose zone owns the first domain\".",
+        "properties": {
+          "autoRenew": {
+            "example": true,
+            "nullable": true,
+            "type": "boolean"
+          },
+          "challenge": {
+            "example": "dns01",
+            "type": "string"
+          },
+          "dnsProviderId": {
+            "example": 1,
+            "type": "integer"
+          },
+          "domains": {
+            "example": [
+              "msk1.fire-core.ru"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "challenge",
+          "dnsProviderId",
+          "domains"
+        ],
+        "type": "object"
+      },
       "Client": {
         "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
         "properties": {
@@ -1551,6 +1721,91 @@
           "total",
           "up",
           "uuid"
+        ],
+        "type": "object"
+      },
+      "DnsProvider": {
+        "description": "DnsProvider is one DNS zone this panel may write records into: node A\nrecords during provisioning, ACME DNS-01 tokens and multi-address domains.",
+        "properties": {
+          "apiUrl": {
+            "example": "https://ns1.example.com:53443",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "hasCredential": {
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "name": {
+            "example": "fire-core",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "cloudflare",
+              "technitium"
+            ],
+            "example": "cloudflare",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "zone": {
+            "example": "fire-core.ru",
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiUrl",
+          "createdAt",
+          "hasCredential",
+          "id",
+          "name",
+          "type",
+          "updatedAt",
+          "zone"
+        ],
+        "type": "object"
+      },
+      "DnsProviderRequest": {
+        "description": "DnsProviderRequest is the add/update payload. An empty Credential on update\nkeeps the stored one, so the UI can edit a zone without re-pasting a token.",
+        "properties": {
+          "apiUrl": {
+            "example": "https://ns1.example.com:53443",
+            "type": "string"
+          },
+          "credential": {
+            "example": "cf-api-token",
+            "type": "string"
+          },
+          "name": {
+            "example": "fire-core",
+            "type": "string"
+          },
+          "type": {
+            "example": "cloudflare",
+            "type": "string"
+          },
+          "zone": {
+            "example": "fire-core.ru",
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiUrl",
+          "credential",
+          "name",
+          "type",
+          "zone"
         ],
         "type": "object"
       },
@@ -3656,6 +3911,14 @@
     {
       "name": "Network",
       "description": "The topology graph and the cascade links drawn on it. The graph is a projection, not a second source of truth: vertices are registered panels (this one plus every row in the node registry) and each panel carries the inbounds whose ownership column points at it. A cascade link is the stored form of what an operator otherwise assembles by hand — an outbound plus a routing rule on the source panel. All endpoints under /panel/api/network."
+    },
+    {
+      "name": "Certificates",
+      "description": "TLS certificates the panel issues through ACME (Let’s Encrypt by default) and renews on its own, plus certificates found on disk that it only watches for expiry. dns01 is the default challenge because http01 needs port 80, which a real fallback site usually holds. Files are written to /root/cert/<domain>/fullchain.pem and privkey.pem. All endpoints under /panel/api/certs."
+    },
+    {
+      "name": "DNS providers",
+      "description": "DNS zones the panel may write records into: ACME dns01 tokens today, node records during provisioning next. Cloudflare takes an API token with Zone.DNS edit rights; a self-hosted Technitium server takes its API URL and an API token from its console. The token is write-only: views report hasCredential instead. All endpoints under /panel/api/dns."
     },
     {
       "name": "Filters",
@@ -10714,6 +10977,830 @@
               },
               "example": {
                 "enable": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/list": {
+      "get": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "List every certificate, soonest expiry first.",
+        "operationId": "get_panel_api_certs_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Certificate"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "autoRenew": true,
+                      "certFile": "/root/cert/msk1.fire-core.ru/fullchain.pem",
+                      "challenge": "dns01",
+                      "createdAt": 0,
+                      "dnsProviderId": 1,
+                      "domains": [
+                        "msk1.fire-core.ru"
+                      ],
+                      "id": 1,
+                      "issuer": "Let's Encrypt R11",
+                      "keyFile": "/root/cert/msk1.fire-core.ru/privkey.pem",
+                      "lastAttemptAt": 1700000000,
+                      "lastError": "",
+                      "notAfter": 1707776000,
+                      "notBefore": 1700000000,
+                      "status": "valid",
+                      "updatedAt": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/get/{id}": {
+      "get": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Fetch one certificate.",
+        "operationId": "get_panel_api_certs_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Certificate ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/Certificate"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "autoRenew": true,
+                    "certFile": "/root/cert/msk1.fire-core.ru/fullchain.pem",
+                    "challenge": "dns01",
+                    "createdAt": 0,
+                    "dnsProviderId": 1,
+                    "domains": [
+                      "msk1.fire-core.ru"
+                    ],
+                    "id": 1,
+                    "issuer": "Let's Encrypt R11",
+                    "keyFile": "/root/cert/msk1.fire-core.ru/privkey.pem",
+                    "lastAttemptAt": 1700000000,
+                    "lastError": "",
+                    "notAfter": 1707776000,
+                    "notBefore": 1700000000,
+                    "status": "valid",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/add": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Register a certificate to issue. dnsProviderId 0 picks the DNS provider whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. Issue it afterwards with /issue/:id.",
+        "operationId": "post_panel_api_certs_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "domains": [
+                  "msk1.fire-core.ru",
+                  "*.msk1.fire-core.ru"
+                ],
+                "challenge": "dns01",
+                "dnsProviderId": 0,
+                "autoRenew": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/Certificate"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "autoRenew": true,
+                    "certFile": "/root/cert/msk1.fire-core.ru/fullchain.pem",
+                    "challenge": "dns01",
+                    "createdAt": 0,
+                    "dnsProviderId": 1,
+                    "domains": [
+                      "msk1.fire-core.ru"
+                    ],
+                    "id": 1,
+                    "issuer": "Let's Encrypt R11",
+                    "keyFile": "/root/cert/msk1.fire-core.ru/privkey.pem",
+                    "lastAttemptAt": 1700000000,
+                    "lastError": "",
+                    "notAfter": 1707776000,
+                    "notBefore": 1700000000,
+                    "status": "valid",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/update/{id}": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Change domains, challenge, DNS provider or auto-renew. Only autoRenew is editable on an imported certificate.",
+        "operationId": "post_panel_api_certs_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Certificate ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "domains": [
+                  "msk1.fire-core.ru"
+                ],
+                "challenge": "dns01",
+                "dnsProviderId": 1,
+                "autoRenew": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/del/{id}": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Forget a certificate. The PEM files stay on disk because Xray or the panel may still read them.",
+        "operationId": "post_panel_api_certs_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Certificate ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/issue/{id}": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Start an ACME order in the background. The certificate turns \"issuing\", then \"valid\" or \"error\" with lastError; poll /list. Local Xray restarts when an inbound reads the renewed file; the panel and subscription listeners pick it up without a restart.",
+        "operationId": "post_panel_api_certs_issue_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Certificate ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/scan": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Import certificates already under /root/cert (acme.sh, x-ui.sh, manual) so their expiry is watched. Returns how many were added.",
+        "operationId": "post_panel_api_certs_scan",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "msg": "",
+                  "obj": {
+                    "added": 2
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/apply/{id}": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Point the panel (target \"web\") or the subscription server (target \"sub\") at this certificate. Takes effect on the next panel restart.",
+        "operationId": "post_panel_api_certs_apply_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Certificate ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "target": "web"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/account": {
+      "get": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "The ACME account the panel issues under. The account key never leaves the database.",
+        "operationId": "get_panel_api_certs_account",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AcmeAccountView"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "directory": "https://acme-v02.api.letsencrypt.org/directory",
+                    "email": "ops@example.com",
+                    "registered": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Set the contact email and CA directory. Changing either drops the account key so the next order registers afresh.",
+        "operationId": "post_panel_api_certs_account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "email": "ops@example.com",
+                "directory": "https://acme-v02.api.letsencrypt.org/directory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/list": {
+      "get": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "List every DNS provider.",
+        "operationId": "get_panel_api_dns_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DnsProvider"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "apiUrl": "https://ns1.example.com:53443",
+                      "createdAt": 0,
+                      "hasCredential": true,
+                      "id": 1,
+                      "name": "fire-core",
+                      "type": "cloudflare",
+                      "updatedAt": 0,
+                      "zone": "fire-core.ru"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/get/{id}": {
+      "get": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Fetch one DNS provider.",
+        "operationId": "get_panel_api_dns_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "DNS provider ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/DnsProvider"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "apiUrl": "https://ns1.example.com:53443",
+                    "createdAt": 0,
+                    "hasCredential": true,
+                    "id": 1,
+                    "name": "fire-core",
+                    "type": "cloudflare",
+                    "updatedAt": 0,
+                    "zone": "fire-core.ru"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/add": {
+      "post": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Add a DNS zone. type is cloudflare or technitium; apiUrl is required for technitium.",
+        "operationId": "post_panel_api_dns_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "boykisser",
+                "type": "technitium",
+                "zone": "boykisser.online",
+                "apiUrl": "https://ns1.boykisser.online:53443",
+                "credential": "<api token>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/DnsProvider"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "apiUrl": "https://ns1.example.com:53443",
+                    "createdAt": 0,
+                    "hasCredential": true,
+                    "id": 1,
+                    "name": "fire-core",
+                    "type": "cloudflare",
+                    "updatedAt": 0,
+                    "zone": "fire-core.ru"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/update/{id}": {
+      "post": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Edit a DNS zone. An empty credential keeps the stored token.",
+        "operationId": "post_panel_api_dns_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "DNS provider ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "fire-core",
+                "type": "cloudflare",
+                "zone": "fire-core.ru",
+                "apiUrl": "",
+                "credential": ""
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/del/{id}": {
+      "post": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Delete a DNS zone. Refused while a certificate renews through it.",
+        "operationId": "post_panel_api_dns_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "DNS provider ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/test": {
+      "post": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Check that the token can manage the zone without writing anything. id 0 tests the unsaved form; an id with a blank credential tests the stored token with the edited fields.",
+        "operationId": "post_panel_api_dns_test",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "id": 0,
+                "type": "cloudflare",
+                "zone": "fire-core.ru",
+                "credential": "<api token>"
               }
             }
           }

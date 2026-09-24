@@ -1549,6 +1549,139 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'certs',
+    title: 'Certificates',
+    description:
+      'TLS certificates the panel issues through ACME (Let\u2019s Encrypt by default) and renews on its own, plus certificates found on disk that it only watches for expiry. dns01 is the default challenge because http01 needs port 80, which a real fallback site usually holds. Files are written to /root/cert/<domain>/fullchain.pem and privkey.pem. All endpoints under /panel/api/certs.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/certs/list',
+        summary: 'List every certificate, soonest expiry first.',
+        responseSchema: 'Certificate',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/certs/get/:id',
+        summary: 'Fetch one certificate.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Certificate ID.' }],
+        responseSchema: 'Certificate',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/add',
+        summary:
+          'Register a certificate to issue. dnsProviderId 0 picks the DNS provider whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. Issue it afterwards with /issue/:id.',
+        body: '{\n  "domains": ["msk1.fire-core.ru", "*.msk1.fire-core.ru"],\n  "challenge": "dns01",\n  "dnsProviderId": 0,\n  "autoRenew": true\n}',
+        responseSchema: 'Certificate',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/update/:id',
+        summary:
+          'Change domains, challenge, DNS provider or auto-renew. Only autoRenew is editable on an imported certificate.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Certificate ID.' }],
+        body: '{\n  "domains": ["msk1.fire-core.ru"],\n  "challenge": "dns01",\n  "dnsProviderId": 1,\n  "autoRenew": true\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/del/:id',
+        summary:
+          'Forget a certificate. The PEM files stay on disk because Xray or the panel may still read them.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Certificate ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/issue/:id',
+        summary:
+          'Start an ACME order in the background. The certificate turns "issuing", then "valid" or "error" with lastError; poll /list. Local Xray restarts when an inbound reads the renewed file; the panel and subscription listeners pick it up without a restart.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Certificate ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/scan',
+        summary:
+          'Import certificates already under /root/cert (acme.sh, x-ui.sh, manual) so their expiry is watched. Returns how many were added.',
+        response: '{\n  "success": true,\n  "msg": "",\n  "obj": { "added": 2 }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/apply/:id',
+        summary:
+          'Point the panel (target "web") or the subscription server (target "sub") at this certificate. Takes effect on the next panel restart.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Certificate ID.' }],
+        body: '{\n  "target": "web"\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/certs/account',
+        summary:
+          'The ACME account the panel issues under. The account key never leaves the database.',
+        responseSchema: 'AcmeAccountView',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/account',
+        summary:
+          'Set the contact email and CA directory. Changing either drops the account key so the next order registers afresh.',
+        body: '{\n  "email": "ops@example.com",\n  "directory": "https://acme-v02.api.letsencrypt.org/directory"\n}',
+      },
+    ],
+  },
+
+  {
+    id: 'dns',
+    title: 'DNS providers',
+    description:
+      'DNS zones the panel may write records into: ACME dns01 tokens today, node records during provisioning next. Cloudflare takes an API token with Zone.DNS edit rights; a self-hosted Technitium server takes its API URL and an API token from its console. The token is write-only: views report hasCredential instead. All endpoints under /panel/api/dns.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/dns/list',
+        summary: 'List every DNS provider.',
+        responseSchema: 'DnsProvider',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/dns/get/:id',
+        summary: 'Fetch one DNS provider.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'DNS provider ID.' }],
+        responseSchema: 'DnsProvider',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/dns/add',
+        summary:
+          'Add a DNS zone. type is cloudflare or technitium; apiUrl is required for technitium.',
+        body: '{\n  "name": "boykisser",\n  "type": "technitium",\n  "zone": "boykisser.online",\n  "apiUrl": "https://ns1.boykisser.online:53443",\n  "credential": "<api token>"\n}',
+        responseSchema: 'DnsProvider',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/dns/update/:id',
+        summary: 'Edit a DNS zone. An empty credential keeps the stored token.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'DNS provider ID.' }],
+        body: '{\n  "name": "fire-core",\n  "type": "cloudflare",\n  "zone": "fire-core.ru",\n  "apiUrl": "",\n  "credential": ""\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/dns/del/:id',
+        summary: 'Delete a DNS zone. Refused while a certificate renews through it.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'DNS provider ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/dns/test',
+        summary:
+          'Check that the token can manage the zone without writing anything. id 0 tests the unsaved form; an id with a blank credential tests the stored token with the edited fields.',
+        body: '{\n  "id": 0,\n  "type": "cloudflare",\n  "zone": "fire-core.ru",\n  "credential": "<api token>"\n}',
+      },
+    ],
+  },
+
+  {
     id: 'filters',
     title: 'Filters',
     description:
