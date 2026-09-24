@@ -2,7 +2,6 @@ package certissuer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"golang.org/x/crypto/acme"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
 )
 
 const (
@@ -171,11 +172,7 @@ func presentHTTP01(ctx context.Context, client *acme.Client, req *Request, pendi
 			_, _ = w.Write([]byte(body))
 		}),
 	}
-	go func() {
-		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			req.logf("http01 listener stopped: %v", err)
-		}
-	}()
+	go network.ServeHTTP(srv, ln, "acme http-01 listener")
 	req.logf("http01 listener on %s", ln.Addr())
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
