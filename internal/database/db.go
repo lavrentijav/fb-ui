@@ -88,6 +88,9 @@ func allModels() []any {
 		&model.FilterList{},
 		&model.FilterRule{},
 		&model.Panel{},
+		&model.DnsProvider{},
+		&model.Certificate{},
+		&model.AcmeAccount{},
 	}
 }
 

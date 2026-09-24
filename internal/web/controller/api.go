@@ -211,6 +211,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	filters := api.Group("/filters")
 	a.filterController = NewFilterController(filters)
 
+	// Certificates API — ACME issuance/renewal and the DNS zones it writes to
+	NewCertController(api.Group("/certs"), api.Group("/dns"))
+
 	// Cluster API — the panels sharing this database and which one leads
 	cluster := api.Group("/cluster")
 	a.clusterController = NewClusterController(cluster)

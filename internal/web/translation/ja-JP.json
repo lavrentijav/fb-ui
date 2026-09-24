@@ -115,7 +115,8 @@
     "unpinSidebar": "サイドバーの固定を解除",
     "subFormats": "Sub Formats",
     "network": "ネットワーク",
-    "filters": "フィルター"
+    "filters": "フィルター",
+    "certs": "証明書"
   },
   "pages": {
     "login": {
@@ -1408,7 +1409,10 @@
       "subSignEnableDesc": "応答本文に対する ed25519 の X-Subscription-Signature を付与します。公開鍵は /sub/pubkey で配信されます。",
       "subEmergencyUrl": "緊急用 URL",
       "subEmergencyUrlDesc": "?format=meta のペイロードに公開され、最新アドレスを得る最後の手段になります。",
-      "subManagePeers": "ピアパネルを管理"
+      "subManagePeers": "ピアパネルを管理",
+      "eventGroupCert": "証明書",
+      "eventCertExpiring": "証明書の期限切れ間近",
+      "eventCertRenewFailed": "更新失敗"
     },
     "xray": {
       "importRules": "ルールをインポート",
@@ -2111,6 +2115,72 @@
       "toasts": {
         "list": "クラスターを読み込めませんでした"
       }
+    },
+    "certs": {
+      "accountTitle": "ACME account",
+      "accountHint": "Contact email Let's Encrypt uses for expiry notices, and the CA to issue from. Changing either registers a new account on the next issue.",
+      "actions": "Actions",
+      "addCert": "Add certificate",
+      "addDns": "Add DNS zone",
+      "apiUrl": "API URL",
+      "apiUrlHint": "Technitium web console address, e.g. https://ns1.example.com:53443",
+      "appliedRestart": "Saved. Restart the panel to serve this certificate.",
+      "apply": "Use for",
+      "applySub": "Subscription server",
+      "applyWeb": "Panel",
+      "autoRenew": "Auto-renew",
+      "certsTitle": "Certificates",
+      "challenge": "Challenge",
+      "challengeHint": "DNS-01 works behind a fallback site and for wildcards; HTTP-01 needs port 80 free.",
+      "credential": "API token",
+      "credentialHintCloudflare": "Cloudflare API token with Zone → DNS → Edit on this zone.",
+      "credentialHintTechnitium": "API token from Technitium: Administration → Sessions → Create Token.",
+      "credentialKeep": "Leave empty to keep the stored token",
+      "credentialMissing": "missing",
+      "credentialSet": "stored",
+      "daysLeft": "{count} days left",
+      "deleteCertConfirm": "Forget certificate {name}? The files stay on disk.",
+      "deleteDnsConfirm": "Delete DNS zone {name}?",
+      "directory": "ACME directory",
+      "dnsAuto": "Automatic (by zone)",
+      "dnsName": "Name",
+      "dnsNameHint": "Defaults to the zone",
+      "dnsProvider": "DNS provider",
+      "dnsTest": "Test",
+      "dnsTestOk": "The token can manage this zone",
+      "dnsTitle": "DNS zones",
+      "dnsType": "Provider",
+      "domains": "Domains",
+      "domainsHint": "One per line. The first is the main name; *.name needs DNS-01.",
+      "editCert": "Edit certificate",
+      "editDns": "Edit DNS zone",
+      "email": "Email",
+      "expires": "Expires",
+      "imported": "imported",
+      "issue": "Issue",
+      "noCerts": "No certificates yet",
+      "noDns": "No DNS zones yet",
+      "registered": "registered",
+      "renew": "Renew now",
+      "scan": "Import from disk",
+      "scanResult": "Imported {count} certificate(s) from /root/cert",
+      "status": "Status",
+      "status_pending": "not issued",
+      "status_issuing": "issuing…",
+      "status_valid": "valid",
+      "status_error": "error",
+      "zone": "Zone",
+      "toasts": {
+        "apply": "Apply certificate",
+        "delete": "Delete",
+        "dnsTest": "DNS check",
+        "issueStarted": "Issuing started",
+        "save": "Save",
+        "scan": "Import certificates",
+        "needApiUrl": "Technitium needs its API URL",
+        "needDomain": "Enter at least one domain",
+        "needZone": "Enter the DNS zone, e.g. example.com"
+      }
     }
   },
   "tgbot": {
@@ -2225,7 +2295,9 @@
       "eventLoginFallback": "{{ .Source }} からのログインに失敗しました",
       "memoryThreshold": "メモリ使用率 {{ .Percent }}% がしきい値 {{ .Threshold }}% を超えました",
       "eventPeerDown": "ピア {{ .Name }} がダウンしています",
-      "eventPeerUp": "ピア {{ .Name }} が復旧しました"
+      "eventPeerUp": "ピア {{ .Name }} が復旧しました",
+      "eventCertExpiring": "証明書 {{ .Name }} は {{ .Date }} に期限切れになります",
+      "eventCertRenewFailed": "証明書 {{ .Name }} の更新に失敗しました"
     },
     "buttons": {
       "closeKeyboard": "❌ キーボードを閉じる",

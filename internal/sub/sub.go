@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/util/certreload"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/locale"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
@@ -343,10 +344,10 @@ func (s *Server) Start() (err error) {
 	}
 
 	if certFile != "" || keyFile != "" {
-		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		reloader, err := certreload.New(certFile, keyFile)
 		if err == nil {
 			c := &tls.Config{
-				Certificates: []tls.Certificate{cert},
+				GetCertificate: reloader.GetCertificate,
 			}
 			listener = network.NewAutoHttpsListener(listener)
 			listener = tls.NewListener(listener, c)

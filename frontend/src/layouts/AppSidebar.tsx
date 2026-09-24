@@ -29,6 +29,7 @@ import {
   PushpinOutlined,
   ReadOutlined,
   SafetyOutlined,
+  SafetyCertificateOutlined,
   SettingOutlined,
   SunOutlined,
   SwapOutlined,
@@ -64,6 +65,7 @@ type IconName =
   | 'network'
   | 'filters'
   | 'hosts'
+  | 'certs'
   | 'logout'
   | 'apidocs'
   | 'outbound'
@@ -80,6 +82,7 @@ const iconByName: Record<IconName, ComponentType> = {
   network: PartitionOutlined,
   filters: FilterOutlined,
   hosts: GlobalOutlined,
+  certs: SafetyCertificateOutlined,
   logout: LogoutOutlined,
   apidocs: ApiOutlined,
   outbound: ExportOutlined,
@@ -226,6 +229,7 @@ export default function AppSidebar() {
       { key: '/network', icon: 'network', title: t('menu.network') },
       { key: '/filters', icon: 'filters', title: t('menu.filters') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
+      { key: '/certs', icon: 'certs', title: t('menu.certs') },
       { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing', title: t('menu.routing') },
       { key: '/settings', icon: 'setting', title: t('menu.settings') },

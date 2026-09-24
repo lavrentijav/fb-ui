@@ -115,7 +115,8 @@
     "unpinSidebar": "Kenar çubuğu sabitlemesini kaldır",
     "subFormats": "Sub Formats",
     "network": "Ağ",
-    "filters": "Filtreler"
+    "filters": "Filtreler",
+    "certs": "Sertifikalar"
   },
   "pages": {
     "login": {
@@ -1408,7 +1409,10 @@
       "subSignEnableDesc": "Yanıt gövdesi üzerine ed25519 X-Subscription-Signature ekler. Genel anahtar /sub/pubkey adresinde sunulur.",
       "subEmergencyUrl": "Acil durum bağlantısı",
       "subEmergencyUrlDesc": "Güncel adreslere son çare olarak ulaşmak için ?format=meta yükünde yayımlanır.",
-      "subManagePeers": "Eş panelleri yönet"
+      "subManagePeers": "Eş panelleri yönet",
+      "eventGroupCert": "Sertifikalar",
+      "eventCertExpiring": "Sertifika sona eriyor",
+      "eventCertRenewFailed": "Yenileme başarısız"
     },
     "xray": {
       "save": "Kaydet",
@@ -2111,6 +2115,72 @@
       "toasts": {
         "list": "Küme yüklenemedi"
       }
+    },
+    "certs": {
+      "accountTitle": "ACME account",
+      "accountHint": "Contact email Let's Encrypt uses for expiry notices, and the CA to issue from. Changing either registers a new account on the next issue.",
+      "actions": "Actions",
+      "addCert": "Add certificate",
+      "addDns": "Add DNS zone",
+      "apiUrl": "API URL",
+      "apiUrlHint": "Technitium web console address, e.g. https://ns1.example.com:53443",
+      "appliedRestart": "Saved. Restart the panel to serve this certificate.",
+      "apply": "Use for",
+      "applySub": "Subscription server",
+      "applyWeb": "Panel",
+      "autoRenew": "Auto-renew",
+      "certsTitle": "Certificates",
+      "challenge": "Challenge",
+      "challengeHint": "DNS-01 works behind a fallback site and for wildcards; HTTP-01 needs port 80 free.",
+      "credential": "API token",
+      "credentialHintCloudflare": "Cloudflare API token with Zone → DNS → Edit on this zone.",
+      "credentialHintTechnitium": "API token from Technitium: Administration → Sessions → Create Token.",
+      "credentialKeep": "Leave empty to keep the stored token",
+      "credentialMissing": "missing",
+      "credentialSet": "stored",
+      "daysLeft": "{count} days left",
+      "deleteCertConfirm": "Forget certificate {name}? The files stay on disk.",
+      "deleteDnsConfirm": "Delete DNS zone {name}?",
+      "directory": "ACME directory",
+      "dnsAuto": "Automatic (by zone)",
+      "dnsName": "Name",
+      "dnsNameHint": "Defaults to the zone",
+      "dnsProvider": "DNS provider",
+      "dnsTest": "Test",
+      "dnsTestOk": "The token can manage this zone",
+      "dnsTitle": "DNS zones",
+      "dnsType": "Provider",
+      "domains": "Domains",
+      "domainsHint": "One per line. The first is the main name; *.name needs DNS-01.",
+      "editCert": "Edit certificate",
+      "editDns": "Edit DNS zone",
+      "email": "Email",
+      "expires": "Expires",
+      "imported": "imported",
+      "issue": "Issue",
+      "noCerts": "No certificates yet",
+      "noDns": "No DNS zones yet",
+      "registered": "registered",
+      "renew": "Renew now",
+      "scan": "Import from disk",
+      "scanResult": "Imported {count} certificate(s) from /root/cert",
+      "status": "Status",
+      "status_pending": "not issued",
+      "status_issuing": "issuing…",
+      "status_valid": "valid",
+      "status_error": "error",
+      "zone": "Zone",
+      "toasts": {
+        "apply": "Apply certificate",
+        "delete": "Delete",
+        "dnsTest": "DNS check",
+        "issueStarted": "Issuing started",
+        "save": "Save",
+        "scan": "Import certificates",
+        "needApiUrl": "Technitium needs its API URL",
+        "needDomain": "Enter at least one domain",
+        "needZone": "Enter the DNS zone, e.g. example.com"
+      }
     }
   },
   "tgbot": {
@@ -2225,7 +2295,9 @@
       "eventLoginFallback": "{{ .Source }} adresinden oturum açma başarısız",
       "memoryThreshold": "Bellek kullanımı {{ .Percent }}% eşiği {{ .Threshold }}% aşıyor",
       "eventPeerDown": "{{ .Name }} eşi ÇEVRİMDIŞI",
-      "eventPeerUp": "{{ .Name }} eşi ÇEVRİMİÇİ"
+      "eventPeerUp": "{{ .Name }} eşi ÇEVRİMİÇİ",
+      "eventCertExpiring": "{{ .Name }} sertifikası {{ .Date }} tarihinde sona eriyor",
+      "eventCertRenewFailed": "{{ .Name }} sertifika yenilemesi BAŞARISIZ"
     },
     "buttons": {
       "closeKeyboard": "❌ Klavyeyi Kapat",

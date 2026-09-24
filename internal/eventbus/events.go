@@ -27,6 +27,10 @@ const (
 
 	// Security
 	EventLoginAttempt EventType = "login.attempt"
+
+	// TLS certificates (renewal job)
+	EventCertExpiring   EventType = "cert.expiring"
+	EventCertRenewFails EventType = "cert.renew_failed"
 )
 
 // Event is the unit of information flowing through the bus.
@@ -74,4 +78,12 @@ type LoginEventData struct {
 type SystemMetricData struct {
 	Percent   float64 // current usage percentage
 	Threshold int     // configured threshold
+}
+
+// CertEventData carries the certificate an expiry or renewal event is about.
+type CertEventData struct {
+	CertId   int
+	Domains  []string
+	NotAfter time.Time
+	Error    string
 }

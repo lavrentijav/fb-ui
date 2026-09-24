@@ -24,6 +24,19 @@ export type trafficLocalApplyAction = z.infer<typeof trafficLocalApplyActionSche
 export const transportBitsSchema = z.number().int();
 export type transportBits = z.infer<typeof transportBitsSchema>;
 
+export const AcmeAccountRequestSchema = z.object({
+  directory: z.string(),
+  email: z.string(),
+});
+export type AcmeAccountRequest = z.infer<typeof AcmeAccountRequestSchema>;
+
+export const AcmeAccountViewSchema = z.object({
+  directory: z.string(),
+  email: z.string(),
+  registered: z.boolean(),
+});
+export type AcmeAccountView = z.infer<typeof AcmeAccountViewSchema>;
+
 export const AllSettingSchema = z.object({
   datepicker: z.string(),
   expireDiff: z.number().int().min(0),
@@ -291,6 +304,33 @@ export const CascadeLinkSchema = z.object({
 });
 export type CascadeLink = z.infer<typeof CascadeLinkSchema>;
 
+export const CertificateSchema = z.object({
+  autoRenew: z.boolean(),
+  certFile: z.string(),
+  challenge: z.enum(['dns01', 'http01', 'imported']),
+  createdAt: z.number().int(),
+  dnsProviderId: z.number().int(),
+  domains: z.array(z.string()),
+  id: z.number().int(),
+  issuer: z.string(),
+  keyFile: z.string(),
+  lastAttemptAt: z.number().int(),
+  lastError: z.string(),
+  notAfter: z.number().int(),
+  notBefore: z.number().int(),
+  status: z.string(),
+  updatedAt: z.number().int(),
+});
+export type Certificate = z.infer<typeof CertificateSchema>;
+
+export const CertificateRequestSchema = z.object({
+  autoRenew: z.boolean().nullable().optional(),
+  challenge: z.string(),
+  dnsProviderId: z.number().int(),
+  domains: z.array(z.string()),
+});
+export type CertificateRequest = z.infer<typeof CertificateRequestSchema>;
+
 export const ClientSchema = z.object({
   adTag: z.string().optional(),
   allowedIPs: z.array(z.string()).optional(),
@@ -391,6 +431,27 @@ export const ClientTrafficSchema = z.object({
   uuid: z.string(),
 });
 export type ClientTraffic = z.infer<typeof ClientTrafficSchema>;
+
+export const DnsProviderSchema = z.object({
+  apiUrl: z.string(),
+  createdAt: z.number().int(),
+  hasCredential: z.boolean(),
+  id: z.number().int(),
+  name: z.string(),
+  type: z.enum(['cloudflare', 'technitium']),
+  updatedAt: z.number().int(),
+  zone: z.string(),
+});
+export type DnsProvider = z.infer<typeof DnsProviderSchema>;
+
+export const DnsProviderRequestSchema = z.object({
+  apiUrl: z.string(),
+  credential: z.string(),
+  name: z.string(),
+  type: z.string(),
+  zone: z.string(),
+});
+export type DnsProviderRequest = z.infer<typeof DnsProviderRequestSchema>;
 
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),

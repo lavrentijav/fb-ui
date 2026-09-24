@@ -1,10 +1,11 @@
 import { InputNumber } from 'antd';
 import {
   CloudServerOutlined,
-  ThunderboltOutlined,
-  DesktopOutlined,
   DashboardOutlined,
+  DesktopOutlined,
+  SafetyCertificateOutlined,
   SafetyOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { AllSetting } from '@/models/setting';
 import { NotificationLayout } from './NotificationLayout';
@@ -48,6 +49,14 @@ const GROUPS: NotificationGroupConfig[] = [
       { key: 'node.up', label: 'eventNodeUp', settingKey: '' },
       { key: 'peer.down', label: 'eventPeerDown', settingKey: '' },
       { key: 'peer.up', label: 'eventPeerUp', settingKey: '' },
+    ],
+  },
+  {
+    icon: <SafetyCertificateOutlined />,
+    title: 'eventGroupCert',
+    events: [
+      { key: 'cert.expiring', label: 'eventCertExpiring', settingKey: '' },
+      { key: 'cert.renew_failed', label: 'eventCertRenewFailed', settingKey: '' },
     ],
   },
   {
