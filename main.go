@@ -40,7 +40,7 @@ import (
 //go:embed install.sh
 var installScript []byte
 
-//go:embed x-ui.sh x-ui.service.debian x-ui.service.arch x-ui.service.rhel
+//go:embed x-ui.sh x-ui.rc x-ui.service.debian x-ui.service.arch x-ui.service.rhel
 var releaseFiles embed.FS
 
 func releaseAssets() service.ReleaseAssets {

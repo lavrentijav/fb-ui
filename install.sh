@@ -1592,7 +1592,10 @@ install_x-ui() {
     # they are checked at that point instead of here.
     local required_files=("x-ui.sh")
     [[ $release == "alpine" ]] && required_files+=("x-ui.rc")
-    require_repo_files "${script_ref}" "${required_files[@]}"
+    # A local archive ships its own copies, so there is nothing to probe.
+    if [[ -z "${XUI_ARCHIVE:-}" ]]; then
+        require_repo_files "${script_ref}" "${required_files[@]}"
+    fi
     local xui_script_temp="/usr/bin/x-ui-temp.$$"
     rm -f "${xui_script_temp}"
     if [[ -n "${XUI_ARCHIVE:-}" ]]; then
@@ -1760,7 +1763,11 @@ install_x-ui() {
     if [[ $release == "alpine" ]]; then
         xui_rc_temp="/etc/init.d/x-ui.tmp.$$"
         rm -f "${xui_rc_temp}"
-        curl -fLRo "${xui_rc_temp}" "https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.rc"
+        if [[ -n "${XUI_ARCHIVE:-}" && -s "${xui_folder}/x-ui.rc" ]]; then
+            cp -f "${xui_folder}/x-ui.rc" "${xui_rc_temp}"
+        else
+            curl -fLRo "${xui_rc_temp}" "https://raw.githubusercontent.com/MHSanaei/3x-ui/${script_ref}/x-ui.rc"
+        fi
         if [[ $? -ne 0 ]]; then
             rm -f "${xui_rc_temp}"
             echo -e "${red}Failed to download x-ui.rc${plain}"
