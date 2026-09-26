@@ -31,7 +31,7 @@ func shippedBinFile(name string) bool {
 		return true
 	case strings.HasSuffix(name, ".dat"):
 		return true
-	case name == "LICENSE" || name == "README.md":
+	case name == "LICENSE" || name == "README.md", name == "tuic-server":
 		return true
 	}
 	return false

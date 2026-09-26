@@ -145,13 +145,20 @@ function subJsonSkeleton(): Record<string, unknown> {
     },
     inbounds: [
       {
+        listen: '127.0.0.1',
         port: 10808,
-        protocol: 'mixed',
+        protocol: 'socks',
         settings: { auth: 'noauth', udp: true, userLevel: 8 },
         sniffing: { destOverride: ['http', 'tls', 'quic', 'fakedns'], enabled: true },
         tag: 'mixed',
       },
-      { port: 10809, protocol: 'http', settings: { userLevel: 8 }, tag: 'http' },
+      {
+        listen: '127.0.0.1',
+        port: 10809,
+        protocol: 'http',
+        settings: { userLevel: 8 },
+        tag: 'http',
+      },
     ],
     log: { loglevel: 'warning' },
     policy: {
@@ -241,6 +248,8 @@ function proxyOutbound(c: SubClient): Record<string, unknown> {
   };
 }
 
+// Mirrors the one-document-per-client model only; the panel also emits
+// balancer documents (sub_balancers) that are intentionally out of scope here.
 function jsonConfig(c: SubClient): Record<string, unknown> {
   return {
     remarks: c.remark,

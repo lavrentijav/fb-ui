@@ -102,6 +102,9 @@ func TLSData(tData map[string]any) map[string]any {
 
 	tlsData["serverName"] = tData["serverName"]
 	tlsData["alpn"] = tData["alpn"]
+	if cs, ok := tData["cipherSuites"].(string); ok && cs != "" {
+		tlsData["cipherSuites"] = cs
+	}
 	if fingerprint, ok := tlsClientSettings["fingerprint"].(string); ok {
 		tlsData["fingerprint"] = fingerprint
 	}

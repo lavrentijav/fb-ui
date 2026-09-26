@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -490,6 +491,24 @@ func (s *NodeService) CreateFromRequest(req *NodeMutationRequest) (*NodeView, er
 	return toNodeView(n), nil
 }
 
+// nodeSelectionGrew reports a save that starts managing inbounds the panel has
+// not imported yet; the sweep must wait for the next clean sync to adopt them.
+func nodeSelectionGrew(existing, in *model.Node) bool {
+	if in.InboundSyncMode != "selected" {
+		return existing.InboundSyncMode == "selected"
+	}
+	old := make(map[string]struct{}, len(existing.InboundTags))
+	for _, tag := range existing.InboundTags {
+		old[tag] = struct{}{}
+	}
+	for _, tag := range in.InboundTags {
+		if _, ok := old[tag]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *NodeService) Update(id int, in *model.Node) error {
 	if err := s.normalize(in); err != nil {
 		return err
@@ -527,6 +546,9 @@ func (s *NodeService) Update(id int, in *model.Node) error {
 		"inbound_sync_mode":     in.InboundSyncMode,
 		"inbound_tags":          string(inboundTagsJSON),
 		"outbound_tag":          in.OutboundTag,
+	}
+	if nodeSelectionGrew(existing, in) {
+		updates["inbounds_adopted_at"] = 0
 	}
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(model.Node{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -587,6 +609,9 @@ func (s *NodeService) UpdateFromRequest(id int, req *NodeMutationRequest) error 
 		"inbound_sync_mode":     in.InboundSyncMode,
 		"inbound_tags":          string(inboundTagsJSON),
 		"outbound_tag":          in.OutboundTag,
+	}
+	if nodeSelectionGrew(existing, in) {
+		updates["inbounds_adopted_at"] = 0
 	}
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(model.Node{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -856,8 +881,9 @@ func (s *NodeService) Delete(id int) error {
 	if mgr := runtime.GetManager(); mgr != nil {
 		mgr.InvalidateNode(id)
 	}
-	nodeMetrics.drop(nodeMetricKey(id, "cpu"))
-	nodeMetrics.drop(nodeMetricKey(id, "mem"))
+	for _, metric := range NodeMetricKeys {
+		nodeMetrics.drop(nodeMetricKey(id, metric))
+	}
 	return nil
 }
 
@@ -913,12 +939,11 @@ func (s *NodeService) UpdatePanels(ids []int, dev bool) ([]NodeUpdateResult, err
 	if mgr == nil {
 		return nil, fmt.Errorf("runtime manager unavailable")
 	}
-	results := make([]NodeUpdateResult, 0, len(ids))
-	for _, id := range ids {
+	results, panics := fanoutInboundResults(ids, nodeFanoutConcurrency, func(i int) NodeUpdateResult {
+		id := ids[i]
 		n, err := s.GetById(id)
 		if err != nil || n == nil {
-			results = append(results, NodeUpdateResult{Id: id, OK: false, Error: "node not found"})
-			continue
+			return NodeUpdateResult{Id: id, OK: false, Error: "node not found"}
 		}
 		res := NodeUpdateResult{Id: id, Name: n.Name}
 		switch {
@@ -941,7 +966,12 @@ func (s *NodeService) UpdatePanels(ids []int, dev bool) ([]NodeUpdateResult, err
 				res.OK = true
 			}
 		}
-		results = append(results, res)
+		return res
+	})
+	for i, panicErr := range panics {
+		if panicErr != nil {
+			results[i] = NodeUpdateResult{Id: ids[i], Error: panicErr.Error()}
+		}
 	}
 	return results, nil
 }
@@ -1206,6 +1236,10 @@ func (s *NodeService) withOutboundBridge(nodeID int, outboundTag string, fn func
 	fn(proxyURL)
 }
 
+// A status envelope holds a handful of scalars; the cap keeps a hostile or
+// broken node from dictating the master's allocation on every heartbeat.
+const maxProbeBodyBytes = 1 << 20 // 1 MiB
+
 func (s *NodeService) probe(ctx context.Context, n *model.Node, proxyURL string) (HeartbeatPatch, error) {
 	patch := HeartbeatPatch{LastHeartbeat: time.Now().Unix()}
 
@@ -1288,7 +1322,7 @@ func (s *NodeService) probe(ctx context.Context, n *model.Node, proxyURL string)
 			} `json:"netIO"`
 		} `json:"obj"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxProbeBodyBytes)).Decode(&envelope); err != nil {
 		patch.LastError = "decode response: " + err.Error()
 		return patch, err
 	}

@@ -98,10 +98,29 @@ func Vless(inbound *model.Inbound, streamSettings json_util.RawMessage, client m
 	}
 	if client.Flow != "" && !inbound.DisableFlow {
 		settings["flow"] = client.Flow
+		outbound.Mux = muxWithoutTCP(mux)
 	}
 	outbound.Settings = settings
 	result, _ := json.MarshalIndent(outbound, "", "  ")
 	return result
+}
+
+// muxWithoutTCP keeps XUDP but turns off TCP multiplexing, which a flow
+// (xtls-rprx-vision) refuses to run under.
+func muxWithoutTCP(mux string) json_util.RawMessage {
+	if mux == "" {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(mux), &m); err != nil || m == nil {
+		return nil
+	}
+	m["concurrency"] = -1
+	out, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	return json_util.RawMessage(out)
 }
 
 func Server(inbound *model.Inbound, streamSettings json_util.RawMessage, client model.Client, mux, tag string) json_util.RawMessage {

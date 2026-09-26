@@ -2,11 +2,13 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	piaprotocol "github.com/mhsanaei/3x-ui/v3/internal/pia"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service/integration"
@@ -25,13 +27,14 @@ type XraySettingController struct {
 	XrayService                 service.XrayService
 	WarpService                 integration.WarpService
 	NordService                 integration.NordService
+	PiaService                  integration.PiaService
 	OutboundSubscriptionService service.OutboundSubscriptionService
 	GeodataService              service.GeodataService
 }
 
 // NewXraySettingController creates a new XraySettingController and initializes its routes.
 func NewXraySettingController(g *gin.RouterGroup) *XraySettingController {
-	a := &XraySettingController{}
+	a := &XraySettingController{PiaService: *integration.NewPiaService()}
 	a.initRouter(g)
 	return a
 }
@@ -46,6 +49,7 @@ func (a *XraySettingController) initRouter(g *gin.RouterGroup) {
 	g.POST("/", a.getXraySetting)
 	g.POST("/warp/:action", a.warp)
 	g.POST("/nord/:action", a.nord)
+	g.POST("/pia/:action", a.pia)
 	g.POST("/update", a.updateSetting)
 	g.POST("/resetOutboundsTraffic", a.resetOutboundsTraffic)
 	g.POST("/testOutbound", a.testOutbound)
@@ -112,6 +116,7 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 		"inboundTags":       json.RawMessage(inboundTags),
 		"clientReverseTags": json.RawMessage(clientReverseTags),
 		"outboundTestUrl":   outboundTestUrl,
+		"geodataSources":    service.StandardGeodataSources(),
 	}
 
 	// Surface subscription outbounds (and their tags) so the frontend can:
@@ -239,6 +244,39 @@ func (a *XraySettingController) nord(c *gin.Context) {
 	}
 
 	jsonObj(c, resp, err)
+}
+
+func (a *XraySettingController) pia(c *gin.Context) {
+	action := c.Param("action")
+	var resp any
+	var err error
+	switch action {
+	case "countries":
+		resp, err = a.PiaService.GetCountries()
+	case "servers":
+		resp, err = a.PiaService.GetServers(c.PostForm("countryCode"))
+	case "reg":
+		resp, err = a.PiaService.Login(c.PostForm("username"), c.PostForm("password"))
+	case "data":
+		resp, err = a.PiaService.GetPiaData()
+	case "del":
+		err = a.PiaService.DelPiaData()
+	case "addKey":
+		resp, err = a.PiaService.AddKey(c.PostForm("hostname"))
+	default:
+		jsonMsg(c, "unknown action", common.NewError("unknown action"))
+		return
+	}
+	if err != nil {
+		var pe *piaprotocol.Error
+		if errors.As(err, &pe) && pe != nil {
+			jsonObj(c, nil, common.NewError(pe.Message))
+			return
+		}
+		jsonObj(c, nil, err)
+		return
+	}
+	jsonObj(c, resp, nil)
 }
 
 // getOutboundsTraffic retrieves the traffic statistics for outbounds.
@@ -479,6 +517,7 @@ func (a *XraySettingController) createOutboundSub(c *gin.Context) {
 	remark := c.PostForm("remark")
 	rawURL := c.PostForm("url")
 	prefix := c.PostForm("tagPrefix")
+	userAgent := c.PostForm("userAgent")
 	enabled := c.PostForm("enabled") != "false"
 	allowPrivate := c.PostForm("allowPrivate") == "true"
 	allowInsecure := c.PostForm("allowInsecure") == "true"
@@ -490,7 +529,7 @@ func (a *XraySettingController) createOutboundSub(c *gin.Context) {
 			interval = v
 		}
 	}
-	sub, err := a.OutboundSubscriptionService.Create(remark, rawURL, prefix, enabled, interval, allowPrivate, prepend, allowInsecure)
+	sub, err := a.OutboundSubscriptionService.Create(remark, rawURL, prefix, userAgent, enabled, interval, allowPrivate, prepend, allowInsecure)
 	if err != nil {
 		jsonMsg(c, "Failed to create outbound subscription", err)
 		return
@@ -508,6 +547,7 @@ func (a *XraySettingController) updateOutboundSub(c *gin.Context) {
 	remark := c.PostForm("remark")
 	rawURL := c.PostForm("url")
 	prefix := c.PostForm("tagPrefix")
+	userAgent := c.PostForm("userAgent")
 	enabled := c.PostForm("enabled") != "false"
 	allowPrivate := c.PostForm("allowPrivate") == "true"
 	allowInsecure := c.PostForm("allowInsecure") == "true"
@@ -519,7 +559,7 @@ func (a *XraySettingController) updateOutboundSub(c *gin.Context) {
 			interval = v
 		}
 	}
-	if err := a.OutboundSubscriptionService.Update(subID, remark, rawURL, prefix, enabled, interval, allowPrivate, prepend, allowInsecure); err != nil {
+	if err := a.OutboundSubscriptionService.Update(subID, remark, rawURL, prefix, userAgent, enabled, interval, allowPrivate, prepend, allowInsecure); err != nil {
 		jsonMsg(c, "Failed to update outbound subscription", err)
 		return
 	}
@@ -587,12 +627,13 @@ func (a *XraySettingController) parseOutboundSubURL(c *gin.Context) {
 	}
 	allowPrivate := c.PostForm("allowPrivate") == "true"
 	allowInsecure := c.PostForm("allowInsecure") == "true"
+	userAgent := c.PostForm("userAgent")
 	// Use a throw-away service instance; it only needs the settingService for proxy.
 	svc := service.OutboundSubscriptionService{}
 	// We don't have a direct "fetch once" that returns without storing, so we
 	// temporarily create a disabled row, refresh it, then delete. Cleaner would
 	// be to expose a pure ParseURL on the service, but this keeps the surface small.
-	tmp, err := svc.Create("preview", rawURL, "", false, 600, allowPrivate, false, allowInsecure)
+	tmp, err := svc.Create("preview", rawURL, "", userAgent, false, 600, allowPrivate, false, allowInsecure)
 	if err != nil {
 		jsonMsg(c, "Failed to preview subscription", err)
 		return

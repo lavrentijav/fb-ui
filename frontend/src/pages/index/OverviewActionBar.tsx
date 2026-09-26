@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Tag, Tooltip } from 'antd';
 import {
+  ApiOutlined,
   ArrowUpOutlined,
   AreaChartOutlined,
   BarsOutlined,
@@ -28,6 +29,7 @@ interface OverviewActionBarProps {
   onRestartXray: () => void;
   onOpenLogs: () => void;
   onOpenXrayLogs: () => void;
+  onOpenAmneziaWGLogs: () => void;
   onOpenConfig: () => void;
   onOpenBackup: () => void;
   onOpenSystemHistory: () => void;
@@ -61,6 +63,7 @@ export default function OverviewActionBar({
   onRestartXray,
   onOpenLogs,
   onOpenXrayLogs,
+  onOpenAmneziaWGLogs,
   onOpenConfig,
   onOpenBackup,
   onOpenSystemHistory,
@@ -98,6 +101,16 @@ export default function OverviewActionBar({
               icon: <FileTextOutlined />,
               text: t('pages.index.accessLogs'),
               onClick: onOpenXrayLogs,
+            },
+          ]
+        : []),
+      ...(status.amneziawg.configured
+        ? [
+            {
+              key: 'amneziawgLogs',
+              icon: <ApiOutlined />,
+              text: t('pages.index.amneziawgLogs'),
+              onClick: onOpenAmneziaWGLogs,
             },
           ]
         : []),
@@ -146,13 +159,19 @@ export default function OverviewActionBar({
 
   return (
     <div className="ov-bar">
-      {status.xray.state === 'error' && status.xray.errorMsg ? (
+      {status.xray.errorMsg ? (
         <Tooltip title={<span className="ov-error-detail">{status.xray.errorMsg}</span>}>
           {statePill}
         </Tooltip>
       ) : (
         statePill
       )}
+
+      {status.xray.state === 'running' && status.xray.errorMsg ? (
+        <Tooltip title={<span className="ov-error-detail">{status.xray.errorMsg}</span>}>
+          <Tag color="error">{t('pages.index.xrayStatusError')}</Tag>
+        </Tooltip>
+      ) : null}
 
       {updateAvailable ? (
         <Tag

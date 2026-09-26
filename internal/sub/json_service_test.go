@@ -36,9 +36,90 @@ func outboundSettings(t *testing.T, raw []byte) map[string]any {
 	return settings
 }
 
+func TestDefaultJSONUsesCompatibleLocalInbounds(t *testing.T) {
+	svc := NewSubJsonService("", "", "", "", nil)
+	inbounds, ok := svc.configJson["inbounds"].([]any)
+	if !ok {
+		t.Fatalf("default JSON inbounds = %#v, want array", svc.configJson["inbounds"])
+	}
+
+	byPort := make(map[float64]map[string]any, len(inbounds))
+	for _, raw := range inbounds {
+		inbound, ok := raw.(map[string]any)
+		if !ok {
+			t.Fatalf("default JSON inbound = %#v, want object", raw)
+		}
+		port, ok := inbound["port"].(float64)
+		if !ok {
+			t.Fatalf("default JSON inbound port = %#v, want number", inbound["port"])
+		}
+		byPort[port] = inbound
+	}
+
+	socks := byPort[10808]
+	if socks == nil {
+		t.Fatal("default JSON is missing the local inbound on port 10808")
+	}
+	if socks["protocol"] != "socks" || socks["tag"] != "mixed" {
+		t.Fatalf("port 10808 protocol/tag = %v/%v, want socks/mixed", socks["protocol"], socks["tag"])
+	}
+	settings, _ := socks["settings"].(map[string]any)
+	if settings == nil || settings["udp"] != true {
+		t.Fatalf("port 10808 settings = %#v, want udp enabled", socks["settings"])
+	}
+	if socks["listen"] != "127.0.0.1" {
+		t.Fatalf("port 10808 listen = %#v, want 127.0.0.1 (an unbound local inbound is exposed to the LAN and is not reachable by iOS packet tunnels)", socks["listen"])
+	}
+
+	http := byPort[10809]
+	if http == nil || http["protocol"] != "http" {
+		t.Fatalf("port 10809 inbound = %#v, want http protocol", http)
+	}
+	if http["listen"] != "127.0.0.1" {
+		t.Fatalf("port 10809 listen = %#v, want 127.0.0.1", http["listen"])
+	}
+}
+
+func TestSubJsonServiceVisionFlowDisablesTCPMuxOnly(t *testing.T) {
+	globalMux := `{"enabled":true,"concurrency":8,"xudpConcurrency":16,"xudpProxyUDP443":"reject"}`
+	inbound := &model.Inbound{Listen: "1.2.3.4", Port: 443, Protocol: model.VLESS, Settings: `{"encryption":"none"}`}
+
+	decode := func(raw []byte) map[string]any {
+		t.Helper()
+		var ob map[string]any
+		if err := json.Unmarshal(raw, &ob); err != nil {
+			t.Fatalf("unmarshal outbound: %v", err)
+		}
+		return ob
+	}
+
+	vision := decode([]byte(xrayout.Vless(inbound, nil, model.Client{ID: "uuid-1", Flow: "xtls-rprx-vision"}, globalMux, proxyOutboundTag)))
+	mux, _ := vision["mux"].(map[string]any)
+	if mux == nil {
+		t.Fatalf("vision outbound must keep its mux object for the XUDP keys, got %#v", vision["mux"])
+	}
+	if mux["concurrency"] != float64(-1) {
+		t.Fatalf("vision outbound mux.concurrency = %v, want -1 (TCP mux.cool is rejected by XTLS flows)", mux["concurrency"])
+	}
+	if mux["enabled"] != true || mux["xudpConcurrency"] != float64(16) || mux["xudpProxyUDP443"] != "reject" {
+		t.Fatalf("vision outbound lost its XUDP settings: %#v", mux)
+	}
+
+	plain := decode([]byte(xrayout.Vless(inbound, nil, model.Client{ID: "uuid-1"}, globalMux, proxyOutboundTag)))
+	mux, _ = plain["mux"].(map[string]any)
+	if mux == nil || mux["concurrency"] != float64(8) {
+		t.Fatalf("flow-less outbound must keep the global mux unchanged, got %#v", plain["mux"])
+	}
+
+	noMux := decode([]byte(xrayout.Vless(inbound, nil, model.Client{ID: "uuid-1", Flow: "xtls-rprx-vision"}, "", proxyOutboundTag)))
+	if _, has := noMux["mux"]; has {
+		t.Fatalf("no global mux must still mean no mux key, got %#v", noMux["mux"])
+	}
+}
+
 func TestSubJsonServiceInjectsGlobalFinalMask(t *testing.T) {
 	finalMask := `{"tcp":[{"type":"fragment","settings":{"packets":"tlshello","length":"100-200","delay":"10-20"}}],"udp":[{"type":"noise","settings":{"noise":[{"type":"base64","packet":"SGVsbG8="}]}}],"quicParams":{"congestion":"bbr"}}`
-	svc := NewSubJsonService("", "", finalMask, nil)
+	svc := NewSubJsonService("", "", finalMask, "", nil)
 
 	if hasDirectOutOutbound(svc) {
 		t.Fatal("direct_out outbound must never be emitted")
@@ -75,7 +156,7 @@ func TestSubJsonServiceInjectsGlobalFinalMask(t *testing.T) {
 
 func TestSubJsonServiceMergesWithExistingFinalMask(t *testing.T) {
 	finalMask := `{"tcp":[{"type":"fragment","settings":{"packets":"tlshello"}}]}`
-	svc := NewSubJsonService("", "", finalMask, nil)
+	svc := NewSubJsonService("", "", finalMask, "", nil)
 
 	stream := xrayout.Stream(`{
 		"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}},
@@ -95,7 +176,7 @@ func TestSubJsonServiceMergesWithExistingFinalMask(t *testing.T) {
 }
 
 func TestSubJsonServiceNoFinalMaskWhenEmpty(t *testing.T) {
-	svc := NewSubJsonService("", "", "", nil)
+	svc := NewSubJsonService("", "", "", "", nil)
 	stream := xrayout.Stream(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "", svc.finalMask)
 	if _, ok := stream["finalmask"]; ok {
 		t.Fatal("no finalmask should be emitted when subJsonFinalMask is empty")
@@ -109,7 +190,7 @@ func TestSubJsonServiceNoFinalMaskWhenEmpty(t *testing.T) {
 // the JSON subscription must emit that form, not an array, or v2ray clients fail
 // to import the config (#5401).
 func TestSubJsonServicePinnedCertJoinedToString(t *testing.T) {
-	svc := NewSubJsonService("", "", "", nil)
+	svc := NewSubJsonService("", "", "", "", nil)
 	stream := xrayout.Stream(`{"network":"tcp","security":"tls","tlsSettings":{"serverName":"a.example.com","settings":{"pinnedPeerCertSha256":["aa11","bb22"]}}}`, "", svc.finalMask)
 
 	tls, _ := stream["tlsSettings"].(map[string]any)
@@ -118,6 +199,22 @@ func TestSubJsonServicePinnedCertJoinedToString(t *testing.T) {
 	}
 	if got := tls["pinnedPeerCertSha256"]; got != "aa11,bb22" {
 		t.Fatalf("pinnedPeerCertSha256 = %#v, want comma-separated string \"aa11,bb22\"", got)
+	}
+}
+
+func TestSubJsonServiceTLSCipherSuitesForwarded(t *testing.T) {
+	svc := NewSubJsonService("", "", "", "", nil)
+	stream := xrayout.Stream(`{"network":"tcp","security":"tls","tlsSettings":{"serverName":"a.example.com","cipherSuites":"TLS_AES_256_GCM_SHA384","settings":{}}}`, "", svc.finalMask)
+
+	tls, _ := stream["tlsSettings"].(map[string]any)
+	if got := tls["cipherSuites"]; got != "TLS_AES_256_GCM_SHA384" {
+		t.Fatalf("cipherSuites = %#v, want %q", got, "TLS_AES_256_GCM_SHA384")
+	}
+
+	stream = xrayout.Stream(`{"network":"tcp","security":"tls","tlsSettings":{"serverName":"a.example.com","cipherSuites":"","settings":{}}}`, "", svc.finalMask)
+	tls, _ = stream["tlsSettings"].(map[string]any)
+	if _, present := tls["cipherSuites"]; present {
+		t.Fatalf("empty cipherSuites must be omitted, got %#v", tls["cipherSuites"])
 	}
 }
 
@@ -189,7 +286,7 @@ func TestSubJsonServiceServerUsesServersArray(t *testing.T) {
 
 func TestSubJsonServiceXmuxSuppressesGlobalMux(t *testing.T) {
 	globalMux := `{"enabled":true,"concurrency":8}`
-	svc := NewSubJsonService(globalMux, "", "", nil)
+	svc := NewSubJsonService(globalMux, "", "", "", nil)
 
 	// When xmux is present in xhttpSettings, the per-inbound xmux handles
 	// multiplexing and the legacy outbound.Mux must NOT be set.
@@ -236,7 +333,7 @@ func TestSubJsonServiceXmuxSuppressesGlobalMux(t *testing.T) {
 
 func TestSubJsonServiceGlobalMuxWhenNoXmux(t *testing.T) {
 	globalMux := `{"enabled":true,"concurrency":8}`
-	svc := NewSubJsonService(globalMux, "", "", nil)
+	svc := NewSubJsonService(globalMux, "", "", "", nil)
 
 	// When no xmux is present, the global subJsonMux should be used.
 	stream := `{"network":"xhttp","security":"tls","tlsSettings":{"serverName":"example.com"},"xhttpSettings":{"path":"/api","mode":"packet-up"}}`
@@ -290,7 +387,7 @@ func realitySpiderXFromStream(t *testing.T, svc *SubJsonService, clientKey strin
 }
 
 func TestSubJsonServiceRealityDataDerivesPerClientSpiderX(t *testing.T) {
-	svc := NewSubJsonService("", "", "", nil)
+	svc := NewSubJsonService("", "", "", "", nil)
 
 	alice := realitySpiderXFromStream(t, svc, "subAlice")
 	if again := realitySpiderXFromStream(t, svc, "subAlice"); again != alice {
@@ -306,13 +403,13 @@ func TestSubJsonServiceRealityDataDerivesPerClientSpiderX(t *testing.T) {
 // security whose settings key is missing or null previously panicked the
 // subscription request.
 func TestSubJsonServiceStreamDataMalformedInputs(t *testing.T) {
-	withMask := NewSubJsonService("", "", `{"tcp":[{"type":"fragment"}]}`, nil)
+	withMask := NewSubJsonService("", "", `{"tcp":[{"type":"fragment"}]}`, "", nil)
 	stream := xrayout.Stream("not-json", "clientKey", withMask.finalMask)
 	if _, ok := stream["finalmask"]; !ok {
 		t.Fatal("finalMask must still apply when stream settings fail to parse")
 	}
 
-	svc := NewSubJsonService("", "", "", nil)
+	svc := NewSubJsonService("", "", "", "", nil)
 	noReality := xrayout.Stream(`{"network":"tcp","security":"reality"}`, "clientKey", svc.finalMask)
 	if v, ok := noReality["realitySettings"]; ok {
 		t.Fatalf("missing realitySettings must stay absent, got %v", v)
@@ -324,7 +421,7 @@ func TestSubJsonServiceStreamDataMalformedInputs(t *testing.T) {
 }
 
 func TestSubJsonServiceRealityDataSpiderXFallsBackWhenNoClientKey(t *testing.T) {
-	svc := NewSubJsonService("", "", "", nil)
+	svc := NewSubJsonService("", "", "", "", nil)
 
 	stream := xrayout.Stream(`{
 		"network":"tcp","security":"reality","tcpSettings":{"header":{"type":"none"}},
@@ -365,11 +462,11 @@ func TestSubJsonServiceWireguard(t *testing.T) {
 		Email:        "user",
 		PrivateKey:   clientPriv,
 		PreSharedKey: "psk-value",
-		KeepAlive:    25,
+		KeepAlive:    model.KeepAlivePtr(25),
 		AllowedIPs:   []string{"10.0.0.2/32", "fd00::2/128"},
 	}
 
-	raw := NewSubJsonService("", "", "", nil).genWireguard(inbound, client)
+	raw := NewSubJsonService("", "", "", "", nil).genWireguard(inbound, client)
 	if raw == nil {
 		t.Fatal("genWireguard returned nil for a valid wireguard client")
 	}
@@ -413,7 +510,24 @@ func TestSubJsonServiceWireguardNoKey(t *testing.T) {
 	inbound := &model.Inbound{Listen: "203.0.113.9", Port: 51820, Protocol: model.WireGuard, Settings: `{}`}
 	client := model.Client{Email: "user"}
 
-	if raw := NewSubJsonService("", "", "", nil).genWireguard(inbound, client); raw != nil {
+	if raw := NewSubJsonService("", "", "", "", nil).genWireguard(inbound, client); raw != nil {
 		t.Fatalf("genWireguard = %s, want nil for a keyless wireguard client", raw)
+	}
+}
+
+func TestSubJsonServiceSkipsAmneziaWG(t *testing.T) {
+	if got := NewSubJsonService("", "", "", "", nil).getConfig(&SubService{address: "sub.example.com"}, &model.Inbound{Listen: "203.0.113.8", Port: 51820, Protocol: model.AmneziaWG}, model.Client{}, "sub.example.com"); len(got) != 0 {
+		t.Fatalf("getConfig emitted %d unsupported AmneziaWG Xray config(s)", len(got))
+	}
+}
+
+func TestSubJsonServiceSkipsTUIC(t *testing.T) {
+	if got := NewSubJsonService("", "", "", "", nil).getConfig(
+		&SubService{address: "sub.example.com"},
+		&model.Inbound{Listen: "203.0.113.8", Port: 8443, Protocol: model.TUIC},
+		model.Client{},
+		"sub.example.com",
+	); len(got) != 0 {
+		t.Fatalf("getConfig emitted %d unsupported TUIC Xray config(s)", len(got))
 	}
 }

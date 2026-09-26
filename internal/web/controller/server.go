@@ -74,6 +74,7 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/updateGeofile/:fileName", a.updateGeofile)
 	g.POST("/logs/:count", a.getLogs)
 	g.POST("/xraylogs/:count", a.getXrayLogs)
+	g.POST("/amneziawglogs/:count", a.getAmneziaWGLogs)
 	g.POST("/importDB", a.importDB)
 	g.POST("/getNewEchCert", a.getNewEchCert)
 	g.POST("/getCertHash", a.getCertHash)
@@ -320,6 +321,13 @@ func (a *ServerController) getXrayLogs(c *gin.Context) {
 	jsonObj(c, logs, nil)
 }
 
+// getAmneziaWGLogs retrieves the live AmneziaWG peer activity and the panel's
+// own AmneziaWG event lines, optionally narrowed by a free-text filter.
+func (a *ServerController) getAmneziaWGLogs(c *gin.Context) {
+	logs := a.serverService.GetAmneziaWGLogs(c.Param("count"), c.PostForm("filter"))
+	jsonObj(c, logs, nil)
+}
+
 // getConfigJson retrieves the Xray configuration as JSON.
 func (a *ServerController) getConfigJson(c *gin.Context) {
 	configJson, err := a.serverService.GetConfigJson()
@@ -383,6 +391,9 @@ func (a *ServerController) importDB(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.index.importDatabaseError"), err)
 		return
 	}
+	// Startup-registered routes (subPath) must match the restored DB, and the
+	// browser's restartPanel follow-up can 401 once the imported users land (#6446).
+	_ = a.panelService.RestartPanel(3 * time.Second)
 	jsonObj(c, I18nWeb(c, "pages.index.importDatabaseSuccess"), nil)
 }
 
@@ -477,9 +488,8 @@ func (a *ServerController) scanRealityTarget(c *gin.Context) {
 	jsonObj(c, res, nil)
 }
 
-// scanRealityTargets probes a batch of candidate REALITY targets (the supplied
-// comma-separated list, or the built-in seed set when empty) and returns each
-// verdict ranked by feasibility then latency.
+// scanRealityTargets probes the supplied comma-separated targets, or the
+// realityScanCandidates setting when empty, ranked by feasibility then latency.
 func (a *ServerController) scanRealityTargets(c *gin.Context) {
 	res, err := a.serverService.ScanRealityTargets(c.PostForm("targets"))
 	if err != nil {
