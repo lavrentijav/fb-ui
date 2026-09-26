@@ -128,13 +128,13 @@ func (s *DnsProviderService) fromRequest(dst *model.DnsProvider, req *DnsProvide
 	return nil
 }
 
-// dnsApiBaseURL joins what the operator typed: a bare host gets Technitium's
-// defaults (http on 5380, https on any other port) and a port field wins.
+// dnsApiBaseURL joins what the operator typed: a bare host speaks http on
+// 5380 by default and https only on 443/53443; the port field always wins.
 func dnsApiBaseURL(raw string, port int) (string, error) {
 	if !strings.Contains(raw, "://") {
-		scheme := "https"
-		if port == 0 || port == 5380 {
-			scheme = "http"
+		scheme := "http"
+		if port == 443 || port == 53443 {
+			scheme = "https"
 		}
 		raw = scheme + "://" + raw
 		if port == 0 {

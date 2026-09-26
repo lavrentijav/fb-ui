@@ -15,6 +15,7 @@ import {
   InfoCircleOutlined,
   MoreOutlined,
   PlusOutlined,
+  RocketOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
   SwapOutlined,
@@ -36,6 +37,7 @@ interface NodeListProps {
   selectedIds: number[];
   onSelectionChange: (ids: number[]) => void;
   onAdd: () => void;
+  onProvision: () => void;
   onMtls: () => void;
   onEdit: (node: NodeRecord) => void;
   onDelete: (node: NodeRecord) => void;
@@ -168,6 +170,7 @@ export default function NodeList({
   selectedIds,
   onSelectionChange,
   onAdd,
+  onProvision,
   onMtls,
   onEdit,
   onDelete,
@@ -547,7 +550,10 @@ export default function NodeList({
   return (
     <Card size="small" hoverable>
       <div className="toolbar">
-        <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+        <Button type="primary" icon={<RocketOutlined />} onClick={onProvision}>
+          {t('pages.provision.button')}
+        </Button>
+        <Button icon={<PlusOutlined />} onClick={onAdd}>
           {t('pages.nodes.addNode')}
         </Button>
         <Button icon={<SafetyCertificateOutlined />} onClick={onMtls}>

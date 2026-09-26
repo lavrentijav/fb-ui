@@ -7,6 +7,9 @@ export const keys = {
     root: () => ['nodes'] as const,
     list: () => ['nodes', 'list'] as const,
   },
+  provision: {
+    job: (id: string) => ['provision', 'job', id] as const,
+  },
   filters: {
     root: () => ['filters'] as const,
     lists: () => ['filters', 'lists'] as const,

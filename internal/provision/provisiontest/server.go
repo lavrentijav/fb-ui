@@ -25,7 +25,7 @@ type Handler func(cmd string, stdin io.Reader, out io.Writer) int
 
 // ShellHandler runs the command through /bin/sh on the test machine.
 func ShellHandler(cmd string, stdin io.Reader, out io.Writer) int {
-	c := exec.Command("/bin/sh", "-c", cmd)
+	c := exec.CommandContext(context.Background(), "/bin/sh", "-c", cmd)
 	c.Stdin, c.Stdout, c.Stderr = stdin, out, out
 	if err := c.Run(); err != nil {
 		var ee *exec.ExitError

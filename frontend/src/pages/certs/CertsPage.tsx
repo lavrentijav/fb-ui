@@ -281,7 +281,7 @@ export default function CertsPage() {
             </Tag>
             {d.apiUrl && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {d.apiUrl}
+                {d.apiPort > 0 ? `${d.apiUrl} · ${d.apiPort}` : d.apiUrl}
               </Typography.Text>
             )}
           </Space>

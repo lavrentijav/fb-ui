@@ -1638,6 +1638,37 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'provision',
+    title: 'Provisioning',
+    description:
+      'Turn a fresh server into a registered node from its IP and root credentials. A job connects over SSH (the host key is reported, or pinned with hostKeySha256), writes <name>.<zone> into the DNS account that owns the zone, orders the certificate here over DNS-01 and copies it over, uploads this panel\u2019s own build (the node never needs GitHub), runs install.sh unattended, registers the node and optionally hardens SSH. SSH secrets live only for the job and are masked in its log. Jobs are kept in memory (the last 50) and do not survive a restart. All endpoints under /panel/api/provision.',
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/panel/api/provision/start',
+        summary:
+          'Start a job in the background and return it. zone + name derive the domain; domain overrides it; neither installs on the bare IP. nodeAcme leaves the certificate to acme.sh on the node. force reinstalls over an existing x-ui.',
+        body: '{\n  "name": "msk2",\n  "host": "203.0.113.10",\n  "sshPort": 22,\n  "sshUser": "root",\n  "sshPassword": "<root password>",\n  "zone": "fire-core.ru",\n  "installSource": "self",\n  "authorizedKey": "ssh-ed25519 AAAA... ops"\n}',
+        responseSchema: 'ProvisionJob',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/provision/list',
+        summary: 'Recent jobs, newest first, with their steps and logs.',
+        responseSchema: 'ProvisionJob',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/provision/get/:id',
+        summary: 'One job; poll it while status is running.',
+        params: [{ name: 'id', in: 'path', type: 'string', desc: 'Job ID, e.g. p-1700000000-1.' }],
+        responseSchema: 'ProvisionJob',
+      },
+    ],
+  },
+
+  {
     id: 'dns',
     title: 'DNS providers',
     description:

@@ -37,6 +37,7 @@ import { useNodeMutations } from '@/api/queries/useNodeMutations';
 import AppSidebar from '@/layouts/AppSidebar';
 import NodeList from './NodeList';
 import NodeFormModal from './NodeFormModal';
+import ProvisionModal from './ProvisionModal';
 import NodeRoleModal from './NodeRoleModal';
 import PeerPanels from './PeerPanels';
 import { setMessageInstance } from '@/utils/messageBus';
@@ -124,6 +125,7 @@ export default function NodesPage() {
   const [roleOpen, setRoleOpen] = useState(false);
   const [roleNode, setRoleNode] = useState<NodeRecord | null>(null);
   const [mtlsOpen, setMtlsOpen] = useState(false);
+  const [provisionOpen, setProvisionOpen] = useState(false);
   const [trustCa, setTrustCa] = useState('');
   const [copyingCa, setCopyingCa] = useState(false);
   const [savingTrustCa, setSavingTrustCa] = useState(false);
@@ -397,6 +399,7 @@ export default function NodesPage() {
                         selectedIds={selectedIds}
                         onSelectionChange={setSelectedIds}
                         onAdd={onAdd}
+                        onProvision={() => setProvisionOpen(true)}
                         onMtls={() => setMtlsOpen(true)}
                         onEdit={onEdit}
                         onDelete={onDelete}
@@ -421,6 +424,8 @@ export default function NodesPage() {
           save={setRole}
           onOpenChange={setRoleOpen}
         />
+
+        <ProvisionModal open={provisionOpen} onOpenChange={setProvisionOpen} />
 
         <NodeFormModal
           open={formOpen}

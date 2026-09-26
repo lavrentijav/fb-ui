@@ -212,6 +212,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	filters := api.Group("/filters")
 	a.filterController = NewFilterController(filters)
 
+	// Provisioning API — bare server over SSH to a registered node
+	NewProvisionController(api.Group("/provision"))
+
 	// Certificates API — ACME issuance/renewal and the DNS zones it writes to
 	NewCertController(api.Group("/certs"), api.Group("/dns"))
 

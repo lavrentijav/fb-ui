@@ -3272,6 +3272,11 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "msk2",
         "type": "string"
       },
+      "nodeAcme": {
+        "description": "NodeAcme leaves the certificate to acme.sh on the node (HTTP-01 on :80)\ninstead of ordering it here over DNS-01 and renewing it centrally.",
+        "example": false,
+        "type": "boolean"
+      },
       "panelPort": {
         "example": 0,
         "type": "integer"
@@ -3312,6 +3317,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "hostKeySha256",
       "installSource",
       "name",
+      "nodeAcme",
       "panelPort",
       "skipDns",
       "sshPassword",

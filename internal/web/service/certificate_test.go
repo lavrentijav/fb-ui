@@ -361,7 +361,7 @@ func TestDnsApiBaseURL(t *testing.T) {
 		{"ns1.example.com", 53443, "https://ns1.example.com:53443"},
 		{"https://dns.example.com", 0, "https://dns.example.com"},
 		{"https://dns.example.com:8443/", 9443, "https://dns.example.com:9443"},
-		{"10.0.0.5", 5380, "http://10.0.0.5:5380"},
+		{"10.0.0.5", 15380, "http://10.0.0.5:15380"},
 	}
 	for _, tc := range cases {
 		if got, err := dnsApiBaseURL(tc.raw, tc.port); err != nil || got != tc.want {

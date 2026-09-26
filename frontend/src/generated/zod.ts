@@ -793,6 +793,7 @@ export const NodeProvisionRequestSchema = z.object({
   hostKeySha256: z.string(),
   installSource: z.string(),
   name: z.string(),
+  nodeAcme: z.boolean(),
   panelPort: z.number().int(),
   skipDns: z.boolean(),
   sshPassword: z.string(),

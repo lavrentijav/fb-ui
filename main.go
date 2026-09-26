@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"flag"
 	"fmt"
 	"log"
@@ -31,6 +32,26 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/op/go-logging"
 )
+
+// The installer travels inside the binary so a panel can provision nodes from
+// any copy of itself; kept in main.go because the Dockerfile builds main.go alone.
+//
+//go:embed install.sh
+var installScript []byte
+
+//go:embed x-ui.sh x-ui.service.debian x-ui.service.arch x-ui.service.rhel
+var releaseFiles embed.FS
+
+func releaseAssets() service.ReleaseAssets {
+	files := map[string][]byte{}
+	entries, _ := releaseFiles.ReadDir(".")
+	for _, e := range entries {
+		if data, err := releaseFiles.ReadFile(e.Name()); err == nil {
+			files[e.Name()] = data
+		}
+	}
+	return service.ReleaseAssets{InstallScript: installScript, Files: files}
+}
 
 // cliFallbackTokenName is the single token the CLI regenerates, so `-getApiToken`
 // cannot accumulate admin-equivalent credentials that are never revoked.
@@ -85,6 +106,7 @@ func runWebServer() {
 	}
 
 	_ = godotenv.Load()
+	service.SetReleaseAssets(releaseAssets())
 
 	for _, line := range sys.ApplyMemoryTuning() {
 		logger.Info(line)

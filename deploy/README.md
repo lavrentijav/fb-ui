@@ -22,7 +22,8 @@ Each instance installs and configures itself with random credentials. See
 secure random / default):
 
 `XUI_USERNAME`, `XUI_PASSWORD`, `XUI_PANEL_PORT`, `XUI_WEB_BASE_PATH`,
-`XUI_SSL_MODE` (`none`|`ip`|`domain`, default `none`), `XUI_DOMAIN`,
+`XUI_SSL_MODE` (`none`|`ip`|`domain`|`custom`, default `none`), `XUI_DOMAIN`,
+`XUI_CERT_FILE` / `XUI_KEY_FILE` (an existing certificate pair for `custom` mode),
 `XUI_ACME_EMAIL`, `XUI_ACME_HTTP_PORT` (ACME HTTP-01 listener port, default `80`),
 `XUI_SSL_IPV6` (optional IPv6 address to add to an `ip`-mode cert),
 `XUI_SERVER_IP` (fallback IP for the displayed access URL when auto-detection fails),

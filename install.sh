@@ -829,6 +829,7 @@ prompt_and_setup_ssl() {
         case "${XUI_SSL_MODE:-none}" in
             domain) ssl_choice="1" ;;
             ip) ssl_choice="2" ;;
+            custom) ssl_choice="3" ;;
             none | "") ssl_choice="4" ;;
             *)
                 echo -e "${yellow}Unknown XUI_SSL_MODE='${XUI_SSL_MODE}', defaulting to none (HTTP).${plain}"
@@ -918,11 +919,22 @@ prompt_and_setup_ssl() {
             local custom_domain=""
 
             # 3.1 Request Domain to compose Panel URL later
-            read -rp "Please enter domain name certificate issued for: " custom_domain
+            if [[ "$NONINTERACTIVE" == "1" ]]; then
+                # A master panel that issued the certificate itself ships it here.
+                custom_domain="${XUI_DOMAIN// /}"
+                custom_cert="${XUI_CERT_FILE:-}"
+                custom_key="${XUI_KEY_FILE:-}"
+                if [[ ! -s "$custom_cert" || ! -s "$custom_key" ]]; then
+                    echo -e "${red}XUI_SSL_MODE=custom needs readable XUI_CERT_FILE and XUI_KEY_FILE.${plain}"
+                    exit 1
+                fi
+            else
+                read -rp "Please enter domain name certificate issued for: " custom_domain
+            fi
             custom_domain="${custom_domain// /}" # Remove spaces
 
             # 3.2 Loop for Certificate Path
-            while true; do
+            while [[ "$NONINTERACTIVE" != "1" ]]; do
                 read -rp "Input certificate path (keywords: .crt / fullchain): " custom_cert
                 # Strip quotes if present
                 custom_cert=$(echo "$custom_cert" | tr -d '"' | tr -d "'")
@@ -939,7 +951,7 @@ prompt_and_setup_ssl() {
             done
 
             # 3.3 Loop for Private Key Path
-            while true; do
+            while [[ "$NONINTERACTIVE" != "1" ]]; do
                 read -rp "Input private key path (keywords: .key / privatekey): " custom_key
                 # Strip quotes if present
                 custom_key=$(echo "$custom_key" | tr -d '"' | tr -d "'")
