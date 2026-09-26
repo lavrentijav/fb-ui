@@ -41,7 +41,7 @@ func TestJsonSubVlessAlwaysCarriesEncryption(t *testing.T) {
 				t.Fatalf("update settings: %v", err)
 			}
 
-			body, _, err := NewSubJsonService("", "", "", NewSubService("")).GetJson("enc-sub", "req.example.com", true)
+			body, _, err := NewSubJsonService("", "", "", "", NewSubService("")).GetJson("enc-sub", "req.example.com", true)
 			if err != nil {
 				t.Fatalf("GetJson: %v", err)
 			}

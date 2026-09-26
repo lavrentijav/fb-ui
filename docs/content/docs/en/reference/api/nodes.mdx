@@ -53,16 +53,6 @@ _openapi:
       title: Pause or resume traffic sync with this node.
       url: '#pause-or-resume-traffic-sync-with-this-node'
     - depth: 2
-      title: 'Flip one registered panel between the two roles of the same row: a node
-        this panel controls, or a master it advertises as a subscription
-        fallback. Send only what the target role needs — address/port/apiToken
-        for node, subDomain/subPort/subPath for master; the other role’s fields
-        are kept so flipping back does not re-ask them. Observed health (status,
-        latency, learned key) is reset, since the two roles are probed by
-        different jobs. Refused while inbounds are still attached to the node,
-        and for the row that is this panel itself.'
-      url: '#flip-one-registered-panel-between-the-two-roles-of-the-same-row-a-node-this-panel-controls-or-a-master-it-advertises-as-a-subscription-fallback-send-only-what-the-target-role-needs--addressportapitoken-for-node-subdomainsubportsubpath-for-master-the-other-roles-fields-are-kept-so-flipping-back-does-not-re-ask-them-observed-health-status-latency-learned-key-is-reset-since-the-two-roles-are-probed-by-different-jobs-refused-while-inbounds-are-still-attached-to-the-node-and-for-the-row-that-is-this-panel-itself'
-    - depth: 2
       title: Probe a node without saving it. Uses the body as connection details and
         returns the same heartbeat snapshot a registered node would have.
       url: '#probe-a-node-without-saving-it-uses-the-body-as-connection-details-and-returns-the-same-heartbeat-snapshot-a-registered-node-would-have'
@@ -127,15 +117,6 @@ _openapi:
         id: delete-a-node-inbounds-bound-to-it-are-not-auto-migrated
       - content: Pause or resume traffic sync with this node.
         id: pause-or-resume-traffic-sync-with-this-node
-      - content: 'Flip one registered panel between the two roles of the same row: a
-          node this panel controls, or a master it advertises as a subscription
-          fallback. Send only what the target role needs — address/port/apiToken
-          for node, subDomain/subPort/subPath for master; the other role’s
-          fields are kept so flipping back does not re-ask them. Observed health
-          (status, latency, learned key) is reset, since the two roles are
-          probed by different jobs. Refused while inbounds are still attached to
-          the node, and for the row that is this panel itself.'
-        id: flip-one-registered-panel-between-the-two-roles-of-the-same-row-a-node-this-panel-controls-or-a-master-it-advertises-as-a-subscription-fallback-send-only-what-the-target-role-needs--addressportapitoken-for-node-subdomainsubportsubpath-for-master-the-other-roles-fields-are-kept-so-flipping-back-does-not-re-ask-them-observed-health-status-latency-learned-key-is-reset-since-the-two-roles-are-probed-by-different-jobs-refused-while-inbounds-are-still-attached-to-the-node-and-for-the-row-that-is-this-panel-itself
       - content: Probe a node without saving it. Uses the body as connection details and
           returns the same heartbeat snapshot a registered node would have.
         id: probe-a-node-without-saving-it-uses-the-body-as-connection-details-and-returns-the-same-heartbeat-snapshot-a-registered-node-would-have
@@ -170,7 +151,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/nodes/list","method":"get"},{"path":"/panel/api/nodes/mtls/ca","method":"post"},{"path":"/panel/api/nodes/mtls/trustCA","method":"post"},{"path":"/panel/api/nodes/mtls/reloadClient","method":"post"},{"path":"/panel/api/nodes/get/{id}","method":"get"},{"path":"/panel/api/nodes/webCert/{id}","method":"get"},{"path":"/panel/api/nodes/add","method":"post"},{"path":"/panel/api/nodes/update/{id}","method":"post"},{"path":"/panel/api/nodes/del/{id}","method":"post"},{"path":"/panel/api/nodes/setEnable/{id}","method":"post"},{"path":"/panel/api/nodes/setRole/{id}","method":"post"},{"path":"/panel/api/nodes/test","method":"post"},{"path":"/panel/api/nodes/certFingerprint","method":"post"},{"path":"/panel/api/nodes/inbounds","method":"post"},{"path":"/panel/api/nodes/probe/{id}","method":"post"},{"path":"/panel/api/nodes/updatePanel","method":"post"},{"path":"/panel/api/nodes/history/{id}/{metric}/{bucket}","method":"get"}]} showTitle />
+      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/nodes/list","method":"get"},{"path":"/panel/api/nodes/mtls/ca","method":"post"},{"path":"/panel/api/nodes/mtls/trustCA","method":"post"},{"path":"/panel/api/nodes/mtls/reloadClient","method":"post"},{"path":"/panel/api/nodes/get/{id}","method":"get"},{"path":"/panel/api/nodes/webCert/{id}","method":"get"},{"path":"/panel/api/nodes/add","method":"post"},{"path":"/panel/api/nodes/update/{id}","method":"post"},{"path":"/panel/api/nodes/del/{id}","method":"post"},{"path":"/panel/api/nodes/setEnable/{id}","method":"post"},{"path":"/panel/api/nodes/test","method":"post"},{"path":"/panel/api/nodes/certFingerprint","method":"post"},{"path":"/panel/api/nodes/inbounds","method":"post"},{"path":"/panel/api/nodes/probe/{id}","method":"post"},{"path":"/panel/api/nodes/updatePanel","method":"post"},{"path":"/panel/api/nodes/history/{id}/{metric}/{bucket}","method":"get"}]} showTitle />
     </>
   );
 }

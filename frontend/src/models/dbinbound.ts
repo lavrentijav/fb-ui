@@ -169,8 +169,16 @@ export class DBInbound {
     return this.protocol === Protocols.WIREGUARD;
   }
 
+  get isAmneziawg() {
+    return this.protocol === Protocols.AMNEZIAWG;
+  }
+
   get isHysteria() {
     return this.protocol === Protocols.HYSTERIA;
+  }
+
+  get isTuic() {
+    return this.protocol === Protocols.TUIC;
   }
 
   get isTunnel() {

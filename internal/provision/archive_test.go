@@ -23,7 +23,7 @@ func TestWriteReleaseArchiveShipsAssetsNotState(t *testing.T) {
 	write("bin/geosite_RU.dat", "geo")
 	write("bin/config.json", `{"inbounds":"master secrets"}`)
 	write("bin/mtproto/1.toml", "secret")
-	write("bin/tuic-server", "unrelated")
+	write("bin/tuic-server", "ELF-tuic")
 
 	var buf bytes.Buffer
 	err := WriteReleaseArchive(&buf, ReleaseSource{
@@ -55,14 +55,14 @@ func TestWriteReleaseArchiveShipsAssetsNotState(t *testing.T) {
 		got[h.Name], modes[h.Name] = string(b), h.Mode
 		names = append(names, h.Name)
 	}
-	want := []string{"x-ui/x-ui", "x-ui/x-ui.sh", "x-ui/x-ui.service.debian", "x-ui/bin/geosite_RU.dat", "x-ui/bin/xray-linux-amd64"}
+	want := []string{"x-ui/x-ui", "x-ui/x-ui.sh", "x-ui/x-ui.service.debian", "x-ui/bin/geosite_RU.dat", "x-ui/bin/tuic-server", "x-ui/bin/xray-linux-amd64"}
 	if !slices.Equal(names, want) {
 		t.Fatalf("entries = %v, want %v", names, want)
 	}
 	if got["x-ui/x-ui.service.debian"] != "[Unit] from disk" {
 		t.Fatalf("a unit next to the binary must win over the embedded one: %q", got["x-ui/x-ui.service.debian"])
 	}
-	if !strings.Contains(got["x-ui/x-ui.sh"], "embedded") || modes["x-ui/x-ui.sh"] != 0o755 || modes["x-ui/bin/xray-linux-amd64"] != 0o755 {
+	if !strings.Contains(got["x-ui/x-ui.sh"], "embedded") || modes["x-ui/x-ui.sh"] != 0o755 || modes["x-ui/bin/xray-linux-amd64"] != 0o755 || modes["x-ui/bin/tuic-server"] != 0o755 {
 		t.Fatalf("x-ui.sh=%q modes=%v", got["x-ui/x-ui.sh"], modes)
 	}
 

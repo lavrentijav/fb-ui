@@ -26,15 +26,11 @@ func initMutDB(t *testing.T) {
 	t.Cleanup(func() { _ = database.CloseDB() })
 }
 
-func externalLinkEnabled(v bool) *bool {
-	return &v
-}
-
 // --- json_service.go:40 — rules are merged into routing only when non-empty ---
 
 func TestSubJsonService_CustomRulesPrepended(t *testing.T) {
 	rules := `[{"type":"field","domain":["geosite:ads"],"outboundTag":"block"}]`
-	svc := NewSubJsonService("", rules, "", nil)
+	svc := NewSubJsonService("", rules, "", "", nil)
 
 	routing, ok := svc.configJson["routing"].(map[string]any)
 	if !ok {
@@ -52,7 +48,7 @@ func TestSubJsonService_CustomRulesPrepended(t *testing.T) {
 }
 
 func TestSubJsonService_EmptyRulesLeavesDefault(t *testing.T) {
-	svc := NewSubJsonService("", "", "", nil)
+	svc := NewSubJsonService("", "", "", "", nil)
 	routing, _ := svc.configJson["routing"].(map[string]any)
 	got, _ := routing["rules"].([]any)
 	if len(got) != 1 {
@@ -108,7 +104,7 @@ func TestSubJsonService_FinalMaskMergingToEmptyNotAdded(t *testing.T) {
 	// finalMask is non-empty (passes the len(fm)==0 early return) but its only
 	// key is an empty tcp slice, which mergeFinalMask drops → merged is empty,
 	// so applyGlobalFinalMask must NOT set finalmask.
-	svc := NewSubJsonService("", "", `{"tcp":[]}`, nil)
+	svc := NewSubJsonService("", "", `{"tcp":[]}`, "", nil)
 	stream := xrayout.Stream(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "", svc.finalMask)
 	if _, ok := stream["finalmask"]; ok {
 		t.Fatalf("finalMask merging to empty must not add a finalmask key: %#v", stream["finalmask"])
@@ -116,7 +112,7 @@ func TestSubJsonService_FinalMaskMergingToEmptyNotAdded(t *testing.T) {
 
 	// Sanity: a finalMask that DOES merge to something still gets set, so the
 	// guard is the only distinguishing factor.
-	svc2 := NewSubJsonService("", "", `{"tcp":[{"type":"fragment"}]}`, nil)
+	svc2 := NewSubJsonService("", "", `{"tcp":[{"type":"fragment"}]}`, "", nil)
 	stream2 := xrayout.Stream(`{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}}}`, "", svc2.finalMask)
 	if _, ok := stream2["finalmask"]; !ok {
 		t.Fatal("non-empty finalMask must be set")
@@ -303,7 +299,7 @@ func TestGetClientExternalLinksBySubId(t *testing.T) {
 
 	// A client with two link rows: ordering by sort_index and email/enable
 	// attribution from the owning client (the loop copies rec.Email/rec.Enable).
-	rec := &model.ClientRecord{Email: "owner@x", SubID: "sub-ok", UUID: "u2", Enable: true}
+	rec := &model.ClientRecord{Email: "owner@x", SubID: "sub-ok", UUID: "u2", Enable: true, ExpiryTime: time.Now().Add(time.Hour).UnixMilli()}
 	if err := db.Create(rec).Error; err != nil {
 		t.Fatalf("seed client: %v", err)
 	}
@@ -313,7 +309,7 @@ func TestGetClientExternalLinksBySubId(t *testing.T) {
 	if err := db.Create(&model.ClientExternalLink{ClientId: rec.Id, Kind: model.ExternalLinkKindLink, Value: "trojan://a", Remark: "first", SortIndex: 1}).Error; err != nil {
 		t.Fatalf("seed link a: %v", err)
 	}
-	if err := db.Create(&model.ClientExternalLink{ClientId: rec.Id, Kind: model.ExternalLinkKindLink, Value: "trojan://disabled", Remark: "disabled", Enable: externalLinkEnabled(false), SortIndex: 3}).Error; err != nil {
+	if err := db.Create(&model.ClientExternalLink{ClientId: rec.Id, Kind: model.ExternalLinkKindLink, Value: "trojan://disabled", Remark: "disabled", Enable: new(false), SortIndex: 3}).Error; err != nil {
 		t.Fatalf("seed disabled link: %v", err)
 	}
 	if err := db.Create(&model.ClientExternalLink{ClientId: rec.Id, Kind: model.ExternalLinkKindLink, Value: "trojan://expired", Remark: "expired", ExpiryTime: time.Now().Add(-time.Hour).UnixMilli(), SortIndex: 4}).Error; err != nil {
@@ -336,10 +332,12 @@ func TestGetClientExternalLinksBySubId(t *testing.T) {
 	if out[0].Email != "owner@x" || out[0].Enable != true {
 		t.Fatalf("attribution wrong: email=%q enable=%v", out[0].Email, out[0].Enable)
 	}
+	if !out[0].Active {
+		t.Fatal("active owner marked inactive")
+	}
 
-	// A DISABLED client must produce entries with Enable=false, proving the
-	// value is read from the client row (Enable has a gorm default:true, so
-	// flip it with a raw UPDATE that bypasses the default).
+	// A disabled owner stays visible as metadata but cannot expose its link.
+	// Enable has a gorm default:true, so update it after insertion.
 	dis := &model.ClientRecord{Email: "off@x", SubID: "sub-off", UUID: "u3", Enable: true}
 	if err := db.Create(dis).Error; err != nil {
 		t.Fatalf("seed disabled client: %v", err)
@@ -357,8 +355,26 @@ func TestGetClientExternalLinksBySubId(t *testing.T) {
 	if len(offOut) != 1 {
 		t.Fatalf("disabled client entries = %d, want 1", len(offOut))
 	}
-	if offOut[0].Email != "off@x" || offOut[0].Enable != false {
-		t.Fatalf("disabled attribution wrong: email=%q enable=%v", offOut[0].Email, offOut[0].Enable)
+	if offOut[0].Enable || offOut[0].Active {
+		t.Fatalf("disabled owner state = enable:%v active:%v", offOut[0].Enable, offOut[0].Active)
+	}
+
+	expired := &model.ClientRecord{Email: "expired@x", SubID: "sub-expired", UUID: "u4", Enable: true, ExpiryTime: time.Now().Add(-time.Hour).UnixMilli()}
+	if err := db.Create(expired).Error; err != nil {
+		t.Fatalf("seed expired client: %v", err)
+	}
+	if err := db.Create(&model.ClientExternalLink{ClientId: expired.Id, Kind: model.ExternalLinkKindLink, Value: "trojan://d", SortIndex: 1}).Error; err != nil {
+		t.Fatalf("seed expired client link: %v", err)
+	}
+	expiredOut, err := s.getClientExternalLinksBySubId("sub-expired")
+	if err != nil {
+		t.Fatalf("expired subId err = %v", err)
+	}
+	if len(expiredOut) != 1 {
+		t.Fatalf("expired client entries = %d, want 1", len(expiredOut))
+	}
+	if !expiredOut[0].Enable || expiredOut[0].Active {
+		t.Fatalf("expired owner state = enable:%v active:%v", expiredOut[0].Enable, expiredOut[0].Active)
 	}
 }
 

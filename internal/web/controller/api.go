@@ -65,7 +65,11 @@ func (a *APIController) checkAPIAuth(c *gin.Context) {
 		}
 	}
 	if !session.IsLogin(c) {
-		if c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
+		// A presented Bearer token is not an anonymous scan: return 401 so
+		// callers can distinguish a bad/disabled token from a wrong base path
+		// (NoRoute still 404s). XHR keeps 401; bare unauthenticated stays 404.
+		authHdr := c.GetHeader("Authorization")
+		if strings.HasPrefix(authHdr, "Bearer ") || c.GetHeader("X-Requested-With") == "XMLHttpRequest" {
 			c.AbortWithStatus(http.StatusUnauthorized)
 		} else {
 			c.AbortWithStatus(http.StatusNotFound)
@@ -160,11 +164,11 @@ func (a *APIController) enforceTokenScope(c *gin.Context) {
 
 func relAPIPath(fullPath string) string {
 	const marker = "/panel/api"
-	i := strings.Index(fullPath, marker)
-	if i < 0 {
+	_, after, ok := strings.Cut(fullPath, marker)
+	if !ok {
 		return ""
 	}
-	return fullPath[i+len(marker):]
+	return after
 }
 
 // initRouter sets up the API routes for inbounds, server, and other endpoints.
@@ -227,6 +231,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	// /panel/api/xray/*.
 	a.settingController = NewSettingController(api)
 	a.xraySettingController = NewXraySettingController(api)
+
+	// Subscription balancers — client-side balancers for the JSON sub output
+	NewSubBalancerController(api)
 
 	// Extra routes
 	api.POST("/backuptotgbot", a.BackuptoTgbot)

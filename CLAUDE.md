@@ -8,7 +8,7 @@ index, layering rules), read `docs/architecture.md` on demand — do not guess
 file locations when it can answer in one hop.
 
 ## Stack
-- Backend: Go 1.26 (`module github.com/mhsanaei/3x-ui/v3`), Gin, GORM.
+- Backend: Go 1.27 (`module github.com/mhsanaei/3x-ui/v3`), Gin, GORM.
   Runs Xray-core as a managed child process (`internal/xray/process.go`) and
   imports `github.com/xtls/xray-core` for config types + gRPC stats/handler/router
   API. MTProto inbounds run a second managed child — the `mtg-multi` binary
@@ -31,7 +31,7 @@ file locations when it can answer in one hop.
   built into `internal/web/dist/` (gitignored) and embedded via `embed.FS`.
 
 ## Repo map
-- `main.go` — entry point + `x-ui` CLI (run, migrate, migrate-db, setting, cert).
+- `main.go` — entry point + `x-ui` CLI (run, migrate, migrate-db, encrypt-tokens, setting, cert).
 - `internal/config/` — env parsing (XUI_DEBUG, XUI_LOG_LEVEL, XUI_LOG_FOLDER,
   XUI_BIN_FOLDER, XUI_SKIP_HSTS, XUI_PORT, XUI_DB_*).
 - `internal/database/` + `internal/database/model/` — GORM schema (~24 models;
@@ -41,6 +41,15 @@ file locations when it can answer in one hop.
 - `internal/xray/geodata/` — streaming geosite/geoip `.dat` reader (cached
   category index + paged entries) and `geosite:`/`geoip:`/`ext:` token parsing.
 - `internal/mtproto/` — MTProto inbounds via the bundled `mtg-multi` binary.
+- `internal/tuic/` — TUIC v5 inbounds: `tuic-server` sidecar supervisor, native Go UDP relay traffic metering.
+- `internal/amneziawg/` — AmneziaWG protocol shape: instance/peer derivation
+  from an inbound, 3.1 obfuscation param generation + validation, port-forward
+  spec parsing.
+- `internal/amneziawgnet/` — embedded AmneziaWG runtime: amneziawg-go device
+  over a gVisor userspace netstack, per-inbound reconcile manager, TCP/UDP
+  relay into a loopback per-peer-auth SOCKS5 Xray inbound, port-forward
+  listeners, per-peer IPv6 egress aliases.
+- `internal/pia/` — PIA WireGuard protocol client (auth, signed server list, `/addKey`).
 - `internal/sub/` — subscription server (raw / JSON / Clash).
 - `internal/cluster/` — leaf helpers for cooperating with sibling panels
   ("peers"): ed25519 subscription signing, fallback header assembly, peer probing.
@@ -51,9 +60,9 @@ file locations when it can answer in one hop.
 - `internal/web/` — Gin server (embeds `dist/` + `translation/`).
   - `controller/` — panel + REST API handlers; OpenAPI at /panel/api/openapi.json.
   - `service/` — business logic (InboundService, SettingService, XrayService,
-    node sync); subpackages tgbot/, email/, outbound/, panel/, integration/.
-  - `job/` — 18 cron jobs (traffic, fail2ban IP-limit, node heartbeat/sync, peer
-    health, LDAP, CPU/memory watchdogs, …); full table in `docs/architecture.md` §5.4.
+    node sync); subpackages tgbot/, discord/, email/, outbound/, panel/, integration/.
+  - `job/` — cron jobs (traffic, fail2ban IP-limit, node heartbeat/sync, peer
+    health, cert renew, LDAP, CPU/memory watchdogs, …); full table in `docs/architecture.md` §5.4.
   - `middleware/`, `entity/`, `global/`, `session/` (CSRF), `network/`,
     `runtime/` (master/sub-node over mTLS), `websocket/`.
   - `locale/` + `translation/` — i18n, 13 embedded locale JSON files.
@@ -61,8 +70,7 @@ file locations when it can answer in one hop.
 - `tools/openapigen/` — Go generator that emits frontend types + Zod/JSON schemas
   into `frontend/src/generated/` from Go structs. The OpenAPI doc itself
   (`frontend/public/openapi.json`) is assembled from those + `endpoints.ts` by
-  `frontend/scripts/build-openapi.mjs`. (`tools/seedperf/` is a separate seeding
-  /load helper.)
+  `frontend/scripts/build-openapi.mjs`.
 - `docs/` — separate Next.js/Fumadocs site (pnpm, own CI in `docs-ci.yml`,
   outside `make verify`). Holds a THIRD independent implementation of
   link/subscription generation in `docs/lib/xray/` — check it whenever
@@ -127,7 +135,7 @@ file locations when it can answer in one hop.
 
 ## Frontend conventions (summary; full version in frontend/CLAUDE.md)
 - Ant Design 6 only — no Tailwind/shadcn. Targeted tweaks, not rewrites.
-- TS strict; oxlint's `typescript/no-explicit-any` is an error. Zod schemas in
+- TS strict; `@typescript-eslint/no-explicit-any` is an error. Zod schemas in
   `src/schemas/` are the source of truth; infer types with `z.infer`, never
   hand-write. Do not edit `src/generated/`.
 - Node 24 (`.nvmrc`) — `make gen` imports `.ts` directly and needs its type
@@ -149,8 +157,7 @@ reads as a broken repo, not a missing step. Run `make dist-stub` once; every
 `make` Go target already depends on it, which is why `make test-go` beats
 `go test ./...`. Run `make help` for all targets. The local gate:
 
-    make verify   # gen-check + lint + format-check + typecheck + test + build
-                  # + build-storybook
+    make verify   # gen-check + lint + typecheck + test + build + build-storybook
 
 That is the *fast* gate, not all of CI. `ci.yml` also runs `make race`,
 `make vulncheck`, a live-Postgres job (where a SKIP counts as a failure) and a

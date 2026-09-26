@@ -30,12 +30,16 @@ import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { Controller, FormProvider, useForm, useWatch, useFieldArray } from 'react-hook-form';
 
-import { HttpUtil, RandomUtil, Wireguard } from '@/utils';
+import { HttpUtil, IntlUtil, RandomUtil, Wireguard } from '@/utils';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import { generateMtprotoSecret } from '@/lib/xray/inbound-defaults';
 import { normalizeClientIps, type ClientIpInfo } from '@/lib/clients/ip-log';
+import { resolveExternalLinkExpiry } from '@/lib/clients/external-link';
+import { useDatepicker } from '@/hooks/useDatepicker';
+import { useClientHwids } from '@/hooks/useClientHwids';
 import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { FormField } from '@/components/form/rhf';
+import ClientHwidListModal from '@/components/clients/ClientHwidList';
 import { TLS_FLOW_CONTROL, TRAFFIC_RESETS } from '@/schemas/primitives';
 import type {
   ClientRecord,
@@ -45,6 +49,7 @@ import type {
 } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
 import { ClientFormSchema, ClientCreateFormSchema, type ClientFormValues } from '@/schemas/client';
+import './ClientFormModal.css';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305'] as const;
@@ -57,6 +62,8 @@ const MULTI_CLIENT_PROTOCOLS = new Set([
   'hysteria',
   'wireguard',
   'mtproto',
+  'amneziawg',
+  'tuic',
 ]);
 
 const CLIENT_FORM_MODAL_Z_INDEX = 1000;
@@ -77,16 +84,6 @@ interface ApiMsg<T = unknown> {
   success?: boolean;
   msg?: string;
   obj?: T;
-}
-
-interface ClientHwidInfo {
-  id: number;
-  firstSeen: number;
-  lastSeen: number;
-  userAgent: string;
-  deviceOs: string;
-  osVersion: string;
-  deviceModel: string;
 }
 
 type Mode = 'add' | 'edit';
@@ -117,6 +114,7 @@ interface ClientFormModalProps {
   inbounds: InboundOption[];
   attachedExternalLinks?: ExternalLink[];
   attachedIds?: number[];
+  tunnelAllowedIPs?: Record<number, string>;
   tgBotEnable?: boolean;
   groups?: string[];
   save: (
@@ -135,6 +133,9 @@ type Values = ClientFormValues & {
   wgPublicKey: string;
   wgPreSharedKey: string;
   wgAllowedIPs: string;
+  awgAllowedIPs: string;
+  awgForwardedPorts: string;
+  wgKeepAlive: number;
   secret: string;
   adTag: string;
 };
@@ -169,6 +170,9 @@ const EMPTY: Values = {
   wgPublicKey: '',
   wgPreSharedKey: '',
   wgAllowedIPs: '',
+  awgAllowedIPs: '',
+  awgForwardedPorts: '',
+  wgKeepAlive: 25,
   secret: '',
   adTag: '',
 };
@@ -196,6 +200,34 @@ export function gbToBytes(gb: number): number {
   return Math.round(gb * 1024 * 1024 * 1024);
 }
 
+export function parseAllowedIPsList(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s !== '');
+}
+
+// Maps each of the two AllowedIPs fields to the specific wg/awg inbound the
+// client is currently attached to, so a save with both protocols attached at
+// once can send each its own value instead of one shared field ambiguously
+// covering both (see model.Client.AllowedIPsByInbound on the Go side).
+// Absent from the result when the client isn't actually attached to that
+// protocol's inbound (e.g. mid-edit, before the attach takes effect).
+export function resolveTunnelAllowedIPsByInbound(
+  attachedInboundIds: number[],
+  wireguardInboundIds: Set<number>,
+  amneziawgInboundIds: Set<number>,
+  wgAllowedIPs: string[],
+  awgAllowedIPs: string[],
+): Record<number, string[]> {
+  const wgId = attachedInboundIds.find((id) => wireguardInboundIds.has(id));
+  const awgId = attachedInboundIds.find((id) => amneziawgInboundIds.has(id));
+  const result: Record<number, string[]> = {};
+  if (wgId != null) result[wgId] = wgAllowedIPs;
+  if (awgId != null) result[awgId] = awgAllowedIPs;
+  return result;
+}
+
 export function resolveTotalBytes(
   originalBytes: number | null | undefined,
   displayedGB: number,
@@ -213,6 +245,7 @@ export default function ClientFormModal({
   inbounds,
   attachedExternalLinks = [],
   attachedIds = [],
+  tunnelAllowedIPs = {},
   tgBotEnable = false,
   groups = [],
   save,
@@ -252,13 +285,43 @@ export default function ClientFormModal({
   const [ipsLoading, setIpsLoading] = useState(false);
   const [ipsClearing, setIpsClearing] = useState(false);
   const [ipsModalOpen, setIpsModalOpen] = useState(false);
-  const [clientHwids, setClientHwids] = useState<ClientHwidInfo[]>([]);
-  const [hwidsLoading, setHwidsLoading] = useState(false);
-  const [hwidsClearing, setHwidsClearing] = useState(false);
+  const {
+    clientHwids,
+    hwidsLoading,
+    hwidsClearing,
+    deletingHwidId,
+    loadHwids,
+    clearHwids,
+    deleteHwid,
+  } = useClientHwids(client?.email);
   const [hwidsModalOpen, setHwidsModalOpen] = useState(false);
+  const { datepicker } = useDatepicker();
+  const hwidDateLabel = (ts: number) =>
+    !ts || ts <= 0 ? '-' : IntlUtil.formatDate(ts, datepicker);
   const fail2ban = useFail2banStatusQuery();
   const limitIpDisabled = !fail2ban.usable;
   const limitIpNotice = getLimitIpNotice(fail2ban, t);
+
+  // Declared ahead of the seeding effect below (which needs them to resolve
+  // which specific wg/awg inbound this client is attached to, for seeding
+  // wgAllowedIPs/awgAllowedIPs from tunnelAllowedIPs) -- both are pure
+  // derivations of the stable `inbounds` prop, so moving them earlier is
+  // just a declaration-order change, not a behavior change.
+  const wireguardIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const row of inbounds || []) {
+      if (row && row.protocol === 'wireguard') ids.add(row.id);
+    }
+    return ids;
+  }, [inbounds]);
+
+  const amneziawgIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const row of inbounds || []) {
+      if (row && row.protocol === 'amneziawg') ids.add(row.id);
+    }
+    return ids;
+  }, [inbounds]);
 
   function addExternalLinkRow(kind: 'link' | 'subscription') {
     appendExternalLink({
@@ -280,6 +343,13 @@ export default function ClientFormModal({
 
     if (isEdit && client) {
       const et = Number(client.expiryTime) || 0;
+      const seedIds = Array.isArray(attachedIds) ? attachedIds : [];
+      const attachedWireguardId = seedIds.find((id) => wireguardIds.has(id));
+      const attachedAmneziawgId = seedIds.find((id) => amneziawgIds.has(id));
+      const wgTunnelIPs =
+        attachedWireguardId != null ? tunnelAllowedIPs[attachedWireguardId] : undefined;
+      const awgTunnelIPs =
+        attachedAmneziawgId != null ? tunnelAllowedIPs[attachedAmneziawgId] : undefined;
       const seed: Values = {
         ...EMPTY,
         email: client.email || '',
@@ -310,7 +380,10 @@ export default function ClientFormModal({
         wgPrivateKey: client.privateKey || '',
         wgPublicKey: client.publicKey || '',
         wgPreSharedKey: client.preSharedKey || '',
-        wgAllowedIPs: client.allowedIPs || '',
+        wgAllowedIPs: wgTunnelIPs ?? client.allowedIPs ?? '',
+        awgAllowedIPs: awgTunnelIPs ?? client.allowedIPs ?? '',
+        awgForwardedPorts: client.forwardedPorts || '',
+        wgKeepAlive: client.keepAlive ?? 0,
         secret: client.secret || '',
         adTag: client.adTag || '',
       };
@@ -367,14 +440,6 @@ export default function ClientFormModal({
     return ids;
   }, [inbounds]);
 
-  const wireguardIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const row of inbounds || []) {
-      if (row && row.protocol === 'wireguard') ids.add(row.id);
-    }
-    return ids;
-  }, [inbounds]);
-
   const mtprotoIds = useMemo(() => {
     const ids = new Set<number>();
     for (const row of inbounds || []) {
@@ -382,6 +447,19 @@ export default function ClientFormModal({
     }
     return ids;
   }, [inbounds]);
+
+  const tuicIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const row of inbounds || []) {
+      if (row && row.protocol === 'tuic') ids.add(row.id);
+    }
+    return ids;
+  }, [inbounds]);
+
+  const hasTuic = useMemo(
+    () => (inboundIds || []).some((id) => tuicIds.has(id)),
+    [inboundIds, tuicIds],
+  );
 
   const mtprotoDomain = useMemo(() => {
     for (const id of inboundIds || []) {
@@ -429,6 +507,11 @@ export default function ClientFormModal({
     [inboundIds, wireguardIds],
   );
 
+  const showAmneziawg = useMemo(
+    () => (inboundIds || []).some((id) => amneziawgIds.has(id)),
+    [inboundIds, amneziawgIds],
+  );
+
   const showMtproto = useMemo(
     () => (inboundIds || []).some((id) => mtprotoIds.has(id)),
     [inboundIds, mtprotoIds],
@@ -438,6 +521,10 @@ export default function ClientFormModal({
     const kp = Wireguard.generateKeypair();
     methods.setValue('wgPrivateKey', kp.privateKey);
     methods.setValue('wgPublicKey', kp.publicKey);
+  }
+
+  function regenerateWireguardPresharedKey() {
+    methods.setValue('wgPreSharedKey', Wireguard.keyToBase64(Wireguard.generatePresharedKey()));
   }
 
   function regenerateMtprotoSecret() {
@@ -535,44 +622,9 @@ export default function ClientFormModal({
     }
   }
 
-  async function loadHwids() {
-    if (!isEdit || !client?.email) return;
-    setHwidsLoading(true);
-    try {
-      const msg = (await HttpUtil.post(
-        `/panel/api/clients/hwids/${encodeURIComponent(client.email)}`,
-      )) as ApiMsg<unknown[]>;
-      if (!msg?.success || !Array.isArray(msg.obj)) {
-        setClientHwids([]);
-        return;
-      }
-      setClientHwids(
-        msg.obj.filter(
-          (x): x is ClientHwidInfo =>
-            !!x && typeof x === 'object' && typeof (x as ClientHwidInfo).id === 'number',
-        ),
-      );
-    } finally {
-      setHwidsLoading(false);
-    }
-  }
-
   function openHwidsModal() {
     setHwidsModalOpen(true);
     if (clientHwids.length === 0) void loadHwids();
-  }
-
-  async function clearHwids() {
-    if (!isEdit || !client?.email) return;
-    setHwidsClearing(true);
-    try {
-      const msg = (await HttpUtil.delete(
-        `/panel/api/clients/hwids/${encodeURIComponent(client.email)}`,
-      )) as ApiMsg;
-      if (msg?.success) setClientHwids([]);
-    } finally {
-      setHwidsClearing(false);
-    }
   }
 
   function close() {
@@ -635,6 +687,7 @@ export default function ClientFormModal({
       email: values.email.trim(),
       subId: values.subId,
       id: values.uuid,
+      uuid: values.uuid,
       password: values.password,
       auth: values.auth,
       flow: showFlow ? values.flow || '' : '',
@@ -658,18 +711,41 @@ export default function ClientFormModal({
       clientPayload.reverse = { tag: reverseTagValue };
     }
 
-    if (showWireguard) {
+    if (showWireguard || showAmneziawg) {
+      // AmneziaWG peers are wire-identical to WireGuard peers (same
+      // privateKey/publicKey/preSharedKey/allowedIPs fields on model.Client),
+      // so both protocols share this one field set — see wgPrivateKey etc.
+      // below and the AmneziaWG-labeled variants of the same inputs.
       clientPayload.privateKey = values.wgPrivateKey;
+      clientPayload.keepAlive = values.wgKeepAlive;
       clientPayload.publicKey = values.wgPublicKey;
       if (values.wgPreSharedKey) {
         clientPayload.preSharedKey = values.wgPreSharedKey;
       }
-      const allowedIPs = values.wgAllowedIPs
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s) => s !== '');
-      if (allowedIPs.length > 0) {
-        clientPayload.allowedIPs = allowedIPs;
+      const wgAllowedIPs = parseAllowedIPsList(values.wgAllowedIPs);
+      if (showWireguard && showAmneziawg) {
+        // Both protocols are attached at once: the two fields hold genuinely
+        // different addresses, so each must land on its own inbound instead
+        // of one broadcast value overwriting the other's (allowedIPsByInbound
+        // is what Update/Create key their per-inbound override off of).
+        const awgAllowedIPs = parseAllowedIPsList(values.awgAllowedIPs);
+        clientPayload.allowedIPsByInbound = resolveTunnelAllowedIPsByInbound(
+          values.inboundIds || [],
+          wireguardIds,
+          amneziawgIds,
+          wgAllowedIPs,
+          awgAllowedIPs,
+        );
+        if (wgAllowedIPs.length > 0) {
+          clientPayload.allowedIPs = wgAllowedIPs;
+        }
+      } else if (wgAllowedIPs.length > 0) {
+        clientPayload.allowedIPs = wgAllowedIPs;
+      }
+      // Port-forwarding has no WireGuard equivalent — Xray-native WireGuard
+      // has no host-level iptables layer to hang per-client DNAT off of.
+      if (showAmneziawg) {
+        clientPayload.forwardedPorts = values.awgForwardedPorts.trim();
       }
     }
 
@@ -728,6 +804,7 @@ export default function ClientFormModal({
         open={open}
         title={isEdit ? t('pages.clients.editClient') : t('pages.clients.addClient')}
         destroyOnHidden
+        className="client-form-modal"
         width={720}
         zIndex={CLIENT_FORM_MODAL_Z_INDEX}
         style={{ top: 20 }}
@@ -797,17 +874,21 @@ export default function ClientFormModal({
                             </Space.Compact>
                           </Form.Item>
                         </Col>
-                        <Col xs={24} md={6}>
+                        <Col xs={24} md={12}>
                           <FormField
                             name="totalGB"
                             label={t('pages.clients.totalGB')}
-                            tooltip={t('pages.clients.totalGBDesc')}
+                            tooltip={
+                              hasTuic
+                                ? t('pages.clients.tuicTotalGBDesc')
+                                : t('pages.clients.totalGBDesc')
+                            }
                             transform={{ output: (v) => Number(v) || 0 }}
                           >
                             <InputNumber min={0} step={1} style={{ width: '100%' }} />
                           </FormField>
                         </Col>
-                        <Col xs={24} md={6}>
+                        <Col xs={24} md={12}>
                           <Form.Item
                             label={t('pages.clients.limitIp')}
                             tooltip={t('pages.clients.limitIpDesc')}
@@ -842,7 +923,7 @@ export default function ClientFormModal({
                             </Tooltip>
                           </Form.Item>
                         </Col>
-                        <Col xs={24} md={6}>
+                        <Col xs={24} md={12}>
                           <Form.Item
                             label={t('pages.clients.limitHwid')}
                             tooltip={t('pages.clients.limitHwidDesc')}
@@ -1137,9 +1218,15 @@ export default function ClientFormModal({
                           />
                         </FormField>
                       )}
-                      {showWireguard && (
+                      {(showWireguard || showAmneziawg) && (
                         <>
-                          <Form.Item label={t('pages.clients.wireguardPrivateKey')}>
+                          <Form.Item
+                            label={t(
+                              showAmneziawg
+                                ? 'pages.clients.amneziaWgPrivateKey'
+                                : 'pages.clients.wireguardPrivateKey',
+                            )}
+                          >
                             <Space.Compact style={{ display: 'flex' }}>
                               <Input
                                 value={wgPrivateKey}
@@ -1162,23 +1249,83 @@ export default function ClientFormModal({
                           </Form.Item>
                           <FormField
                             name="wgPublicKey"
-                            label={t('pages.clients.wireguardPublicKey')}
+                            label={t(
+                              showAmneziawg
+                                ? 'pages.clients.amneziaWgPublicKey'
+                                : 'pages.clients.wireguardPublicKey',
+                            )}
                           >
                             <Input disabled />
                           </FormField>
-                          <FormField
-                            name="wgPreSharedKey"
-                            label={t('pages.clients.wireguardPreSharedKey')}
+                          <Form.Item
+                            label={t(
+                              showAmneziawg
+                                ? 'pages.clients.amneziaWgPreSharedKey'
+                                : 'pages.clients.wireguardPreSharedKey',
+                            )}
                           >
-                            <Input />
-                          </FormField>
+                            <Space.Compact style={{ display: 'flex' }}>
+                              <FormField name="wgPreSharedKey" noStyle>
+                                <Input style={{ flex: 1 }} />
+                              </FormField>
+                              <Button
+                                aria-label={t('regenerate')}
+                                icon={<ReloadOutlined />}
+                                onClick={regenerateWireguardPresharedKey}
+                              />
+                            </Space.Compact>
+                          </Form.Item>
+                          {showWireguard && showAmneziawg ? (
+                            <>
+                              <FormField
+                                name="wgAllowedIPs"
+                                label={t('pages.clients.wireguardAllowedIPs')}
+                                extra={t('pages.clients.wireguardAllowedIPsHint')}
+                              >
+                                <Input placeholder="10.0.0.2/32" />
+                              </FormField>
+                              <FormField
+                                name="awgAllowedIPs"
+                                label={t('pages.clients.amneziaWgAllowedIPs')}
+                                extra={t('pages.clients.amneziaWgAllowedIPsHint')}
+                              >
+                                <Input placeholder="10.8.1.2/32" />
+                              </FormField>
+                            </>
+                          ) : (
+                            <FormField
+                              name="wgAllowedIPs"
+                              label={t(
+                                showAmneziawg
+                                  ? 'pages.clients.amneziaWgAllowedIPs'
+                                  : 'pages.clients.wireguardAllowedIPs',
+                              )}
+                              extra={t(
+                                showAmneziawg
+                                  ? 'pages.clients.amneziaWgAllowedIPsHint'
+                                  : 'pages.clients.wireguardAllowedIPsHint',
+                              )}
+                            >
+                              <Input placeholder="10.8.1.2/32" />
+                            </FormField>
+                          )}
                           <FormField
-                            name="wgAllowedIPs"
-                            label={t('pages.clients.wireguardAllowedIPs')}
-                            extra={t('pages.clients.wireguardAllowedIPsHint')}
+                            name="wgKeepAlive"
+                            label={t('pages.clients.tunnelKeepAlive')}
+                            extra={t('pages.clients.tunnelKeepAliveHint')}
+                            transform={{ output: (v) => Number(v) || 0 }}
                           >
-                            <Input placeholder="10.0.0.2/32" />
+                            <InputNumber min={0} max={65535} style={{ width: '100%' }} />
                           </FormField>
+                          {showAmneziawg && (
+                            <FormField
+                              name="awgForwardedPorts"
+                              label={t('pages.clients.amneziaWgForwardedPorts')}
+                              extra={t('pages.clients.amneziaWgForwardedPortsHint')}
+                            >
+                              <Input placeholder="80, 443, 8000-8100" />
+                            </FormField>
+                          )}
                         </>
                       )}
                       {showMtproto && (
@@ -1269,17 +1416,22 @@ export default function ClientFormModal({
                                 <Controller
                                   control={methods.control}
                                   name={`externalLinks.${index}.expiryTime`}
-                                  render={({ field: expiryField }) => (
-                                    <DateTimePicker
-                                      value={
-                                        Number(expiryField.value) > 0
-                                          ? dayjs(Number(expiryField.value))
-                                          : null
-                                      }
-                                      onChange={(v) => expiryField.onChange(v ? v.valueOf() : 0)}
-                                      placeholder={t('pages.inbounds.leaveBlankToNeverExpire')}
-                                    />
-                                  )}
+                                  render={({ field: expiryField }) => {
+                                    const displayedExpiry = resolveExternalLinkExpiry(
+                                      expiryField.value,
+                                      expiryDate,
+                                    );
+                                    const hasSpecificExpiry = Number(expiryField.value) > 0;
+                                    return (
+                                      <DateTimePicker
+                                        value={displayedExpiry > 0 ? dayjs(displayedExpiry) : null}
+                                        onChange={(v) => expiryField.onChange(v ? v.valueOf() : 0)}
+                                        placeholder={t('pages.inbounds.leaveBlankToNeverExpire')}
+                                        allowClear={hasSpecificExpiry}
+                                        maxDate={expiryDate > 0 ? dayjs(expiryDate) : undefined}
+                                      />
+                                    );
+                                  }}
                                 />
                               </div>
                             </div>
@@ -1341,17 +1493,22 @@ export default function ClientFormModal({
                                 <Controller
                                   control={methods.control}
                                   name={`externalLinks.${index}.expiryTime`}
-                                  render={({ field: expiryField }) => (
-                                    <DateTimePicker
-                                      value={
-                                        Number(expiryField.value) > 0
-                                          ? dayjs(Number(expiryField.value))
-                                          : null
-                                      }
-                                      onChange={(v) => expiryField.onChange(v ? v.valueOf() : 0)}
-                                      placeholder={t('pages.inbounds.leaveBlankToNeverExpire')}
-                                    />
-                                  )}
+                                  render={({ field: expiryField }) => {
+                                    const displayedExpiry = resolveExternalLinkExpiry(
+                                      expiryField.value,
+                                      expiryDate,
+                                    );
+                                    const hasSpecificExpiry = Number(expiryField.value) > 0;
+                                    return (
+                                      <DateTimePicker
+                                        value={displayedExpiry > 0 ? dayjs(displayedExpiry) : null}
+                                        onChange={(v) => expiryField.onChange(v ? v.valueOf() : 0)}
+                                        placeholder={t('pages.inbounds.leaveBlankToNeverExpire')}
+                                        allowClear={hasSpecificExpiry}
+                                        maxDate={expiryDate > 0 ? dayjs(expiryDate) : undefined}
+                                      />
+                                    );
+                                  }}
                                 />
                               </div>
                               <Typography.Text
@@ -1431,77 +1588,20 @@ export default function ClientFormModal({
         )}
       </Modal>
 
-      <Modal
+      <ClientHwidListModal
         open={hwidsModalOpen}
-        title={`${t('pages.clients.hwidLog')}${client?.email ? ` — ${client.email}` : ''}`}
-        width={520}
+        email={client?.email}
         zIndex={CLIENT_IP_LOG_MODAL_Z_INDEX}
-        onCancel={() => setHwidsModalOpen(false)}
-        footer={[
-          <Button
-            key="refresh"
-            icon={<ReloadOutlined />}
-            loading={hwidsLoading}
-            onClick={loadHwids}
-          >
-            {t('refresh')}
-          </Button>,
-          <Button
-            key="clear"
-            danger
-            loading={hwidsClearing}
-            disabled={clientHwids.length === 0}
-            onClick={clearHwids}
-          >
-            {t('pages.clients.clearAll')}
-          </Button>,
-          <Button key="close" type="primary" onClick={() => setHwidsModalOpen(false)}>
-            {t('close')}
-          </Button>,
-        ]}
-      >
-        {clientHwids.length > 0 ? (
-          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-            {clientHwids.map((entry) => (
-              <div
-                key={entry.id}
-                style={{
-                  borderBottom: '1px solid var(--ant-color-border-secondary)',
-                  padding: '8px 0',
-                }}
-              >
-                <Typography.Text strong>
-                  {entry.deviceModel || entry.userAgent || t('pages.clients.hwidDevice')}
-                </Typography.Text>
-                <br />
-                <Typography.Text type="secondary">
-                  {[entry.deviceOs, entry.osVersion].filter(Boolean).join(' ')}
-                </Typography.Text>
-                <br />
-                <Typography.Text type="secondary">
-                  {t('pages.clients.firstSeen')}:{' '}
-                  {entry.firstSeen ? dayjs(entry.firstSeen).format('YYYY-MM-DD HH:mm') : '-'}
-                </Typography.Text>
-                <br />
-                <Typography.Text type="secondary">
-                  {t('pages.clients.lastSeen')}:{' '}
-                  {entry.lastSeen ? dayjs(entry.lastSeen).format('YYYY-MM-DD HH:mm') : '-'}
-                </Typography.Text>
-                {entry.userAgent && (
-                  <>
-                    <br />
-                    <Typography.Text type="secondary" style={{ wordBreak: 'break-all' }}>
-                      {entry.userAgent}
-                    </Typography.Text>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Tag>{t('pages.clients.noHwids')}</Tag>
-        )}
-      </Modal>
+        hwids={clientHwids}
+        loading={hwidsLoading}
+        clearing={hwidsClearing}
+        deletingId={deletingHwidId}
+        formatDate={hwidDateLabel}
+        onRefresh={loadHwids}
+        onClearAll={clearHwids}
+        onDelete={deleteHwid}
+        onClose={() => setHwidsModalOpen(false)}
+      />
     </>
   );
 }

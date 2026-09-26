@@ -49,6 +49,23 @@ func TestAADBindsToNode(t *testing.T) {
 	// Decrypting under a different node id must fail (ciphertext bound to row).
 	if _, err := c.Decrypt(8, enc); err == nil {
 		t.Fatal("expected AAD mismatch error decrypting under wrong node id")
+	} else if !strings.Contains(err.Error(), "node 8") || !strings.Contains(err.Error(), "authentication failed") {
+		t.Fatalf("wrong-node decrypt error: %v", err)
+	}
+}
+
+func TestAADBindsSettingsApartFromNodes(t *testing.T) {
+	c, _ := NewCodec(ModeRequired, testRing(t, "k1", "k1"))
+	enc, err := c.EncryptBound([]byte("settings/pia_token"), "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Decrypt(1, enc); err == nil {
+		t.Fatal("settings/pia_token ciphertext must not decrypt under nodes/api_token/1")
+	}
+	pt, err := c.DecryptBound([]byte("settings/pia_token"), enc)
+	if err != nil || pt != "tok" {
+		t.Fatalf("pia AAD round-trip: %q err=%v", pt, err)
 	}
 }
 
@@ -79,7 +96,7 @@ func TestEncryptedNeverFallsBackToPlaintext(t *testing.T) {
 	c, _ := NewCodec(ModeRequired, testRing(t, "k1", "k1"))
 	enc, _ := c.Encrypt(1, "tok")
 	// Corrupt the ciphertext body — must error, never return raw bytes.
-	bad := enc[:len(enc)-2] + "AA"
+	bad := flipLastCiphertextBit(t, enc)
 	if _, err := c.Decrypt(1, bad); err == nil {
 		t.Fatal("corrupted ciphertext must fail, not fall back to plaintext")
 	}
@@ -89,6 +106,19 @@ func TestEncryptedNeverFallsBackToPlaintext(t *testing.T) {
 	if _, err := c2.Decrypt(1, other); err == nil {
 		t.Fatal("unknown key id must fail")
 	}
+}
+
+// flipLastCiphertextBit rewrites the body through its decoded bytes, because
+// editing the trailing base64 characters can leave those bytes untouched.
+func flipLastCiphertextBit(t *testing.T, stored string) string {
+	t.Helper()
+	cut := strings.LastIndex(stored, ":") + 1
+	blob, err := base64.RawURLEncoding.DecodeString(stored[cut:])
+	if err != nil {
+		t.Fatalf("decode ciphertext body: %v", err)
+	}
+	blob[len(blob)-1] ^= 0x01
+	return stored[:cut] + base64.RawURLEncoding.EncodeToString(blob)
 }
 
 func TestEncryptionMarkerPassesThroughWhenDisabled(t *testing.T) {
