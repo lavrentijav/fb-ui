@@ -46,6 +46,7 @@ func run(root, outDir string) error {
 				"DnsProvider",
 				"Certificate",
 				"EdgeRoute",
+				"CertificateDelivery",
 				"SubBalancer",
 			),
 			AliasAllow: setOf("Protocol"),

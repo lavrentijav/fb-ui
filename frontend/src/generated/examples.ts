@@ -383,6 +383,15 @@ export const EXAMPLES: Record<string, unknown> = {
     "certFile": "/root/cert/msk1.corp.example/fullchain.pem",
     "challenge": "dns01",
     "createdAt": 0,
+    "deliveries": [
+      {
+        "certificateId": 1,
+        "id": 1,
+        "nodeId": 3,
+        "pushError": "",
+        "pushedAt": 1700000000
+      }
+    ],
     "dnsProviderId": 1,
     "domains": [
       "msk1.corp.example"
@@ -392,13 +401,17 @@ export const EXAMPLES: Record<string, unknown> = {
     "keyFile": "/root/cert/msk1.corp.example/privkey.pem",
     "lastAttemptAt": 1700000000,
     "lastError": "",
-    "nodeId": 0,
     "notAfter": 1707776000,
     "notBefore": 1700000000,
-    "pushError": "",
-    "pushedAt": 1700000000,
     "status": "valid",
     "updatedAt": 0
+  },
+  "CertificateDelivery": {
+    "certificateId": 1,
+    "id": 1,
+    "nodeId": 3,
+    "pushError": "",
+    "pushedAt": 1700000000
   },
   "CertificateRequest": {
     "autoRenew": true,
@@ -407,7 +420,10 @@ export const EXAMPLES: Record<string, unknown> = {
     "domains": [
       "msk1.corp.example"
     ],
-    "nodeId": 0
+    "nodeIds": [
+      3,
+      4
+    ]
   },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",

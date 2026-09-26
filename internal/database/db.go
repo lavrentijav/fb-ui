@@ -91,6 +91,7 @@ func allModels() []any {
 		&model.DnsProvider{},
 		&model.Certificate{},
 		&model.AcmeAccount{},
+		&model.CertificateDelivery{},
 		&model.EdgeRoute{},
 		&model.SubBalancer{},
 	}
@@ -146,6 +147,9 @@ func initModels() error {
 		return err
 	}
 	if err := migrateMasterPeersIntoNodes(); err != nil {
+		return err
+	}
+	if err := migrateCertificateNodeIntoDeliveries(); err != nil {
 		return err
 	}
 	if err := dropLegacyForeignKeys(); err != nil {
@@ -3084,4 +3088,28 @@ func ValidateSQLiteDB(dbPath string) error {
 		return errors.New("sqlite integrity check failed: " + res)
 	}
 	return nil
+}
+
+// migrateCertificateNodeIntoDeliveries moves the single node a certificate
+// used to name into certificate_deliveries, keeping whether it was pushed.
+func migrateCertificateNodeIntoDeliveries() error {
+	m := db.Migrator()
+	if !m.HasColumn(&model.Certificate{}, "node_id") {
+		return nil
+	}
+	pushed, pushErr := "0", "''"
+	if m.HasColumn(&model.Certificate{}, "pushed_at") {
+		pushed = "COALESCE(pushed_at, 0)"
+	}
+	if m.HasColumn(&model.Certificate{}, "push_error") {
+		pushErr = "COALESCE(push_error, '')"
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("INSERT INTO certificate_deliveries (certificate_id, node_id, pushed_at, push_error) " +
+			"SELECT id, node_id, " + pushed + ", " + pushErr + " FROM certificates " +
+			"WHERE node_id > 0 AND id NOT IN (SELECT certificate_id FROM certificate_deliveries)").Error; err != nil {
+			return err
+		}
+		return tx.Exec("UPDATE certificates SET node_id = 0 WHERE node_id > 0").Error
+	})
 }

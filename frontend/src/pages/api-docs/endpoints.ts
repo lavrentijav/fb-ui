@@ -1899,8 +1899,8 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/certs/add',
         summary:
-          'Register a certificate to issue. dnsProviderId 0 picks the DNS account whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. nodeId > 0 orders it here for that node (dns01 only) and pushes it there after every issue. Issue it afterwards with /issue/:id.',
-        body: '{\n  "domains": ["msk1.corp.example", "*.msk1.corp.example"],\n  "challenge": "dns01",\n  "dnsProviderId": 0,\n  "autoRenew": true,\n  "nodeId": 0\n}',
+          'Register a certificate to issue. dnsProviderId 0 picks the DNS account whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. nodeIds lists the panels it is installed on (0 is this panel): several nodes can share one domain; with any node listed it is ordered here over dns01 and pushed to each after every issue, and a recipient that is down is retried on the next renew tick. Issue it afterwards with /issue/:id.',
+        body: '{\n  "domains": ["msk1.corp.example", "*.msk1.corp.example"],\n  "challenge": "dns01",\n  "dnsProviderId": 0,\n  "autoRenew": true,\n  "nodeIds": [3, 4]\n}',
         responseSchema: 'Certificate',
       },
       {

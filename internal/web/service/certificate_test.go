@@ -373,60 +373,75 @@ func TestDnsApiBaseURL(t *testing.T) {
 	}
 }
 
-func TestNodeCertificateIsPushedAndRetried(t *testing.T) {
+func TestSharedCertificateReachesEveryRecipient(t *testing.T) {
 	initCertTestDB(t)
 	installFakeCA(t)
 	addZone(t, "example.com")
-	node := &model.Node{Name: "msk1", Scheme: "https", Address: "msk1.example.com", Port: 2053, Enable: true}
-	if err := database.GetDB().Create(node).Error; err != nil {
-		t.Fatal(err)
+	var nodes []*model.Node
+	for _, name := range []string{"ru4", "ru6"} {
+		n := &model.Node{Name: name, Scheme: "https", Address: name + ".example.com", Port: 2053, Enable: true}
+		if err := database.GetDB().Create(n).Error; err != nil {
+			t.Fatal(err)
+		}
+		nodes = append(nodes, n)
 	}
-	var pushed []*CertInstallRequest
-	var pushErr error
+	down := map[int]bool{nodes[1].Id: true}
+	pushes := map[int]int{}
+	var lastPEM string
 	old := certPusher
 	certPusher = func(n *model.Node, req *CertInstallRequest) error {
-		if n.Id != node.Id {
-			t.Errorf("pushed to node %d, want %d", n.Id, node.Id)
+		pushes[n.Id]++
+		lastPEM = req.CertPem
+		if down[n.Id] {
+			return errors.New("node offline")
 		}
-		pushed = append(pushed, req)
-		return pushErr
+		return nil
 	}
 	t.Cleanup(func() { certPusher = old })
 	var s CertificateService
 
-	if _, err := s.Create(&CertificateRequest{Domains: []string{"msk1.example.com"}, Challenge: "http01", NodeId: node.Id}); err == nil {
-		t.Fatal("a node certificate over http01 must be refused")
+	if _, err := s.Create(&CertificateRequest{Domains: []string{"ru.example.com"}, Challenge: "http01", NodeIds: []int{nodes[0].Id}}); err == nil {
+		t.Fatal("a certificate for other panels over http01 must be refused")
 	}
-	c, err := s.Create(&CertificateRequest{Domains: []string{"msk1.example.com"}, NodeId: node.Id})
+	c, err := s.Create(&CertificateRequest{Domains: []string{"ru.example.com"}, NodeIds: []int{SelfPanelId, nodes[0].Id, nodes[1].Id}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(certRoot, ".nodes", "msk1.example.com", "fullchain.pem"); c.CertFile != want {
-		t.Fatalf("CertFile = %q, want %q (outside the host's own cert root)", c.CertFile, want)
+	if want := filepath.Join(certRoot, ".nodes", "ru.example.com", "fullchain.pem"); c.CertFile != want || len(c.Deliveries) != 3 {
+		t.Fatalf("CertFile = %q, deliveries = %+v", c.CertFile, c.Deliveries)
 	}
 
-	pushErr = errors.New("node offline")
 	if err := s.Issue(c.Id); err != nil {
-		t.Fatalf("an unreachable node must not fail the order: %v", err)
+		t.Fatalf("one node down must not fail the order: %v", err)
 	}
 	got, _ := s.GetById(c.Id)
-	if got.Status != model.CertStatusValid || got.PushedAt != 0 || !strings.Contains(got.PushError, "node offline") {
-		t.Fatalf("after failed push: status=%q pushedAt=%d pushError=%q", got.Status, got.PushedAt, got.PushError)
+	state := map[int]model.CertificateDelivery{}
+	for _, d := range got.Deliveries {
+		state[d.NodeId] = d
+	}
+	if state[nodes[0].Id].PushedAt == 0 || state[SelfPanelId].PushedAt == 0 || !strings.Contains(state[nodes[1].Id].PushError, "node offline") {
+		t.Fatalf("after issue: %+v", got.Deliveries)
+	}
+	if local, _ := os.ReadFile(filepath.Join(certRoot, "ru.example.com", "fullchain.pem")); string(local) != lastPEM {
+		t.Fatal("the copy for this panel was not installed under its own cert root")
 	}
 
-	pushErr = nil
+	down = map[int]bool{}
 	s.RenewDue(time.Now())
+	if pushes[nodes[0].Id] != 1 || pushes[nodes[1].Id] != 2 {
+		t.Fatalf("renew tick pushed %v; only the node that missed it should be retried", pushes)
+	}
 	got, _ = s.GetById(c.Id)
-	if len(pushed) != 2 || got.PushedAt == 0 || got.PushError != "" {
-		t.Fatalf("renew tick: pushes=%d pushedAt=%d pushError=%q", len(pushed), got.PushedAt, got.PushError)
+	if owesDelivery(got) {
+		t.Fatalf("still owed after retry: %+v", got.Deliveries)
 	}
-	onDisk, _ := os.ReadFile(got.CertFile)
-	if pushed[1].Domain != "msk1.example.com" || pushed[1].CertPem != string(onDisk) || !strings.Contains(pushed[1].KeyPem, "PRIVATE KEY") {
-		t.Fatalf("pushed payload = %+v", pushed[1].Domain)
+
+	if err := s.Update(c.Id, &CertificateRequest{Domains: []string{"ru.example.com"}, NodeIds: []int{nodes[1].Id}}); err != nil {
+		t.Fatal(err)
 	}
-	s.RenewDue(time.Now())
-	if len(pushed) != 2 {
-		t.Fatalf("a delivered certificate was pushed again (%d pushes)", len(pushed))
+	got, _ = s.GetById(c.Id)
+	if len(got.Deliveries) != 1 || got.Deliveries[0].NodeId != nodes[1].Id || got.Deliveries[0].PushedAt == 0 {
+		t.Fatalf("a kept recipient must keep its state, dropped ones go: %+v", got.Deliveries)
 	}
 }
 

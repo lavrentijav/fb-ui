@@ -1612,6 +1612,13 @@
             "format": "int64",
             "type": "integer"
           },
+          "deliveries": {
+            "description": "Deliveries are the panels this certificate is installed on after every\nissue (0 is this panel), so several nodes can serve one domain and none\nof them needs acme.sh or the DNS token. Filled on read.",
+            "items": {
+              "$ref": "#/components/schemas/CertificateDelivery"
+            },
+            "type": "array"
+          },
           "dnsProviderId": {
             "description": "DnsProviderId must own every domain when Challenge is dns01.",
             "example": 1,
@@ -1646,25 +1653,12 @@
           "lastError": {
             "type": "string"
           },
-          "nodeId": {
-            "description": "NodeId > 0: ordered here for that node and pushed to it after every\nissue, so nodes need neither acme.sh nor the DNS token.",
-            "example": 0,
-            "type": "integer"
-          },
           "notAfter": {
             "example": 1707776000,
             "format": "int64",
             "type": "integer"
           },
           "notBefore": {
-            "example": 1700000000,
-            "format": "int64",
-            "type": "integer"
-          },
-          "pushError": {
-            "type": "string"
-          },
-          "pushedAt": {
             "example": 1700000000,
             "format": "int64",
             "type": "integer"
@@ -1683,6 +1677,7 @@
           "certFile",
           "challenge",
           "createdAt",
+          "deliveries",
           "dnsProviderId",
           "domains",
           "id",
@@ -1690,13 +1685,43 @@
           "keyFile",
           "lastAttemptAt",
           "lastError",
-          "nodeId",
           "notAfter",
           "notBefore",
-          "pushError",
-          "pushedAt",
           "status",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CertificateDelivery": {
+        "description": "CertificateDelivery is one panel a certificate goes to and whether its\ncurrent copy arrived; PushedAt 0 means it is still owed.",
+        "properties": {
+          "certificateId": {
+            "example": 1,
+            "type": "integer"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "nodeId": {
+            "example": 3,
+            "type": "integer"
+          },
+          "pushError": {
+            "type": "string"
+          },
+          "pushedAt": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "certificateId",
+          "id",
+          "nodeId",
+          "pushError",
+          "pushedAt"
         ],
         "type": "object"
       },
@@ -1725,16 +1750,23 @@
             },
             "type": "array"
           },
-          "nodeId": {
-            "example": 0,
-            "type": "integer"
+          "nodeIds": {
+            "description": "NodeIds are the panels the certificate is installed on (0 is this\none); several nodes behind one domain share it.",
+            "example": [
+              3,
+              4
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
           }
         },
         "required": [
           "challenge",
           "dnsProviderId",
           "domains",
-          "nodeId"
+          "nodeIds"
         ],
         "type": "object"
       },
@@ -13479,6 +13511,15 @@
                       "certFile": "/root/cert/msk1.corp.example/fullchain.pem",
                       "challenge": "dns01",
                       "createdAt": 0,
+                      "deliveries": [
+                        {
+                          "certificateId": 1,
+                          "id": 1,
+                          "nodeId": 3,
+                          "pushError": "",
+                          "pushedAt": 1700000000
+                        }
+                      ],
                       "dnsProviderId": 1,
                       "domains": [
                         "msk1.corp.example"
@@ -13488,11 +13529,8 @@
                       "keyFile": "/root/cert/msk1.corp.example/privkey.pem",
                       "lastAttemptAt": 1700000000,
                       "lastError": "",
-                      "nodeId": 0,
                       "notAfter": 1707776000,
                       "notBefore": 1700000000,
-                      "pushError": "",
-                      "pushedAt": 1700000000,
                       "status": "valid",
                       "updatedAt": 0
                     }
@@ -13548,6 +13586,15 @@
                     "certFile": "/root/cert/msk1.corp.example/fullchain.pem",
                     "challenge": "dns01",
                     "createdAt": 0,
+                    "deliveries": [
+                      {
+                        "certificateId": 1,
+                        "id": 1,
+                        "nodeId": 3,
+                        "pushError": "",
+                        "pushedAt": 1700000000
+                      }
+                    ],
                     "dnsProviderId": 1,
                     "domains": [
                       "msk1.corp.example"
@@ -13557,11 +13604,8 @@
                     "keyFile": "/root/cert/msk1.corp.example/privkey.pem",
                     "lastAttemptAt": 1700000000,
                     "lastError": "",
-                    "nodeId": 0,
                     "notAfter": 1707776000,
                     "notBefore": 1700000000,
-                    "pushError": "",
-                    "pushedAt": 1700000000,
                     "status": "valid",
                     "updatedAt": 0
                   }
@@ -13577,7 +13621,7 @@
         "tags": [
           "Certificates"
         ],
-        "summary": "Register a certificate to issue. dnsProviderId 0 picks the DNS account whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. nodeId > 0 orders it here for that node (dns01 only) and pushes it there after every issue. Issue it afterwards with /issue/:id.",
+        "summary": "Register a certificate to issue. dnsProviderId 0 picks the DNS account whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. nodeIds lists the panels it is installed on (0 is this panel): several nodes can share one domain; with any node listed it is ordered here over dns01 and pushed to each after every issue, and a recipient that is down is retried on the next renew tick. Issue it afterwards with /issue/:id.",
         "operationId": "post_panel_api_certs_add",
         "requestBody": {
           "required": true,
@@ -13594,7 +13638,10 @@
                 "challenge": "dns01",
                 "dnsProviderId": 0,
                 "autoRenew": true,
-                "nodeId": 0
+                "nodeIds": [
+                  3,
+                  4
+                ]
               }
             }
           }
@@ -13625,6 +13672,15 @@
                     "certFile": "/root/cert/msk1.corp.example/fullchain.pem",
                     "challenge": "dns01",
                     "createdAt": 0,
+                    "deliveries": [
+                      {
+                        "certificateId": 1,
+                        "id": 1,
+                        "nodeId": 3,
+                        "pushError": "",
+                        "pushedAt": 1700000000
+                      }
+                    ],
                     "dnsProviderId": 1,
                     "domains": [
                       "msk1.corp.example"
@@ -13634,11 +13690,8 @@
                     "keyFile": "/root/cert/msk1.corp.example/privkey.pem",
                     "lastAttemptAt": 1700000000,
                     "lastError": "",
-                    "nodeId": 0,
                     "notAfter": 1707776000,
                     "notBefore": 1700000000,
-                    "pushError": "",
-                    "pushedAt": 1700000000,
                     "status": "valid",
                     "updatedAt": 0
                   }

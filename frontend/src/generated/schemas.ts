@@ -1586,6 +1586,13 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "deliveries": {
+        "description": "Deliveries are the panels this certificate is installed on after every\nissue (0 is this panel), so several nodes can serve one domain and none\nof them needs acme.sh or the DNS token. Filled on read.",
+        "items": {
+          "$ref": "#/components/schemas/CertificateDelivery"
+        },
+        "type": "array"
+      },
       "dnsProviderId": {
         "description": "DnsProviderId must own every domain when Challenge is dns01.",
         "example": 1,
@@ -1620,25 +1627,12 @@ export const SCHEMAS: Record<string, unknown> = {
       "lastError": {
         "type": "string"
       },
-      "nodeId": {
-        "description": "NodeId \u003e 0: ordered here for that node and pushed to it after every\nissue, so nodes need neither acme.sh nor the DNS token.",
-        "example": 0,
-        "type": "integer"
-      },
       "notAfter": {
         "example": 1707776000,
         "format": "int64",
         "type": "integer"
       },
       "notBefore": {
-        "example": 1700000000,
-        "format": "int64",
-        "type": "integer"
-      },
-      "pushError": {
-        "type": "string"
-      },
-      "pushedAt": {
         "example": 1700000000,
         "format": "int64",
         "type": "integer"
@@ -1657,6 +1651,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "certFile",
       "challenge",
       "createdAt",
+      "deliveries",
       "dnsProviderId",
       "domains",
       "id",
@@ -1664,13 +1659,43 @@ export const SCHEMAS: Record<string, unknown> = {
       "keyFile",
       "lastAttemptAt",
       "lastError",
-      "nodeId",
       "notAfter",
       "notBefore",
-      "pushError",
-      "pushedAt",
       "status",
       "updatedAt"
+    ],
+    "type": "object"
+  },
+  "CertificateDelivery": {
+    "description": "CertificateDelivery is one panel a certificate goes to and whether its\ncurrent copy arrived; PushedAt 0 means it is still owed.",
+    "properties": {
+      "certificateId": {
+        "example": 1,
+        "type": "integer"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "nodeId": {
+        "example": 3,
+        "type": "integer"
+      },
+      "pushError": {
+        "type": "string"
+      },
+      "pushedAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "certificateId",
+      "id",
+      "nodeId",
+      "pushError",
+      "pushedAt"
     ],
     "type": "object"
   },
@@ -1699,16 +1724,23 @@ export const SCHEMAS: Record<string, unknown> = {
         },
         "type": "array"
       },
-      "nodeId": {
-        "example": 0,
-        "type": "integer"
+      "nodeIds": {
+        "description": "NodeIds are the panels the certificate is installed on (0 is this\none); several nodes behind one domain share it.",
+        "example": [
+          3,
+          4
+        ],
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
       }
     },
     "required": [
       "challenge",
       "dnsProviderId",
       "domains",
-      "nodeId"
+      "nodeIds"
     ],
     "type": "object"
   },

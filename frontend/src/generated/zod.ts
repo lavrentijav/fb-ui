@@ -407,6 +407,7 @@ export const CertificateSchema = z.object({
   certFile: z.string(),
   challenge: z.enum(['dns01', 'http01', 'imported']),
   createdAt: z.number().int(),
+  deliveries: z.array(z.lazy(() => CertificateDeliverySchema)),
   dnsProviderId: z.number().int(),
   domains: z.array(z.string()),
   id: z.number().int(),
@@ -414,22 +415,28 @@ export const CertificateSchema = z.object({
   keyFile: z.string(),
   lastAttemptAt: z.number().int(),
   lastError: z.string(),
-  nodeId: z.number().int(),
   notAfter: z.number().int(),
   notBefore: z.number().int(),
-  pushError: z.string(),
-  pushedAt: z.number().int(),
   status: z.string(),
   updatedAt: z.number().int(),
 });
 export type Certificate = z.infer<typeof CertificateSchema>;
+
+export const CertificateDeliverySchema = z.object({
+  certificateId: z.number().int(),
+  id: z.number().int(),
+  nodeId: z.number().int(),
+  pushError: z.string(),
+  pushedAt: z.number().int(),
+});
+export type CertificateDelivery = z.infer<typeof CertificateDeliverySchema>;
 
 export const CertificateRequestSchema = z.object({
   autoRenew: z.boolean().nullable().optional(),
   challenge: z.string(),
   dnsProviderId: z.number().int(),
   domains: z.array(z.string()),
-  nodeId: z.number().int(),
+  nodeIds: z.array(z.number().int()),
 });
 export type CertificateRequest = z.infer<typeof CertificateRequestSchema>;
 

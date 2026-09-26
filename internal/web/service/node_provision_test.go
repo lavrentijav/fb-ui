@@ -282,7 +282,7 @@ func TestProvisionShipsACentrallyIssuedCertificate(t *testing.T) {
 	}
 	var certs CertificateService
 	rows, _ := certs.List()
-	if len(rows) != 1 || rows[0].NodeId != j.NodeId || rows[0].PushedAt == 0 {
+	if len(rows) != 1 || len(rows[0].Deliveries) != 1 || rows[0].Deliveries[0].NodeId != j.NodeId || rows[0].Deliveries[0].PushedAt == 0 {
 		t.Fatalf("certificate rows = %+v, job node %d", rows, j.NodeId)
 	}
 	key, _ := os.ReadFile(rows[0].KeyFile)
