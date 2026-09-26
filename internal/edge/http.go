@@ -22,6 +22,11 @@ type HTTPRoute struct {
 	StripPrefix bool
 }
 
+// TrustHeader marks requests that came through the edge. An Xray inbound
+// behind it lists this name in sockopt.trustedXForwardedFor to take the client
+// address from X-Forwarded-For, which the edge always rewrites itself.
+const TrustHeader = "X-Edge-Proxy"
+
 type compiledRoute struct {
 	HTTPRoute
 	proxy *httputil.ReverseProxy
@@ -77,6 +82,7 @@ func compile(rt HTTPRoute) (compiledRoute, error) {
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(u)
 			pr.SetXForwarded()
+			pr.Out.Header.Set(TrustHeader, "fb-ui")
 			pr.Out.Host = pr.In.Host
 			if rt.StripPrefix && prefix != "" {
 				p := strings.TrimPrefix(pr.In.URL.Path, prefix)

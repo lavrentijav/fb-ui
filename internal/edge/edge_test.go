@@ -247,6 +247,9 @@ func TestHTTPRouterRoutesByHostAndPath(t *testing.T) {
 			return
 		}
 		fmt.Fprintf(w, "backend %s %s xff=%s", r.Host, r.URL.Path, r.Header.Get("X-Forwarded-For"))
+		if r.Header.Get(TrustHeader) == "" {
+			fmt.Fprint(w, " untrusted")
+		}
 	}))
 	t.Cleanup(backend.Close)
 	panel := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "panel") })
@@ -265,6 +268,7 @@ func TestHTTPRouterRoutesByHostAndPath(t *testing.T) {
 	get := func(host, path string) string {
 		req, _ := http.NewRequest(http.MethodGet, front.URL+path, nil)
 		req.Host = host
+		req.Header.Set("X-Forwarded-For", "6.6.6.6")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)
