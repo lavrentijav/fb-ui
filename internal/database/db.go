@@ -91,6 +91,7 @@ func allModels() []any {
 		&model.DnsProvider{},
 		&model.Certificate{},
 		&model.AcmeAccount{},
+		&model.EdgeRoute{},
 		&model.SubBalancer{},
 	}
 }

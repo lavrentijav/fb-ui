@@ -21,6 +21,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/dnsprovider"
 	"github.com/mhsanaei/3x-ui/v3/internal/eventbus"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/util/certreload"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 )
@@ -701,5 +702,62 @@ func (s *CertificateService) ApplyToPanel(id int, target string) error {
 		return settings.SetSubKeyFile(row.KeyFile)
 	default:
 		return fmt.Errorf("unknown target %q (want web or sub)", target)
+	}
+}
+
+type sniCertIndex struct {
+	mu      sync.Mutex
+	builtAt time.Time
+	byName  map[string]*certreload.Reloader
+	files   map[string]*certreload.Reloader
+}
+
+var managedSNICerts = &sniCertIndex{files: map[string]*certreload.Reloader{}}
+
+// ManagedCertForSNI returns a valid local certificate this panel manages for
+// name (exact, else a covering wildcard), or nil to use the panel's own.
+func ManagedCertForSNI(name string) *tls.Certificate {
+	name = dnsprovider.NormalizeName(name)
+	idx := managedSNICerts
+	idx.mu.Lock()
+	if time.Since(idx.builtAt) > 30*time.Second {
+		idx.rebuild()
+	}
+	r := idx.byName[name]
+	if r == nil {
+		if i := strings.IndexByte(name, '.'); i > 0 {
+			r = idx.byName["*"+name[i:]]
+		}
+	}
+	idx.mu.Unlock()
+	if r == nil {
+		return nil
+	}
+	c, err := r.GetCertificate(nil)
+	if err != nil {
+		return nil
+	}
+	return c
+}
+
+func (idx *sniCertIndex) rebuild() {
+	idx.builtAt = time.Now()
+	idx.byName = map[string]*certreload.Reloader{}
+	var rows []*model.Certificate
+	if err := database.GetDB().Where("node_id = 0 AND status = ?", model.CertStatusValid).Find(&rows).Error; err != nil {
+		return
+	}
+	for _, row := range rows {
+		r := idx.files[row.CertFile]
+		if r == nil {
+			var err error
+			if r, err = certreload.New(row.CertFile, row.KeyFile); err != nil {
+				continue
+			}
+			idx.files[row.CertFile] = r
+		}
+		for _, d := range row.Domains {
+			idx.byName[dnsprovider.NormalizeName(d)] = r
+		}
 	}
 }

@@ -1965,6 +1965,63 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'edge',
+    title: 'Edge (shared port)',
+    description:
+      'One public port, usually 443, carries the panel, Xray inbounds and local sites. An sni route matches the TLS server name without decrypting and sends the connection to this panel (in-process, the client address kept) or splices it to a local host:port, optionally prefixed with a PROXY protocol v1/v2 header so Xray (acceptProxyProtocol) still sees the real client. A name no route claims, a client without SNI and non-TLS traffic take the default route. An http route matches host and path inside the panel\u2019s own TLS and reverse-proxies to a local http(s) URL, WebSocket and long streams included. A table that cannot work is refused before it replaces the running one, and a listen address that cannot be bound leaves the edge as it was. All endpoints under /panel/api/edge.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/edge/settings',
+        summary: 'Listen address, on/off and the default route.',
+        responseSchema: 'EdgeSettings',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/edge/settings',
+        summary:
+          'Store and apply. defaultAction is panel, tcp or reject; defaultTarget is host:port for tcp.',
+        body: '{\n  "enable": true,\n  "listen": ":443",\n  "defaultAction": "tcp",\n  "defaultTarget": "127.0.0.1:8443",\n  "defaultProxyProtocol": 1\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/edge/routes',
+        summary: 'Every route, in order.',
+        responseSchema: 'EdgeRoute',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/edge/routes/save',
+        summary:
+          'Create (id 0) or replace a route and apply the table. kind sni: match is a server name, *.zone or empty for no SNI; action panel, tcp or reject. kind http: match is a host (empty for any), pathPrefix a path, target an http(s) URL.',
+        body: '{\n  "id": 0,\n  "name": "ws inbound",\n  "kind": "http",\n  "enable": true,\n  "match": "",\n  "pathPrefix": "/ws",\n  "target": "http://127.0.0.1:10001"\n}',
+        responseSchema: 'EdgeRoute',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/edge/routes/del/:id',
+        summary: 'Delete a route and apply the table.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Route ID.' }],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/edge/status',
+        summary:
+          'What is actually running: listener, last bind error, whether the panel can take TLS.',
+        responseSchema: 'EdgeStatus',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/edge/check',
+        summary: 'Dial every tcp target and http upstream once and report which answer.',
+        responseSchema: 'EdgeTargetCheck',
+        responseSchemaArray: true,
+      },
+    ],
+  },
+
+  {
     id: 'provision',
     title: 'Provisioning',
     description:

@@ -579,6 +579,44 @@ export interface DnsZone {
   zone: string;
 }
 
+export interface EdgeRoute {
+  action: string;
+  createdAt: number;
+  enable: boolean;
+  id: number;
+  kind: string;
+  match: string;
+  name: string;
+  pathPrefix: string;
+  proxyProtocol: number;
+  sortOrder: number;
+  stripPrefix: boolean;
+  target: string;
+  updatedAt: number;
+}
+
+export interface EdgeSettings {
+  defaultAction: string;
+  defaultProxyProtocol: number;
+  defaultTarget: string;
+  enable: boolean;
+  listen: string;
+}
+
+export interface EdgeStatus {
+  lastError: string;
+  listen: string;
+  panelTls: boolean;
+  running: boolean;
+}
+
+export interface EdgeTargetCheck {
+  error: string;
+  ok: boolean;
+  routeId: number;
+  target: string;
+}
+
 export interface FallbackParentInfo {
   masterId: number;
   path?: string;

@@ -7,6 +7,12 @@ export const keys = {
     root: () => ['nodes'] as const,
     list: () => ['nodes', 'list'] as const,
   },
+  edge: {
+    root: () => ['edge'] as const,
+    settings: () => ['edge', 'settings'] as const,
+    routes: () => ['edge', 'routes'] as const,
+    status: () => ['edge', 'status'] as const,
+  },
   provision: {
     job: (id: string) => ['provision', 'job', id] as const,
   },

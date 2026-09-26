@@ -621,6 +621,40 @@ export const EXAMPLES: Record<string, unknown> = {
     "providerType": "technitium",
     "zone": "corp.example"
   },
+  "EdgeRoute": {
+    "action": "tcp",
+    "createdAt": 0,
+    "enable": true,
+    "id": 1,
+    "kind": "sni",
+    "match": "www.microsoft.com",
+    "name": "reality",
+    "pathPrefix": "/ws",
+    "proxyProtocol": 1,
+    "sortOrder": 0,
+    "stripPrefix": false,
+    "target": "127.0.0.1:8443",
+    "updatedAt": 0
+  },
+  "EdgeSettings": {
+    "defaultAction": "tcp",
+    "defaultProxyProtocol": 1,
+    "defaultTarget": "127.0.0.1:8443",
+    "enable": false,
+    "listen": ":443"
+  },
+  "EdgeStatus": {
+    "lastError": "",
+    "listen": "[::]:443",
+    "panelTls": true,
+    "running": true
+  },
+  "EdgeTargetCheck": {
+    "error": "",
+    "ok": true,
+    "routeId": 1,
+    "target": "127.0.0.1:8443"
+  },
   "FallbackParentInfo": {
     "masterId": 0,
     "path": ""

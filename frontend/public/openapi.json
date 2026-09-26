@@ -2537,6 +2537,165 @@
         ],
         "type": "object"
       },
+      "EdgeRoute": {
+        "description": "EdgeRoute is one rule of the shared public port. An sni route matches the\nTLS server name without decrypting and sends the connection to the panel or\nto a local address; an http route matches host and path inside the panel's\nown TLS and reverse-proxies to a local URL.",
+        "properties": {
+          "action": {
+            "example": "tcp",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "kind": {
+            "example": "sni",
+            "type": "string"
+          },
+          "match": {
+            "description": "Match is the SNI (sni) or Host (http) pattern: exact, \"*.zone\", or \"\"\nfor no SNI / any host.",
+            "example": "www.microsoft.com",
+            "type": "string"
+          },
+          "name": {
+            "example": "reality",
+            "type": "string"
+          },
+          "pathPrefix": {
+            "example": "/ws",
+            "type": "string"
+          },
+          "proxyProtocol": {
+            "example": 1,
+            "type": "integer"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "stripPrefix": {
+            "type": "boolean"
+          },
+          "target": {
+            "example": "127.0.0.1:8443",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action",
+          "createdAt",
+          "enable",
+          "id",
+          "kind",
+          "match",
+          "name",
+          "pathPrefix",
+          "proxyProtocol",
+          "sortOrder",
+          "stripPrefix",
+          "target",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "EdgeSettings": {
+        "description": "EdgeSettings is the port-wide part: where the edge listens and what\nhappens to a connection no route claims.",
+        "properties": {
+          "defaultAction": {
+            "example": "tcp",
+            "type": "string"
+          },
+          "defaultProxyProtocol": {
+            "example": 1,
+            "type": "integer"
+          },
+          "defaultTarget": {
+            "example": "127.0.0.1:8443",
+            "type": "string"
+          },
+          "enable": {
+            "example": false,
+            "type": "boolean"
+          },
+          "listen": {
+            "example": ":443",
+            "type": "string"
+          }
+        },
+        "required": [
+          "defaultAction",
+          "defaultProxyProtocol",
+          "defaultTarget",
+          "enable",
+          "listen"
+        ],
+        "type": "object"
+      },
+      "EdgeStatus": {
+        "description": "EdgeStatus reports what is actually running, not what is stored.",
+        "properties": {
+          "lastError": {
+            "type": "string"
+          },
+          "listen": {
+            "example": "[::]:443",
+            "type": "string"
+          },
+          "panelTls": {
+            "example": true,
+            "type": "boolean"
+          },
+          "running": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lastError",
+          "listen",
+          "panelTls",
+          "running"
+        ],
+        "type": "object"
+      },
+      "EdgeTargetCheck": {
+        "description": "EdgeTargetCheck is whether a route's local target answers right now.",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "ok": {
+            "example": true,
+            "type": "boolean"
+          },
+          "routeId": {
+            "example": 1,
+            "type": "integer"
+          },
+          "target": {
+            "example": "127.0.0.1:8443",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "ok",
+          "routeId",
+          "target"
+        ],
+        "type": "object"
+      },
       "FallbackParentInfo": {
         "description": "FallbackParentInfo carries everything the frontend needs to rewrite a\nchild inbound's client link: where to connect (the master's address\nand port) and which path matched on the master's fallbacks array.\nThe frontend already has the master inbound in its dbInbounds list,\nso we only ship identifiers + the match path here.",
         "properties": {
@@ -5476,6 +5635,10 @@
     {
       "name": "Certificates",
       "description": "TLS certificates the panel issues through ACME (Let’s Encrypt by default) and renews on its own, plus certificates found on disk that it only watches for expiry. dns01 is the default challenge because http01 needs port 80, which a real fallback site usually holds. Files are written to /root/cert/<domain>/fullchain.pem and privkey.pem. All endpoints under /panel/api/certs."
+    },
+    {
+      "name": "Edge (shared port)",
+      "description": "One public port, usually 443, carries the panel, Xray inbounds and local sites. An sni route matches the TLS server name without decrypting and sends the connection to this panel (in-process, the client address kept) or splices it to a local host:port, optionally prefixed with a PROXY protocol v1/v2 header so Xray (acceptProxyProtocol) still sees the real client. A name no route claims, a client without SNI and non-TLS traffic take the default route. An http route matches host and path inside the panel’s own TLS and reverse-proxies to a local http(s) URL, WebSocket and long streams included. A table that cannot work is refused before it replaces the running one, and a listen address that cannot be bound leaves the edge as it was. All endpoints under /panel/api/edge."
     },
     {
       "name": "Provisioning",
@@ -13838,6 +14001,345 @@
                     },
                     "obj": {}
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/settings": {
+      "get": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Listen address, on/off and the default route.",
+        "operationId": "get_panel_api_edge_settings",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/EdgeSettings"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "defaultAction": "tcp",
+                    "defaultProxyProtocol": 1,
+                    "defaultTarget": "127.0.0.1:8443",
+                    "enable": false,
+                    "listen": ":443"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Store and apply. defaultAction is panel, tcp or reject; defaultTarget is host:port for tcp.",
+        "operationId": "post_panel_api_edge_settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "enable": true,
+                "listen": ":443",
+                "defaultAction": "tcp",
+                "defaultTarget": "127.0.0.1:8443",
+                "defaultProxyProtocol": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/routes": {
+      "get": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Every route, in order.",
+        "operationId": "get_panel_api_edge_routes",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EdgeRoute"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "action": "tcp",
+                      "createdAt": 0,
+                      "enable": true,
+                      "id": 1,
+                      "kind": "sni",
+                      "match": "www.microsoft.com",
+                      "name": "reality",
+                      "pathPrefix": "/ws",
+                      "proxyProtocol": 1,
+                      "sortOrder": 0,
+                      "stripPrefix": false,
+                      "target": "127.0.0.1:8443",
+                      "updatedAt": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/routes/save": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Create (id 0) or replace a route and apply the table. kind sni: match is a server name, *.zone or empty for no SNI; action panel, tcp or reject. kind http: match is a host (empty for any), pathPrefix a path, target an http(s) URL.",
+        "operationId": "post_panel_api_edge_routes_save",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "id": 0,
+                "name": "ws inbound",
+                "kind": "http",
+                "enable": true,
+                "match": "",
+                "pathPrefix": "/ws",
+                "target": "http://127.0.0.1:10001"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/EdgeRoute"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "action": "tcp",
+                    "createdAt": 0,
+                    "enable": true,
+                    "id": 1,
+                    "kind": "sni",
+                    "match": "www.microsoft.com",
+                    "name": "reality",
+                    "pathPrefix": "/ws",
+                    "proxyProtocol": 1,
+                    "sortOrder": 0,
+                    "stripPrefix": false,
+                    "target": "127.0.0.1:8443",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/routes/del/{id}": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Delete a route and apply the table.",
+        "operationId": "post_panel_api_edge_routes_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Route ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/status": {
+      "get": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "What is actually running: listener, last bind error, whether the panel can take TLS.",
+        "operationId": "get_panel_api_edge_status",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/EdgeStatus"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "lastError": "",
+                    "listen": "[::]:443",
+                    "panelTls": true,
+                    "running": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/check": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Dial every tcp target and http upstream once and report which answer.",
+        "operationId": "post_panel_api_edge_check",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EdgeTargetCheck"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "error": "",
+                      "ok": true,
+                      "routeId": 1,
+                      "target": "127.0.0.1:8443"
+                    }
+                  ]
                 }
               }
             }

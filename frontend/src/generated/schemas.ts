@@ -2511,6 +2511,165 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "EdgeRoute": {
+    "description": "EdgeRoute is one rule of the shared public port. An sni route matches the\nTLS server name without decrypting and sends the connection to the panel or\nto a local address; an http route matches host and path inside the panel's\nown TLS and reverse-proxies to a local URL.",
+    "properties": {
+      "action": {
+        "example": "tcp",
+        "type": "string"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "kind": {
+        "example": "sni",
+        "type": "string"
+      },
+      "match": {
+        "description": "Match is the SNI (sni) or Host (http) pattern: exact, \"*.zone\", or \"\"\nfor no SNI / any host.",
+        "example": "www.microsoft.com",
+        "type": "string"
+      },
+      "name": {
+        "example": "reality",
+        "type": "string"
+      },
+      "pathPrefix": {
+        "example": "/ws",
+        "type": "string"
+      },
+      "proxyProtocol": {
+        "example": 1,
+        "type": "integer"
+      },
+      "sortOrder": {
+        "type": "integer"
+      },
+      "stripPrefix": {
+        "type": "boolean"
+      },
+      "target": {
+        "example": "127.0.0.1:8443",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "action",
+      "createdAt",
+      "enable",
+      "id",
+      "kind",
+      "match",
+      "name",
+      "pathPrefix",
+      "proxyProtocol",
+      "sortOrder",
+      "stripPrefix",
+      "target",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "EdgeSettings": {
+    "description": "EdgeSettings is the port-wide part: where the edge listens and what\nhappens to a connection no route claims.",
+    "properties": {
+      "defaultAction": {
+        "example": "tcp",
+        "type": "string"
+      },
+      "defaultProxyProtocol": {
+        "example": 1,
+        "type": "integer"
+      },
+      "defaultTarget": {
+        "example": "127.0.0.1:8443",
+        "type": "string"
+      },
+      "enable": {
+        "example": false,
+        "type": "boolean"
+      },
+      "listen": {
+        "example": ":443",
+        "type": "string"
+      }
+    },
+    "required": [
+      "defaultAction",
+      "defaultProxyProtocol",
+      "defaultTarget",
+      "enable",
+      "listen"
+    ],
+    "type": "object"
+  },
+  "EdgeStatus": {
+    "description": "EdgeStatus reports what is actually running, not what is stored.",
+    "properties": {
+      "lastError": {
+        "type": "string"
+      },
+      "listen": {
+        "example": "[::]:443",
+        "type": "string"
+      },
+      "panelTls": {
+        "example": true,
+        "type": "boolean"
+      },
+      "running": {
+        "example": true,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "lastError",
+      "listen",
+      "panelTls",
+      "running"
+    ],
+    "type": "object"
+  },
+  "EdgeTargetCheck": {
+    "description": "EdgeTargetCheck is whether a route's local target answers right now.",
+    "properties": {
+      "error": {
+        "type": "string"
+      },
+      "ok": {
+        "example": true,
+        "type": "boolean"
+      },
+      "routeId": {
+        "example": 1,
+        "type": "integer"
+      },
+      "target": {
+        "example": "127.0.0.1:8443",
+        "type": "string"
+      }
+    },
+    "required": [
+      "error",
+      "ok",
+      "routeId",
+      "target"
+    ],
+    "type": "object"
+  },
   "FallbackParentInfo": {
     "description": "FallbackParentInfo carries everything the frontend needs to rewrite a\nchild inbound's client link: where to connect (the master's address\nand port) and which path matched on the master's fallbacks array.\nThe frontend already has the master inbound in its dbInbounds list,\nso we only ship identifiers + the match path here.",
     "properties": {

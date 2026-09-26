@@ -14,10 +14,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/amneziawgnet"
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
+	"github.com/mhsanaei/3x-ui/v3/internal/edge"
 	"github.com/mhsanaei/3x-ui/v3/internal/eventbus"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
@@ -115,6 +117,17 @@ func EmbeddedDist() embed.FS {
 type Server struct {
 	httpServer *http.Server
 	listener   net.Listener
+
+	// The shared public port: edgeHTTP wraps the panel handler, the router
+	// owns edgeLn and hands panel-bound TLS connections to panelHandoff.
+	edgeMu       sync.Mutex
+	edgeHTTP     *edge.HTTPRouter
+	edgeRouter   *edge.Router
+	edgeLn       net.Listener
+	edgeListen   string
+	edgeLastErr  string
+	panelHandoff *edge.HandoffListener
+	panelTLS     *tls.Config
 
 	index *controller.IndexController
 	panel *controller.XUIController
@@ -636,7 +649,7 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 		reloader, err := certreload.New(certFile, keyFile)
 		if err == nil {
 			c := &tls.Config{
-				GetCertificate: reloader.GetCertificate,
+				GetCertificate: managedCertFirst(reloader.GetCertificate),
 			}
 			// Opt-in node mTLS: when a trust CA is configured, request and verify
 			// client certs (VerifyClientCertIfGiven keeps browsers working). With
@@ -647,6 +660,7 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 				applyNodeMtls(c, pool)
 				logger.Info("Node mTLS enabled: verifying client certificates for the node API")
 			}
+			s.panelTLS = c
 			listener = network.NewAutoHttpsListener(listener)
 			listener = tls.NewListener(listener, c)
 			logger.Info("Web server running HTTPS on", listener.Addr())
@@ -659,8 +673,9 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	}
 	s.listener = listener
 
+	s.edgeHTTP = edge.NewHTTPRouter(engine)
 	s.httpServer = &http.Server{
-		Handler:           engine,
+		Handler:           s.edgeHTTP,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -668,6 +683,14 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	}
 
 	go network.ServeHTTP(s.httpServer, listener, "Web server")
+	if s.panelTLS != nil {
+		s.panelHandoff = edge.NewHandoffListener(listener.Addr())
+		go network.ServeHTTP(s.httpServer, tls.NewListener(s.panelHandoff, s.panelTLS), "Web server (edge)")
+	}
+	service.SetEdgeRuntime(s.applyEdge, s.edgeStatus)
+	if err := (&service.EdgeService{}).Apply(); err != nil {
+		logger.Warning("edge: not started:", err)
+	}
 
 	// Create event bus before startTask so jobs can use it
 	s.bus = eventbus.New(eventbus.DefaultBufferSize)
@@ -845,6 +868,7 @@ func (s *Server) stop(stopXray bool, stopTgBot bool) error {
 	if s.listener != nil {
 		err2 = s.listener.Close()
 	}
+	s.stopEdge()
 	return common.Combine(err1, err2)
 }
 
