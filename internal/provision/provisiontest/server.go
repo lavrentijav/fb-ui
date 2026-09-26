@@ -4,7 +4,9 @@ package provisiontest
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/pem"
@@ -38,11 +40,14 @@ func ShellHandler(cmd string, stdin io.Reader, out io.Writer) int {
 }
 
 type Server struct {
-	Host     string
-	Port     int
-	HostKey  ssh.PublicKey
-	UserKey  ed25519.PrivateKey
-	Password string
+	Host    string
+	Port    int
+	HostKey ssh.PublicKey
+	// EcdsaHostKey is served next to HostKey, as a stock sshd does; clients
+	// that prefer ECDSA get it instead of the ed25519 key.
+	EcdsaHostKey ssh.PublicKey
+	UserKey      ed25519.PrivateKey
+	Password     string
 
 	mu       sync.Mutex
 	commands []string
@@ -55,7 +60,9 @@ func Start(t *testing.T, password string, h Handler) *Server {
 	hostSigner, _ := ssh.NewSignerFromKey(hostPriv)
 	_, userPriv, _ := ed25519.GenerateKey(rand.Reader)
 	userPub, _ := ssh.NewPublicKey(userPriv.Public())
-	s := &Server{HostKey: hostSigner.PublicKey(), UserKey: userPriv, Password: password}
+	ecPriv, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	ecSigner, _ := ssh.NewSignerFromKey(ecPriv)
+	s := &Server{HostKey: hostSigner.PublicKey(), EcdsaHostKey: ecSigner.PublicKey(), UserKey: userPriv, Password: password}
 
 	cfg := &ssh.ServerConfig{
 		PasswordCallback: func(_ ssh.ConnMetadata, pw []byte) (*ssh.Permissions, error) {
@@ -72,6 +79,7 @@ func Start(t *testing.T, password string, h Handler) *Server {
 		},
 	}
 	cfg.AddHostKey(hostSigner)
+	cfg.AddHostKey(ecSigner)
 	var lc net.ListenConfig
 	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {

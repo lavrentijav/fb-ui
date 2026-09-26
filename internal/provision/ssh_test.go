@@ -3,6 +3,7 @@ package provision
 import (
 	"context"
 	"errors"
+	"golang.org/x/crypto/ssh"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -69,12 +70,19 @@ func TestDialPinsHostKeyAndRunsCommands(t *testing.T) {
 	if _, err := Dial(ctx, tgt); !errors.Is(err, ErrHostKeyMismatch) {
 		t.Fatalf("pinned mismatch: err = %v, want ErrHostKeyMismatch", err)
 	}
-	tgt.HostKeySHA256 = Fingerprint(srv.HostKey)
-	s, err = Dial(ctx, tgt)
-	if err != nil {
-		t.Fatalf("pinned match: %v", err)
+	// The server offers ed25519 and ECDSA; either pin must match whichever
+	// type the client would have picked on its own.
+	for _, pinned := range []ssh.PublicKey{srv.HostKey, srv.EcdsaHostKey} {
+		tgt.HostKeySHA256 = Fingerprint(pinned)
+		s, err = Dial(ctx, tgt)
+		if err != nil {
+			t.Fatalf("pinned %s: %v", pinned.Type(), err)
+		}
+		if s.HostKey != tgt.HostKeySHA256 {
+			t.Fatalf("pinned %s: reported %q", pinned.Type(), s.HostKey)
+		}
+		_ = s.Close()
 	}
-	_ = s.Close()
 
 	keyOnly := targetFor(srv)
 	keyOnly.PrivateKey = srv.UserKeyPEM(t)
