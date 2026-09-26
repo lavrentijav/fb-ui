@@ -7,6 +7,7 @@ import type { Msg } from '@/utils';
 import type { Certificate, CertificateRequest, DnsProvider } from '@/api/queries/useCerts';
 import { CertFormSchema, splitDomains, type CertFormValues } from '@/schemas/cert';
 import { FormField, rhfZodValidate } from '@/components/form/rhf';
+import { useNodesQuery } from '@/api/queries/useNodesQuery';
 
 interface CertFormModalProps {
   open: boolean;
@@ -17,7 +18,7 @@ interface CertFormModalProps {
 }
 
 function defaults(): CertFormValues {
-  return { domainsText: '', challenge: 'dns01', dnsProviderId: 0, autoRenew: true };
+  return { domainsText: '', challenge: 'dns01', dnsProviderId: 0, autoRenew: true, nodeId: 0 };
 }
 
 export default function CertFormModal({ open, cert, dns, save, onOpenChange }: CertFormModalProps) {
@@ -26,6 +27,7 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
   const [messageApi, messageContextHolder] = message.useMessage();
   const [submitting, setSubmitting] = useState(false);
   const challenge = useWatch({ control: methods.control, name: 'challenge' });
+  const { nodes } = useNodesQuery();
   const imported = cert?.challenge === 'imported';
 
   // Reset during render, not in an effect, so the first frame is already clean.
@@ -41,6 +43,7 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
             challenge: cert.challenge,
             dnsProviderId: cert.dnsProviderId,
             autoRenew: cert.autoRenew,
+            nodeId: cert.nodeId,
           }
         : defaults(),
     );
@@ -59,6 +62,7 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
         challenge: result.data.challenge,
         dnsProviderId: result.data.challenge === 'dns01' ? result.data.dnsProviderId : 0,
         autoRenew: result.data.autoRenew,
+        nodeId: result.data.challenge === 'dns01' ? result.data.nodeId : 0,
       });
       if (msg?.success) onOpenChange(false);
     } finally {
@@ -117,6 +121,20 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
                       value: d.id,
                       label: `${d.name} (${d.zone || (d.zones ?? []).join(', ')})`,
                     })),
+                  ]}
+                />
+              </FormField>
+            )}
+            {!imported && challenge === 'dns01' && (
+              <FormField
+                label={t('pages.certs.forNode')}
+                name="nodeId"
+                extra={t('pages.certs.forNodeHint')}
+              >
+                <Select
+                  options={[
+                    { value: 0, label: t('pages.certs.thisPanel') },
+                    ...nodes.map((n) => ({ value: n.id, label: `${n.name} (${n.address})` })),
                   ]}
                 />
               </FormField>

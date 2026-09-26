@@ -2187,7 +2187,11 @@
       "zoneHint": "Empty: every zone the token can manage, found automatically",
       "allZones": "all zones of the token",
       "zonesFound": "Zones this token manages: {count}",
-      "dnsSync": "Refresh zones"
+      "dnsSync": "Refresh zones",
+      "forNode": "Issue for",
+      "forNodeHint": "A node's certificate is ordered here via DNS-01 and pushed to the node after every renewal; the node needs no acme.sh, port 80 or DNS token.",
+      "thisPanel": "This panel",
+      "onNode": "node {name}"
     }
   },
   "tgbot": {

@@ -372,3 +372,97 @@ func TestDnsApiBaseURL(t *testing.T) {
 		t.Error("ftp scheme must be rejected")
 	}
 }
+
+func TestNodeCertificateIsPushedAndRetried(t *testing.T) {
+	initCertTestDB(t)
+	installFakeCA(t)
+	addZone(t, "example.com")
+	node := &model.Node{Name: "msk1", Scheme: "https", Address: "msk1.example.com", Port: 2053, Enable: true}
+	if err := database.GetDB().Create(node).Error; err != nil {
+		t.Fatal(err)
+	}
+	var pushed []*CertInstallRequest
+	var pushErr error
+	old := certPusher
+	certPusher = func(n *model.Node, req *CertInstallRequest) error {
+		if n.Id != node.Id {
+			t.Errorf("pushed to node %d, want %d", n.Id, node.Id)
+		}
+		pushed = append(pushed, req)
+		return pushErr
+	}
+	t.Cleanup(func() { certPusher = old })
+	var s CertificateService
+
+	if _, err := s.Create(&CertificateRequest{Domains: []string{"msk1.example.com"}, Challenge: "http01", NodeId: node.Id}); err == nil {
+		t.Fatal("a node certificate over http01 must be refused")
+	}
+	c, err := s.Create(&CertificateRequest{Domains: []string{"msk1.example.com"}, NodeId: node.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(certRoot, ".nodes", "msk1.example.com", "fullchain.pem"); c.CertFile != want {
+		t.Fatalf("CertFile = %q, want %q (outside the host's own cert root)", c.CertFile, want)
+	}
+
+	pushErr = errors.New("node offline")
+	if err := s.Issue(c.Id); err != nil {
+		t.Fatalf("an unreachable node must not fail the order: %v", err)
+	}
+	got, _ := s.GetById(c.Id)
+	if got.Status != model.CertStatusValid || got.PushedAt != 0 || !strings.Contains(got.PushError, "node offline") {
+		t.Fatalf("after failed push: status=%q pushedAt=%d pushError=%q", got.Status, got.PushedAt, got.PushError)
+	}
+
+	pushErr = nil
+	s.RenewDue(time.Now())
+	got, _ = s.GetById(c.Id)
+	if len(pushed) != 2 || got.PushedAt == 0 || got.PushError != "" {
+		t.Fatalf("renew tick: pushes=%d pushedAt=%d pushError=%q", len(pushed), got.PushedAt, got.PushError)
+	}
+	onDisk, _ := os.ReadFile(got.CertFile)
+	if pushed[1].Domain != "msk1.example.com" || pushed[1].CertPem != string(onDisk) || !strings.Contains(pushed[1].KeyPem, "PRIVATE KEY") {
+		t.Fatalf("pushed payload = %+v", pushed[1].Domain)
+	}
+	s.RenewDue(time.Now())
+	if len(pushed) != 2 {
+		t.Fatalf("a delivered certificate was pushed again (%d pushes)", len(pushed))
+	}
+}
+
+func TestInstallStoresAMastersCertificate(t *testing.T) {
+	initCertTestDB(t)
+	var s CertificateService
+	certPEM, keyPEM := selfSigned(t, []string{"msk1.example.com"}, time.Now().Add(90*24*time.Hour))
+	otherCert, _ := selfSigned(t, []string{"msk1.example.com"}, time.Now().Add(90*24*time.Hour))
+
+	bad := []struct {
+		name string
+		req  CertInstallRequest
+		want string
+	}{
+		{"key of another cert", CertInstallRequest{Domain: "msk1.example.com", CertPem: string(otherCert), KeyPem: string(keyPEM)}, "do not form a pair"},
+		{"wrong domain", CertInstallRequest{Domain: "spb1.example.com", CertPem: string(certPEM), KeyPem: string(keyPEM)}, "does not cover spb1.example.com"},
+		{"path in domain", CertInstallRequest{Domain: "../etc", CertPem: string(certPEM), KeyPem: string(keyPEM)}, "is not a domain"},
+	}
+	for _, tc := range bad {
+		if err := s.Install(&tc.req); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: err = %v, want %q", tc.name, err, tc.want)
+		}
+	}
+
+	req := &CertInstallRequest{Domain: "MSK1.example.com", CertPem: string(certPEM), KeyPem: string(keyPEM)}
+	if err := s.Install(req); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Install(req); err != nil {
+		t.Fatalf("a renewal push must replace, not clash: %v", err)
+	}
+	rows, _ := s.List()
+	if len(rows) != 1 || rows[0].Challenge != model.CertChallengeImported || rows[0].AutoRenew || rows[0].NotAfter == 0 {
+		t.Fatalf("rows = %+v", rows)
+	}
+	if data, _ := os.ReadFile(filepath.Join(certRoot, "msk1.example.com", "privkey.pem")); string(data) != string(keyPEM) {
+		t.Fatal("key not written under the cert root")
+	}
+}

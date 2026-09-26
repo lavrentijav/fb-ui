@@ -1572,8 +1572,8 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/certs/add',
         summary:
-          'Register a certificate to issue. dnsProviderId 0 picks the DNS provider whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. Issue it afterwards with /issue/:id.',
-        body: '{\n  "domains": ["msk1.fire-core.ru", "*.msk1.fire-core.ru"],\n  "challenge": "dns01",\n  "dnsProviderId": 0,\n  "autoRenew": true\n}',
+          'Register a certificate to issue. dnsProviderId 0 picks the DNS account whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. nodeId > 0 orders it here for that node (dns01 only) and pushes it there after every issue. Issue it afterwards with /issue/:id.',
+        body: '{\n  "domains": ["msk1.fire-core.ru", "*.msk1.fire-core.ru"],\n  "challenge": "dns01",\n  "dnsProviderId": 0,\n  "autoRenew": true,\n  "nodeId": 0\n}',
         responseSchema: 'Certificate',
       },
       {
@@ -1626,6 +1626,13 @@ export const sections: readonly Section[] = [
         summary:
           'Set the contact email and CA directory. Changing either drops the account key so the next order registers afresh.',
         body: '{\n  "email": "ops@example.com",\n  "directory": "https://acme-v02.api.letsencrypt.org/directory"\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/certs/install',
+        summary:
+          'Node side: store a certificate the master issued for this panel under /root/cert/<domain>/ and reload what serves it. The pair and the domain are checked; the row is watched as imported because the master renews it. Allowed for node-sync tokens.',
+        body: '{\n  "domain": "msk1.fire-core.ru",\n  "certPem": "-----BEGIN CERTIFICATE-----...",\n  "keyPem": "-----BEGIN EC PRIVATE KEY-----..."\n}',
       },
     ],
   },

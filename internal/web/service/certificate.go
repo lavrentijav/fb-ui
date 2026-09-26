@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -21,11 +22,18 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/eventbus"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 )
 
 // certRoot is where issued certificates are written: the same
 // <root>/<domain>/{fullchain,privkey}.pem layout x-ui.sh and acme.sh use.
 var certRoot = "/root/cert"
+
+// nodeCertDir keeps this panel's copy of a node certificate out of certRoot's
+// top level, where Scan and x-ui.sh expect this host's own certificates.
+func nodeCertDir(domain string) string {
+	return filepath.Join(certRoot, ".nodes", strings.TrimPrefix(domain, "*."))
+}
 
 // issueCertificate is the ACME call; tests replace it with a local CA.
 var issueCertificate = certissuer.Issue
@@ -50,6 +58,14 @@ type CertificateRequest struct {
 	Challenge     string   `json:"challenge" form:"challenge" example:"dns01"`
 	DnsProviderId int      `json:"dnsProviderId" form:"dnsProviderId" example:"1"`
 	AutoRenew     *bool    `json:"autoRenew" form:"autoRenew" example:"true"`
+	NodeId        int      `json:"nodeId" form:"nodeId" example:"0"`
+}
+
+// CertInstallRequest is a certificate a master issued for this panel.
+type CertInstallRequest struct {
+	Domain  string `json:"domain" form:"domain" example:"msk1.fire-core.ru"`
+	CertPem string `json:"certPem" form:"certPem" example:"-----BEGIN CERTIFICATE-----"`
+	KeyPem  string `json:"keyPem" form:"keyPem" example:"-----BEGIN EC PRIVATE KEY-----"`
 }
 
 // AcmeAccountView is the account the panel issues under; the key stays private.
@@ -139,6 +155,9 @@ func (s *CertificateService) fromRequest(dst *model.Certificate, req *Certificat
 			}
 		}
 	case model.CertChallengeHTTP01:
+		if req.NodeId > 0 {
+			return common.NewError("a node's certificate is ordered here, so it needs dns01")
+		}
 		dst.DnsProviderId = 0
 		for _, d := range domains {
 			if strings.HasPrefix(d, "*.") {
@@ -148,8 +167,17 @@ func (s *CertificateService) fromRequest(dst *model.Certificate, req *Certificat
 	default:
 		return common.NewErrorf("challenge %q cannot be issued; use dns01 or http01", dst.Challenge)
 	}
+	if req.NodeId > 0 && dst.NodeId != req.NodeId {
+		if _, err := (&NodeService{}).GetById(req.NodeId); err != nil {
+			return common.NewErrorf("node %d not found", req.NodeId)
+		}
+		dst.NodeId, dst.PushedAt = req.NodeId, 0
+	}
 	if dst.CertFile == "" {
 		dir := filepath.Join(certRoot, strings.TrimPrefix(domains[0], "*."))
+		if dst.NodeId > 0 {
+			dir = nodeCertDir(domains[0])
+		}
 		dst.CertFile = filepath.Join(dir, "fullchain.pem")
 		dst.KeyFile = filepath.Join(dir, "privkey.pem")
 	}
@@ -285,7 +313,109 @@ func (s *CertificateService) issue(row *model.Certificate) error {
 	}).Error; err != nil {
 		return err
 	}
+	if row.NodeId > 0 {
+		// The order succeeded; a node that is down gets it on the next renew tick.
+		if err := s.pushToNode(row.Id); err != nil {
+			logger.Warning("certificate", row.Id, err)
+		}
+		return nil
+	}
 	s.reloadConsumers(row.CertFile)
+	return nil
+}
+
+// certPusher sends a pair to a node; tests replace it.
+var certPusher = func(n *model.Node, req *CertInstallRequest) error {
+	mgr := runtime.GetManager()
+	if mgr == nil {
+		return errors.New("runtime manager unavailable")
+	}
+	remote, err := mgr.RemoteFor(n)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return remote.InstallCert(ctx, req.Domain, req.CertPem, req.KeyPem)
+}
+
+// pushToNode installs the stored pair on the certificate's node and records
+// the outcome; a failure is retried by the renew job.
+func (s *CertificateService) pushToNode(id int) error {
+	row, err := s.GetById(id)
+	if err != nil {
+		return err
+	}
+	pushErr := s.push(row)
+	updates := map[string]any{"push_error": ""}
+	if pushErr != nil {
+		updates["push_error"] = pushErr.Error()
+	} else {
+		updates["pushed_at"] = time.Now().Unix()
+	}
+	if err := database.GetDB().Model(&model.Certificate{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return err
+	}
+	if pushErr != nil {
+		return fmt.Errorf("push to node %d: %w", row.NodeId, pushErr)
+	}
+	return nil
+}
+
+func (s *CertificateService) push(row *model.Certificate) error {
+	n, err := (&NodeService{}).GetById(row.NodeId)
+	if err != nil || n == nil {
+		return fmt.Errorf("node %d not found", row.NodeId)
+	}
+	certPEM, err := os.ReadFile(row.CertFile)
+	if err != nil {
+		return err
+	}
+	keyPEM, err := os.ReadFile(row.KeyFile)
+	if err != nil {
+		return err
+	}
+	return certPusher(n, &CertInstallRequest{
+		Domain: strings.TrimPrefix(row.Domains[0], "*."), CertPem: string(certPEM), KeyPem: string(keyPEM),
+	})
+}
+
+// Install stores a pair a master issued for this panel under certRoot and
+// watches it as imported; the master stays the one that renews it.
+func (s *CertificateService) Install(req *CertInstallRequest) error {
+	domain := dnsprovider.NormalizeName(req.Domain)
+	if domain == "" || strings.ContainsAny(domain, "/\\ ") || strings.HasPrefix(domain, ".") {
+		return common.NewErrorf("%q is not a domain", req.Domain)
+	}
+	pair, err := tls.X509KeyPair([]byte(req.CertPem), []byte(req.KeyPem))
+	if err != nil {
+		return common.NewErrorf("certificate and key do not form a pair: %v", err)
+	}
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
+	if err != nil {
+		return err
+	}
+	if err := leaf.VerifyHostname(domain); err != nil {
+		return common.NewErrorf("certificate does not cover %s", domain)
+	}
+	dir := filepath.Join(certRoot, domain)
+	certFile, keyFile := filepath.Join(dir, "fullchain.pem"), filepath.Join(dir, "privkey.pem")
+	if err := writePEMPair(certFile, keyFile, []byte(req.CertPem), []byte(req.KeyPem)); err != nil {
+		return err
+	}
+	row := &model.Certificate{}
+	err = database.GetDB().Where("cert_file = ?", certFile).First(row).Error
+	if err != nil && !database.IsNotFound(err) {
+		return err
+	}
+	row.Domains = leafDomains(leaf, domain)
+	row.Challenge, row.AutoRenew, row.Status, row.LastError = model.CertChallengeImported, false, model.CertStatusValid, ""
+	row.CertFile, row.KeyFile = certFile, keyFile
+	applyLeaf(row, leaf)
+	if err := database.GetDB().Save(row).Error; err != nil {
+		return err
+	}
+	s.reloadConsumers(certFile)
 	return nil
 }
 
@@ -480,6 +610,11 @@ func (s *CertificateService) RenewDue(now time.Time) {
 			}
 			if row, err = s.GetById(row.Id); err != nil {
 				continue
+			}
+		}
+		if row.NodeId > 0 && row.Status == model.CertStatusValid && (row.PushedAt == 0 || row.PushError != "") {
+			if err := s.pushToNode(row.Id); err != nil {
+				logger.Warning("certificate", row.Id, err)
 			}
 		}
 		if row.NotAfter > 0 && time.Unix(row.NotAfter, 0).Sub(now) < certWarnBefore {

@@ -6,6 +6,7 @@ export const CertFormSchema = z.object({
   challenge: z.enum(['dns01', 'http01', 'imported']),
   dnsProviderId: z.number(),
   autoRenew: z.boolean(),
+  nodeId: z.number(),
 });
 
 // An empty zone manages every zone the token can see; apiUrl may be a bare

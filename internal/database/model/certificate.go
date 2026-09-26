@@ -67,6 +67,12 @@ type Certificate struct {
 	DnsProviderId int  `json:"dnsProviderId" form:"dnsProviderId" gorm:"column:dns_provider_id;index" example:"1"`
 	AutoRenew     bool `json:"autoRenew" form:"autoRenew" gorm:"column:auto_renew" example:"true"`
 
+	// NodeId > 0: ordered here for that node and pushed to it after every
+	// issue, so nodes need neither acme.sh nor the DNS token.
+	NodeId    int    `json:"nodeId" form:"nodeId" gorm:"column:node_id;index" example:"0"`
+	PushedAt  int64  `json:"pushedAt" gorm:"column:pushed_at" example:"1700000000"`
+	PushError string `json:"pushError" gorm:"column:push_error"`
+
 	CertFile string `json:"certFile" gorm:"column:cert_file" example:"/root/cert/msk1.fire-core.ru/fullchain.pem"`
 	KeyFile  string `json:"keyFile" gorm:"column:key_file" example:"/root/cert/msk1.fire-core.ru/privkey.pem"`
 

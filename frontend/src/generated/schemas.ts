@@ -1151,6 +1151,29 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "CertInstallRequest": {
+    "description": "CertInstallRequest is a certificate a master issued for this panel.",
+    "properties": {
+      "certPem": {
+        "example": "-----BEGIN CERTIFICATE-----",
+        "type": "string"
+      },
+      "domain": {
+        "example": "msk1.fire-core.ru",
+        "type": "string"
+      },
+      "keyPem": {
+        "example": "-----BEGIN EC PRIVATE KEY-----",
+        "type": "string"
+      }
+    },
+    "required": [
+      "certPem",
+      "domain",
+      "keyPem"
+    ],
+    "type": "object"
+  },
   "Certificate": {
     "description": "Certificate is a TLS certificate the panel issues and renews, or only\nwatches for expiry. Files live at CertFile/KeyFile so Xray and the panel\nread them exactly as they read a hand-installed certificate.",
     "properties": {
@@ -1209,12 +1232,25 @@ export const SCHEMAS: Record<string, unknown> = {
       "lastError": {
         "type": "string"
       },
+      "nodeId": {
+        "description": "NodeId \u003e 0: ordered here for that node and pushed to it after every\nissue, so nodes need neither acme.sh nor the DNS token.",
+        "example": 0,
+        "type": "integer"
+      },
       "notAfter": {
         "example": 1707776000,
         "format": "int64",
         "type": "integer"
       },
       "notBefore": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
+      "pushError": {
+        "type": "string"
+      },
+      "pushedAt": {
         "example": 1700000000,
         "format": "int64",
         "type": "integer"
@@ -1240,8 +1276,11 @@ export const SCHEMAS: Record<string, unknown> = {
       "keyFile",
       "lastAttemptAt",
       "lastError",
+      "nodeId",
       "notAfter",
       "notBefore",
+      "pushError",
+      "pushedAt",
       "status",
       "updatedAt"
     ],
@@ -1271,12 +1310,17 @@ export const SCHEMAS: Record<string, unknown> = {
           "type": "string"
         },
         "type": "array"
+      },
+      "nodeId": {
+        "example": 0,
+        "type": "integer"
       }
     },
     "required": [
       "challenge",
       "dnsProviderId",
-      "domains"
+      "domains",
+      "nodeId"
     ],
     "type": "object"
   },

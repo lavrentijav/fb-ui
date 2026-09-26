@@ -1177,6 +1177,29 @@
         ],
         "type": "object"
       },
+      "CertInstallRequest": {
+        "description": "CertInstallRequest is a certificate a master issued for this panel.",
+        "properties": {
+          "certPem": {
+            "example": "-----BEGIN CERTIFICATE-----",
+            "type": "string"
+          },
+          "domain": {
+            "example": "msk1.fire-core.ru",
+            "type": "string"
+          },
+          "keyPem": {
+            "example": "-----BEGIN EC PRIVATE KEY-----",
+            "type": "string"
+          }
+        },
+        "required": [
+          "certPem",
+          "domain",
+          "keyPem"
+        ],
+        "type": "object"
+      },
       "Certificate": {
         "description": "Certificate is a TLS certificate the panel issues and renews, or only\nwatches for expiry. Files live at CertFile/KeyFile so Xray and the panel\nread them exactly as they read a hand-installed certificate.",
         "properties": {
@@ -1235,12 +1258,25 @@
           "lastError": {
             "type": "string"
           },
+          "nodeId": {
+            "description": "NodeId > 0: ordered here for that node and pushed to it after every\nissue, so nodes need neither acme.sh nor the DNS token.",
+            "example": 0,
+            "type": "integer"
+          },
           "notAfter": {
             "example": 1707776000,
             "format": "int64",
             "type": "integer"
           },
           "notBefore": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "pushError": {
+            "type": "string"
+          },
+          "pushedAt": {
             "example": 1700000000,
             "format": "int64",
             "type": "integer"
@@ -1266,8 +1302,11 @@
           "keyFile",
           "lastAttemptAt",
           "lastError",
+          "nodeId",
           "notAfter",
           "notBefore",
+          "pushError",
+          "pushedAt",
           "status",
           "updatedAt"
         ],
@@ -1297,12 +1336,17 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "nodeId": {
+            "example": 0,
+            "type": "integer"
           }
         },
         "required": [
           "challenge",
           "dnsProviderId",
-          "domains"
+          "domains",
+          "nodeId"
         ],
         "type": "object"
       },
@@ -11314,8 +11358,11 @@
                       "keyFile": "/root/cert/msk1.fire-core.ru/privkey.pem",
                       "lastAttemptAt": 1700000000,
                       "lastError": "",
+                      "nodeId": 0,
                       "notAfter": 1707776000,
                       "notBefore": 1700000000,
+                      "pushError": "",
+                      "pushedAt": 1700000000,
                       "status": "valid",
                       "updatedAt": 0
                     }
@@ -11380,8 +11427,11 @@
                     "keyFile": "/root/cert/msk1.fire-core.ru/privkey.pem",
                     "lastAttemptAt": 1700000000,
                     "lastError": "",
+                    "nodeId": 0,
                     "notAfter": 1707776000,
                     "notBefore": 1700000000,
+                    "pushError": "",
+                    "pushedAt": 1700000000,
                     "status": "valid",
                     "updatedAt": 0
                   }
@@ -11397,7 +11447,7 @@
         "tags": [
           "Certificates"
         ],
-        "summary": "Register a certificate to issue. dnsProviderId 0 picks the DNS provider whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. Issue it afterwards with /issue/:id.",
+        "summary": "Register a certificate to issue. dnsProviderId 0 picks the DNS account whose zone is the longest suffix of the first domain; every domain must sit in that zone. Wildcards need dns01. nodeId > 0 orders it here for that node (dns01 only) and pushes it there after every issue. Issue it afterwards with /issue/:id.",
         "operationId": "post_panel_api_certs_add",
         "requestBody": {
           "required": true,
@@ -11413,7 +11463,8 @@
                 ],
                 "challenge": "dns01",
                 "dnsProviderId": 0,
-                "autoRenew": true
+                "autoRenew": true,
+                "nodeId": 0
               }
             }
           }
@@ -11453,8 +11504,11 @@
                     "keyFile": "/root/cert/msk1.fire-core.ru/privkey.pem",
                     "lastAttemptAt": 1700000000,
                     "lastError": "",
+                    "nodeId": 0,
                     "notAfter": 1707776000,
                     "notBefore": 1700000000,
+                    "pushError": "",
+                    "pushedAt": 1700000000,
                     "status": "valid",
                     "updatedAt": 0
                   }
@@ -11752,6 +11806,51 @@
               "example": {
                 "email": "ops@example.com",
                 "directory": "https://acme-v02.api.letsencrypt.org/directory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/certs/install": {
+      "post": {
+        "tags": [
+          "Certificates"
+        ],
+        "summary": "Node side: store a certificate the master issued for this panel under /root/cert/<domain>/ and reload what serves it. The pair and the domain are checked; the row is watched as imported because the master renews it. Allowed for node-sync tokens.",
+        "operationId": "post_panel_api_certs_install",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "domain": "msk1.fire-core.ru",
+                "certPem": "-----BEGIN CERTIFICATE-----...",
+                "keyPem": "-----BEGIN EC PRIVATE KEY-----..."
               }
             }
           }
