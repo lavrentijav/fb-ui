@@ -21,7 +21,7 @@ type ReleaseSource struct {
 	Fallback map[string][]byte
 }
 
-var releaseScripts = []string{"x-ui.sh", "x-ui.service.debian", "x-ui.service.arch", "x-ui.service.rhel"}
+var releaseScripts = []string{"x-ui.sh", "x-ui.rc", "x-ui.service.debian", "x-ui.service.arch", "x-ui.service.rhel"}
 
 // shippedBinFile keeps the master's own state out of the archive: config.json
 // and mtproto/ hold this panel's inbounds and secrets, not release assets.
