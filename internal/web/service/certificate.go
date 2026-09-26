@@ -24,6 +24,8 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/util/certreload"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
+
+	"gorm.io/gorm"
 )
 
 // certRoot is where issued certificates are written: the same
@@ -59,7 +61,9 @@ type CertificateRequest struct {
 	Challenge     string   `json:"challenge" form:"challenge" example:"dns01"`
 	DnsProviderId int      `json:"dnsProviderId" form:"dnsProviderId" example:"1"`
 	AutoRenew     *bool    `json:"autoRenew" form:"autoRenew" example:"true"`
-	NodeId        int      `json:"nodeId" form:"nodeId" example:"0"`
+	// NodeIds are the panels the certificate is installed on (0 is this
+	// one); several nodes behind one domain share it.
+	NodeIds []int `json:"nodeIds" form:"nodeIds" example:"[3,4]"`
 }
 
 // CertInstallRequest is a certificate a master issued for this panel.
@@ -91,13 +95,29 @@ func certLock(id int) *sync.Mutex {
 
 func (s *CertificateService) List() ([]*model.Certificate, error) {
 	var rows []*model.Certificate
-	err := database.GetDB().Order("not_after asc, id asc").Find(&rows).Error
-	return rows, err
+	if err := database.GetDB().Order("not_after asc, id asc").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	var all []model.CertificateDelivery
+	if err := database.GetDB().Order("node_id asc").Find(&all).Error; err != nil {
+		return nil, err
+	}
+	byCert := map[int][]model.CertificateDelivery{}
+	for _, d := range all {
+		byCert[d.CertificateId] = append(byCert[d.CertificateId], d)
+	}
+	for _, r := range rows {
+		r.Deliveries = byCert[r.Id]
+	}
+	return rows, nil
 }
 
 func (s *CertificateService) GetById(id int) (*model.Certificate, error) {
 	row := &model.Certificate{}
 	if err := database.GetDB().Where("id = ?", id).First(row).Error; err != nil {
+		return nil, err
+	}
+	if err := database.GetDB().Where("certificate_id = ?", id).Order("node_id asc").Find(&row.Deliveries).Error; err != nil {
 		return nil, err
 	}
 	return row, nil
@@ -156,7 +176,7 @@ func (s *CertificateService) fromRequest(dst *model.Certificate, req *Certificat
 			}
 		}
 	case model.CertChallengeHTTP01:
-		if req.NodeId > 0 {
+		if hasRemoteNode(req.NodeIds) {
 			return common.NewError("a node's certificate is ordered here, so it needs dns01")
 		}
 		dst.DnsProviderId = 0
@@ -168,15 +188,16 @@ func (s *CertificateService) fromRequest(dst *model.Certificate, req *Certificat
 	default:
 		return common.NewErrorf("challenge %q cannot be issued; use dns01 or http01", dst.Challenge)
 	}
-	if req.NodeId > 0 && dst.NodeId != req.NodeId {
-		if _, err := (&NodeService{}).GetById(req.NodeId); err != nil {
-			return common.NewErrorf("node %d not found", req.NodeId)
+	for _, id := range req.NodeIds {
+		if id > 0 {
+			if _, err := (&NodeService{}).GetById(id); err != nil {
+				return common.NewErrorf("node %d not found", id)
+			}
 		}
-		dst.NodeId, dst.PushedAt = req.NodeId, 0
 	}
 	if dst.CertFile == "" {
 		dir := filepath.Join(certRoot, strings.TrimPrefix(domains[0], "*."))
-		if dst.NodeId > 0 {
+		if hasRemoteNode(req.NodeIds) {
 			dir = nodeCertDir(domains[0])
 		}
 		dst.CertFile = filepath.Join(dir, "fullchain.pem")
@@ -200,7 +221,50 @@ func (s *CertificateService) Create(req *CertificateRequest) (*model.Certificate
 	if err := database.GetDB().Create(row).Error; err != nil {
 		return nil, err
 	}
-	return row, nil
+	if err := s.setDeliveries(row.Id, req.NodeIds); err != nil {
+		return nil, err
+	}
+	return s.GetById(row.Id)
+}
+
+func hasRemoteNode(ids []int) bool {
+	for _, id := range ids {
+		if id > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// setDeliveries makes ids the certificate's recipients. A recipient kept
+// keeps its state; a new one is owed the current copy.
+func (s *CertificateService) setDeliveries(certId int, ids []int) error {
+	want := map[int]bool{}
+	for _, id := range ids {
+		if id >= 0 {
+			want[id] = true
+		}
+	}
+	return database.GetDB().Transaction(func(tx *gorm.DB) error {
+		var have []model.CertificateDelivery
+		if err := tx.Where("certificate_id = ?", certId).Find(&have).Error; err != nil {
+			return err
+		}
+		for _, d := range have {
+			if !want[d.NodeId] {
+				if err := tx.Delete(&d).Error; err != nil {
+					return err
+				}
+			}
+			delete(want, d.NodeId)
+		}
+		for id := range want {
+			if err := tx.Create(&model.CertificateDelivery{CertificateId: certId, NodeId: id}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // ensureNodeCert returns the certificate a node being provisioned will get,
@@ -228,9 +292,9 @@ func (s *CertificateService) ensureNodeCert(domain string, dnsProviderId int) (*
 // attachToNode binds a provisioning certificate to the node it now lives on;
 // the provisioner already copied the files, so it counts as pushed.
 func (s *CertificateService) attachToNode(id, nodeId int) error {
-	return database.GetDB().Model(&model.Certificate{}).Where("id = ?", id).Updates(map[string]any{
-		"node_id": nodeId, "pushed_at": time.Now().Unix(), "push_error": "",
-	}).Error
+	d := model.CertificateDelivery{CertificateId: id, NodeId: nodeId}
+	return database.GetDB().Where(d).Assign(map[string]any{"pushed_at": time.Now().Unix(), "push_error": ""}).
+		FirstOrCreate(&d).Error
 }
 
 func (s *CertificateService) Update(id int, req *CertificateRequest) error {
@@ -247,12 +311,21 @@ func (s *CertificateService) Update(id int, req *CertificateRequest) error {
 	if err := s.fromRequest(row, req); err != nil {
 		return err
 	}
-	return database.GetDB().Save(row).Error
+	if err := database.GetDB().Save(row).Error; err != nil {
+		return err
+	}
+	if req.NodeIds == nil {
+		return nil
+	}
+	return s.setDeliveries(id, req.NodeIds)
 }
 
 // Delete forgets a certificate; the PEM files stay on disk because Xray or
 // the panel may still be pointed at them.
 func (s *CertificateService) Delete(id int) error {
+	if err := database.GetDB().Where("certificate_id = ?", id).Delete(&model.CertificateDelivery{}).Error; err != nil {
+		return err
+	}
 	return database.GetDB().Where("id = ?", id).Delete(&model.Certificate{}).Error
 }
 
@@ -344,12 +417,14 @@ func (s *CertificateService) issue(row *model.Certificate) error {
 	}).Error; err != nil {
 		return err
 	}
-	if row.NodeId > 0 {
-		// The order succeeded; a node that is down gets it on the next renew tick.
-		if err := s.pushToNode(row.Id); err != nil {
-			logger.Warning("certificate", row.Id, err)
-		}
-		return nil
+	// Every recipient is owed the new copy; one that is down gets it on the
+	// next renew tick instead of failing the order.
+	if err := database.GetDB().Model(&model.CertificateDelivery{}).Where("certificate_id = ?", row.Id).
+		Updates(map[string]any{"pushed_at": 0, "push_error": ""}).Error; err != nil {
+		return err
+	}
+	if err := s.deliver(row.Id); err != nil {
+		logger.Warning("certificate", row.Id, err)
 	}
 	s.reloadConsumers(row.CertFile)
 	return nil
@@ -370,34 +445,43 @@ var certPusher = func(n *model.Node, req *CertInstallRequest) error {
 	return remote.InstallCert(ctx, req.Domain, req.CertPem, req.KeyPem)
 }
 
-// pushToNode installs the stored pair on the certificate's node and records
-// the outcome; a failure is retried by the renew job.
-func (s *CertificateService) pushToNode(id int) error {
+// deliver installs the stored pair on every recipient still owed it and
+// records each outcome; failures are retried by the renew job.
+func (s *CertificateService) deliver(id int) error {
 	row, err := s.GetById(id)
 	if err != nil {
 		return err
 	}
-	pushErr := s.push(row)
-	updates := map[string]any{"push_error": ""}
-	if pushErr != nil {
-		updates["push_error"] = pushErr.Error()
-	} else {
-		updates["pushed_at"] = time.Now().Unix()
+	var errs []error
+	for _, d := range row.Deliveries {
+		if d.PushedAt != 0 && d.PushError == "" {
+			continue
+		}
+		pushErr := s.push(row, d.NodeId)
+		updates := map[string]any{"push_error": ""}
+		if pushErr != nil {
+			updates["push_error"] = pushErr.Error()
+			errs = append(errs, fmt.Errorf("push to node %d: %w", d.NodeId, pushErr))
+		} else {
+			updates["pushed_at"] = time.Now().Unix()
+		}
+		if err := database.GetDB().Model(&model.CertificateDelivery{}).Where("id = ?", d.Id).Updates(updates).Error; err != nil {
+			return err
+		}
 	}
-	if err := database.GetDB().Model(&model.Certificate{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return err
-	}
-	if pushErr != nil {
-		return fmt.Errorf("push to node %d: %w", row.NodeId, pushErr)
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
-func (s *CertificateService) push(row *model.Certificate) error {
-	n, err := (&NodeService{}).GetById(row.NodeId)
-	if err != nil || n == nil {
-		return fmt.Errorf("node %d not found", row.NodeId)
+func owesDelivery(row *model.Certificate) bool {
+	for _, d := range row.Deliveries {
+		if d.PushedAt == 0 || d.PushError != "" {
+			return true
+		}
 	}
+	return false
+}
+
+func (s *CertificateService) push(row *model.Certificate, nodeId int) error {
 	certPEM, err := os.ReadFile(row.CertFile)
 	if err != nil {
 		return err
@@ -406,9 +490,17 @@ func (s *CertificateService) push(row *model.Certificate) error {
 	if err != nil {
 		return err
 	}
-	return certPusher(n, &CertInstallRequest{
+	req := &CertInstallRequest{
 		Domain: strings.TrimPrefix(row.Domains[0], "*."), CertPem: string(certPEM), KeyPem: string(keyPEM),
-	})
+	}
+	if nodeId == SelfPanelId {
+		return s.Install(req)
+	}
+	n, err := (&NodeService{}).GetById(nodeId)
+	if err != nil || n == nil {
+		return fmt.Errorf("node %d not found", nodeId)
+	}
+	return certPusher(n, req)
 }
 
 // Install stores a pair a master issued for this panel under certRoot and
@@ -643,8 +735,8 @@ func (s *CertificateService) RenewDue(now time.Time) {
 				continue
 			}
 		}
-		if row.NodeId > 0 && row.Status == model.CertStatusValid && (row.PushedAt == 0 || row.PushError != "") {
-			if err := s.pushToNode(row.Id); err != nil {
+		if row.Status == model.CertStatusValid && owesDelivery(row) {
+			if err := s.deliver(row.Id); err != nil {
 				logger.Warning("certificate", row.Id, err)
 			}
 		}
@@ -744,10 +836,14 @@ func (idx *sniCertIndex) rebuild() {
 	idx.builtAt = time.Now()
 	idx.byName = map[string]*certreload.Reloader{}
 	var rows []*model.Certificate
-	if err := database.GetDB().Where("node_id = 0 AND status = ?", model.CertStatusValid).Find(&rows).Error; err != nil {
+	if err := database.GetDB().Where("status = ?", model.CertStatusValid).Find(&rows).Error; err != nil {
 		return
 	}
 	for _, row := range rows {
+		// A copy kept here for other panels is not this panel's to serve.
+		if strings.HasPrefix(row.CertFile, filepath.Join(certRoot, ".nodes")+string(filepath.Separator)) {
+			continue
+		}
 		r := idx.files[row.CertFile]
 		if r == nil {
 			var err error

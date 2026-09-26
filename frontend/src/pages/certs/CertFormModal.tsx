@@ -18,7 +18,7 @@ interface CertFormModalProps {
 }
 
 function defaults(): CertFormValues {
-  return { domainsText: '', challenge: 'dns01', dnsProviderId: 0, autoRenew: true, nodeId: 0 };
+  return { domainsText: '', challenge: 'dns01', dnsProviderId: 0, autoRenew: true, nodeIds: [] };
 }
 
 export default function CertFormModal({ open, cert, dns, save, onOpenChange }: CertFormModalProps) {
@@ -43,7 +43,7 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
             challenge: cert.challenge,
             dnsProviderId: cert.dnsProviderId,
             autoRenew: cert.autoRenew,
-            nodeId: cert.nodeId,
+            nodeIds: (cert.deliveries ?? []).map((d) => d.nodeId),
           }
         : defaults(),
     );
@@ -62,7 +62,7 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
         challenge: result.data.challenge,
         dnsProviderId: result.data.challenge === 'dns01' ? result.data.dnsProviderId : 0,
         autoRenew: result.data.autoRenew,
-        nodeId: result.data.challenge === 'dns01' ? result.data.nodeId : 0,
+        nodeIds: result.data.challenge === 'dns01' ? result.data.nodeIds : [],
       });
       if (msg?.success) onOpenChange(false);
     } finally {
@@ -128,10 +128,13 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
             {!imported && challenge === 'dns01' && (
               <FormField
                 label={t('pages.certs.forNode')}
-                name="nodeId"
+                name="nodeIds"
                 extra={t('pages.certs.forNodeHint')}
               >
                 <Select
+                  mode="multiple"
+                  allowClear
+                  placeholder={t('pages.certs.thisPanelOnly')}
                   options={[
                     { value: 0, label: t('pages.certs.thisPanel') },
                     ...nodes.map((n) => ({ value: n.id, label: `${n.name} (${n.address})` })),

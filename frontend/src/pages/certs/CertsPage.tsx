@@ -134,13 +134,15 @@ export default function CertsPage() {
             <Space size={4} wrap>
               <Tag color="blue">{c.challenge === 'dns01' ? 'DNS-01' : 'HTTP-01'}</Tag>
               {c.dnsProviderId > 0 && <Tag>{dnsNameById.get(c.dnsProviderId) ?? '?'}</Tag>}
-              {c.nodeId > 0 && (
-                <Tooltip title={c.pushError || undefined}>
-                  <Tag color={c.pushError ? 'red' : c.pushedAt > 0 ? 'green' : 'gold'}>
-                    {t('pages.certs.onNode', { name: nodeNameById.get(c.nodeId) ?? c.nodeId })}
+              {(c.deliveries ?? []).map((d) => (
+                <Tooltip key={d.nodeId} title={d.pushError || undefined}>
+                  <Tag color={d.pushError ? 'red' : d.pushedAt > 0 ? 'green' : 'gold'}>
+                    {d.nodeId === 0
+                      ? t('pages.certs.thisPanel')
+                      : t('pages.certs.onNode', { name: nodeNameById.get(d.nodeId) ?? d.nodeId })}
                   </Tag>
                 </Tooltip>
-              )}
+              ))}
             </Space>
           ),
       },

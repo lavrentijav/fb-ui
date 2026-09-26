@@ -384,6 +384,7 @@ export interface Certificate {
   certFile: string;
   challenge: string;
   createdAt: number;
+  deliveries: CertificateDelivery[];
   dnsProviderId: number;
   domains: string[];
   id: number;
@@ -391,13 +392,18 @@ export interface Certificate {
   keyFile: string;
   lastAttemptAt: number;
   lastError: string;
-  nodeId: number;
   notAfter: number;
   notBefore: number;
-  pushError: string;
-  pushedAt: number;
   status: string;
   updatedAt: number;
+}
+
+export interface CertificateDelivery {
+  certificateId: number;
+  id: number;
+  nodeId: number;
+  pushError: string;
+  pushedAt: number;
 }
 
 export interface CertificateRequest {
@@ -405,7 +411,7 @@ export interface CertificateRequest {
   challenge: string;
   dnsProviderId: number;
   domains: string[];
-  nodeId: number;
+  nodeIds: number[];
 }
 
 export interface Client {

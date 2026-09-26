@@ -64,6 +64,7 @@ func migrationModels() []any {
 		&model.DnsProvider{},
 		&model.Certificate{},
 		&model.AcmeAccount{},
+		&model.CertificateDelivery{},
 		&model.EdgeRoute{},
 		&model.SubBalancer{},
 	}
