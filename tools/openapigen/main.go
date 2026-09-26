@@ -107,6 +107,7 @@ func run(root, outDir string) error {
 				"AcmeAccountRequest",
 				"DnsProviderRequest",
 				"DnsZone",
+				"CertInstallRequest",
 				"NodeProvisionRequest",
 				"ProvisionJob",
 				"ProvisionStep",

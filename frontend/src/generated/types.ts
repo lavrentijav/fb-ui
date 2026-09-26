@@ -281,6 +281,12 @@ export interface CascadeLink {
   updatedAt: number;
 }
 
+export interface CertInstallRequest {
+  certPem: string;
+  domain: string;
+  keyPem: string;
+}
+
 export interface Certificate {
   autoRenew: boolean;
   certFile: string;
@@ -293,8 +299,11 @@ export interface Certificate {
   keyFile: string;
   lastAttemptAt: number;
   lastError: string;
+  nodeId: number;
   notAfter: number;
   notBefore: number;
+  pushError: string;
+  pushedAt: number;
   status: string;
   updatedAt: number;
 }
@@ -304,6 +313,7 @@ export interface CertificateRequest {
   challenge: string;
   dnsProviderId: number;
   domains: string[];
+  nodeId: number;
 }
 
 export interface Client {

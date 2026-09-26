@@ -44,6 +44,7 @@ import AppSidebar from '@/layouts/AppSidebar';
 import { setMessageInstance } from '@/utils/messageBus';
 import CertFormModal from './CertFormModal';
 import DnsProviderModal from './DnsProviderModal';
+import { useNodesQuery } from '@/api/queries/useNodesQuery';
 
 const LE_PROD = 'https://acme-v02.api.letsencrypt.org/directory';
 const LE_STAGING = 'https://acme-staging-v02.api.letsencrypt.org/directory';
@@ -74,6 +75,8 @@ export default function CertsPage() {
   const [directory, setDirectory] = useState<string | null>(null);
 
   const dnsNameById = useMemo(() => new Map(dns.map((d) => [d.id, d.name])), [dns]);
+  const { nodes } = useNodesQuery();
+  const nodeNameById = useMemo(() => new Map(nodes.map((n) => [n.id, n.name])), [nodes]);
 
   const saveCert = useCallback(
     (p: CertificateRequest) => (certRecord ? api.updateCert(certRecord.id, p) : api.createCert(p)),
@@ -131,6 +134,13 @@ export default function CertsPage() {
             <Space size={4} wrap>
               <Tag color="blue">{c.challenge === 'dns01' ? 'DNS-01' : 'HTTP-01'}</Tag>
               {c.dnsProviderId > 0 && <Tag>{dnsNameById.get(c.dnsProviderId) ?? '?'}</Tag>}
+              {c.nodeId > 0 && (
+                <Tooltip title={c.pushError || undefined}>
+                  <Tag color={c.pushError ? 'red' : c.pushedAt > 0 ? 'green' : 'gold'}>
+                    {t('pages.certs.onNode', { name: nodeNameById.get(c.nodeId) ?? c.nodeId })}
+                  </Tag>
+                </Tooltip>
+              )}
             </Space>
           ),
       },
@@ -236,7 +246,7 @@ export default function CertsPage() {
         ),
       },
     ],
-    [t, dnsNameById, api, messageApi, confirmDelete],
+    [t, dnsNameById, nodeNameById, api, messageApi, confirmDelete],
   );
 
   const dnsColumns = useMemo<ColumnsType<DnsProvider>>(

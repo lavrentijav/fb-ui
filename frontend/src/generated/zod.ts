@@ -304,6 +304,13 @@ export const CascadeLinkSchema = z.object({
 });
 export type CascadeLink = z.infer<typeof CascadeLinkSchema>;
 
+export const CertInstallRequestSchema = z.object({
+  certPem: z.string(),
+  domain: z.string(),
+  keyPem: z.string(),
+});
+export type CertInstallRequest = z.infer<typeof CertInstallRequestSchema>;
+
 export const CertificateSchema = z.object({
   autoRenew: z.boolean(),
   certFile: z.string(),
@@ -316,8 +323,11 @@ export const CertificateSchema = z.object({
   keyFile: z.string(),
   lastAttemptAt: z.number().int(),
   lastError: z.string(),
+  nodeId: z.number().int(),
   notAfter: z.number().int(),
   notBefore: z.number().int(),
+  pushError: z.string(),
+  pushedAt: z.number().int(),
   status: z.string(),
   updatedAt: z.number().int(),
 });
@@ -328,6 +338,7 @@ export const CertificateRequestSchema = z.object({
   challenge: z.string(),
   dnsProviderId: z.number().int(),
   domains: z.array(z.string()),
+  nodeId: z.number().int(),
 });
 export type CertificateRequest = z.infer<typeof CertificateRequestSchema>;
 

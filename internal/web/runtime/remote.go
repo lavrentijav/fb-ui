@@ -665,6 +665,14 @@ func (r *Remote) GetWebCertFiles(ctx context.Context) (*WebCertFiles, error) {
 	return &files, nil
 }
 
+// InstallCert hands the node a certificate this panel issued for it; the node
+// writes it under its cert root and reloads whatever serves it.
+func (r *Remote) InstallCert(ctx context.Context, domain, certPEM, keyPEM string) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/certs/install",
+		map[string]string{"domain": domain, "certPem": certPEM, "keyPem": keyPEM})
+	return err
+}
+
 // GetDescendants fetches the node's read-only summaries of the nodes IT
 // manages, so this panel can surface them as transitive sub-nodes in a chained
 // topology (#4983). Best-effort: an old-build node without the endpoint returns

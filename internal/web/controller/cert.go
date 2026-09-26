@@ -31,6 +31,7 @@ func (a *CertController) initRouter(certs *gin.RouterGroup, dns *gin.RouterGroup
 	certs.POST("/apply/:id", a.apply)
 	certs.GET("/account", a.account)
 	certs.POST("/account", a.setAccount)
+	certs.POST("/install", a.install)
 
 	dns.GET("/list", a.dnsList)
 	dns.GET("/get/:id", a.dnsGet)
@@ -136,6 +137,16 @@ func (a *CertController) setAccount(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, I18nWeb(c, "pages.certs.toasts.save"), a.certService.SetAccount(req))
+}
+
+// install receives a certificate the master issued for this panel.
+func (a *CertController) install(c *gin.Context) {
+	req := &service.CertInstallRequest{}
+	if err := c.ShouldBind(req); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.certs.toasts.save"), err)
+		return
+	}
+	jsonMsg(c, I18nWeb(c, "pages.certs.toasts.save"), a.certService.Install(req))
 }
 
 func (a *CertController) dnsList(c *gin.Context) {

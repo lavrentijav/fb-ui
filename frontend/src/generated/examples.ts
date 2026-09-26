@@ -266,6 +266,11 @@ export const EXAMPLES: Record<string, unknown> = {
     "targetPanelId": 0,
     "updatedAt": 0
   },
+  "CertInstallRequest": {
+    "certPem": "-----BEGIN CERTIFICATE-----",
+    "domain": "msk1.corp.example",
+    "keyPem": "-----BEGIN EC PRIVATE KEY-----"
+  },
   "Certificate": {
     "autoRenew": true,
     "certFile": "/root/cert/msk1.corp.example/fullchain.pem",
@@ -280,8 +285,11 @@ export const EXAMPLES: Record<string, unknown> = {
     "keyFile": "/root/cert/msk1.corp.example/privkey.pem",
     "lastAttemptAt": 1700000000,
     "lastError": "",
+    "nodeId": 0,
     "notAfter": 1707776000,
     "notBefore": 1700000000,
+    "pushError": "",
+    "pushedAt": 1700000000,
     "status": "valid",
     "updatedAt": 0
   },
@@ -291,7 +299,8 @@ export const EXAMPLES: Record<string, unknown> = {
     "dnsProviderId": 1,
     "domains": [
       "msk1.corp.example"
-    ]
+    ],
+    "nodeId": 0
   },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",
