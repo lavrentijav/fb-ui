@@ -1725,10 +1725,14 @@
         "type": "object"
       },
       "DnsProvider": {
-        "description": "DnsProvider is one DNS zone this panel may write records into: node A\nrecords during provisioning, ACME DNS-01 tokens and multi-address domains.",
+        "description": "DnsProvider is one DNS account this panel may write records into: node A\nrecords during provisioning, ACME DNS-01 tokens and multi-address domains.\nAn empty Zone means every zone the token can see, discovered into Zones.",
         "properties": {
+          "apiPort": {
+            "example": 5380,
+            "type": "integer"
+          },
           "apiUrl": {
-            "example": "https://ns1.example.com:53443",
+            "example": "ns1.example.com",
             "type": "string"
           },
           "createdAt": {
@@ -1752,7 +1756,7 @@
               "cloudflare",
               "technitium"
             ],
-            "example": "cloudflare",
+            "example": "technitium",
             "type": "string"
           },
           "updatedAt": {
@@ -1760,11 +1764,26 @@
             "type": "integer"
           },
           "zone": {
-            "example": "fire-core.ru",
             "type": "string"
+          },
+          "zones": {
+            "example": [
+              "fire-core.ru",
+              "boykisser.online"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "zonesSyncedAt": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
+          "apiPort",
           "apiUrl",
           "createdAt",
           "hasCredential",
@@ -1772,27 +1791,62 @@
           "name",
           "type",
           "updatedAt",
-          "zone"
+          "zone",
+          "zones",
+          "zonesSyncedAt"
         ],
         "type": "object"
       },
       "DnsProviderRequest": {
-        "description": "DnsProviderRequest is the add/update payload. An empty Credential on update\nkeeps the stored one, so the UI can edit a zone without re-pasting a token.",
+        "description": "DnsProviderRequest is the add/update payload. An empty Credential on update\nkeeps the stored one, so the UI can edit an account without re-pasting a\ntoken. An empty Zone manages every zone the token can see.",
         "properties": {
+          "apiPort": {
+            "example": 5380,
+            "type": "integer"
+          },
           "apiUrl": {
-            "example": "https://ns1.example.com:53443",
+            "example": "ns1.example.com",
             "type": "string"
           },
           "credential": {
-            "example": "cf-api-token",
+            "example": "api-token",
             "type": "string"
           },
           "name": {
-            "example": "fire-core",
+            "example": "technitium",
             "type": "string"
           },
           "type": {
-            "example": "cloudflare",
+            "example": "technitium",
+            "type": "string"
+          },
+          "zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiPort",
+          "apiUrl",
+          "credential",
+          "name",
+          "type",
+          "zone"
+        ],
+        "type": "object"
+      },
+      "DnsZone": {
+        "description": "DnsZone is one zone the panel can write, with the account that owns it.",
+        "properties": {
+          "providerId": {
+            "example": 1,
+            "type": "integer"
+          },
+          "providerName": {
+            "example": "technitium",
+            "type": "string"
+          },
+          "providerType": {
+            "example": "technitium",
             "type": "string"
           },
           "zone": {
@@ -1801,10 +1855,9 @@
           }
         },
         "required": [
-          "apiUrl",
-          "credential",
-          "name",
-          "type",
+          "providerId",
+          "providerName",
+          "providerType",
           "zone"
         ],
         "type": "object"
@@ -3152,6 +3205,105 @@
         ],
         "type": "object"
       },
+      "NodeProvisionRequest": {
+        "description": "NodeProvisionRequest is \"here is a fresh server, make it a node\": an address,\nroot credentials and the name it should get. The SSH secrets are used for\nthis one job and never stored.",
+        "properties": {
+          "acmeEmail": {
+            "example": "ops@example.com",
+            "type": "string"
+          },
+          "allowPrivateAddress": {
+            "description": "AllowPrivateAddress lets the node sit on a private network with this\npanel, the same opt-in the Nodes form has.",
+            "example": false,
+            "type": "boolean"
+          },
+          "authorizedKey": {
+            "example": "ssh-ed25519 AAAA... ops",
+            "type": "string"
+          },
+          "disablePasswordAuth": {
+            "example": false,
+            "type": "boolean"
+          },
+          "dnsProviderId": {
+            "example": 0,
+            "type": "integer"
+          },
+          "domain": {
+            "description": "Domain is the node's FQDN. Empty with a Zone means <name>.<zone>;\nempty without one installs on the bare IP.",
+            "example": "msk2.fire-core.ru",
+            "type": "string"
+          },
+          "force": {
+            "example": false,
+            "type": "boolean"
+          },
+          "host": {
+            "example": "203.0.113.10",
+            "type": "string"
+          },
+          "hostKeySha256": {
+            "type": "string"
+          },
+          "installSource": {
+            "description": "InstallSource \"self\" ships this panel's own build (the node never needs\nGitHub); \"github\" lets install.sh download the latest release.",
+            "example": "self",
+            "type": "string"
+          },
+          "name": {
+            "example": "msk2",
+            "type": "string"
+          },
+          "panelPort": {
+            "example": 0,
+            "type": "integer"
+          },
+          "skipDns": {
+            "example": false,
+            "type": "boolean"
+          },
+          "sshPassword": {
+            "example": "root-password",
+            "type": "string"
+          },
+          "sshPort": {
+            "example": 22,
+            "type": "integer"
+          },
+          "sshPrivateKey": {
+            "type": "string"
+          },
+          "sshUser": {
+            "example": "root",
+            "type": "string"
+          },
+          "zone": {
+            "example": "fire-core.ru",
+            "type": "string"
+          }
+        },
+        "required": [
+          "acmeEmail",
+          "allowPrivateAddress",
+          "authorizedKey",
+          "disablePasswordAuth",
+          "dnsProviderId",
+          "domain",
+          "force",
+          "host",
+          "hostKeySha256",
+          "installSource",
+          "name",
+          "panelPort",
+          "skipDns",
+          "sshPassword",
+          "sshPort",
+          "sshPrivateKey",
+          "sshUser",
+          "zone"
+        ],
+        "type": "object"
+      },
       "NodeRoleChangeRequest": {
         "description": "NodeRoleChangeRequest carries only what the *target* role needs. Fields of\nthe role being left stay on the row, so flipping back does not re-ask them.",
         "properties": {
@@ -3719,6 +3871,118 @@
         ],
         "type": "object"
       },
+      "ProvisionJob": {
+        "description": "ProvisionJob is the observable state of one provisioning run.",
+        "properties": {
+          "createdAt": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "domain": {
+            "example": "msk2.fire-core.ru",
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "host": {
+            "example": "203.0.113.10",
+            "type": "string"
+          },
+          "hostKey": {
+            "example": "SHA256:abc",
+            "type": "string"
+          },
+          "id": {
+            "example": "p-1700000000-1",
+            "type": "string"
+          },
+          "log": {
+            "example": [
+              "== preflight"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "msk2",
+            "type": "string"
+          },
+          "nodeId": {
+            "example": 3,
+            "type": "integer"
+          },
+          "panelUrl": {
+            "example": "https://msk2.fire-core.ru:24501/abc/",
+            "type": "string"
+          },
+          "status": {
+            "description": "running|done|failed",
+            "example": "running",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ProvisionStep"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "createdAt",
+          "domain",
+          "error",
+          "host",
+          "hostKey",
+          "id",
+          "log",
+          "name",
+          "nodeId",
+          "panelUrl",
+          "status",
+          "steps"
+        ],
+        "type": "object"
+      },
+      "ProvisionStep": {
+        "description": "ProvisionStep is one stage of a job as the UI shows it.",
+        "properties": {
+          "detail": {
+            "example": "installed from this panel's build",
+            "type": "string"
+          },
+          "finishedAt": {
+            "example": 1700000060,
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "example": "install",
+            "type": "string"
+          },
+          "startedAt": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "description": "pending|running|done|skipped|failed",
+            "example": "done",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "finishedAt",
+          "name",
+          "startedAt",
+          "status"
+        ],
+        "type": "object"
+      },
       "RealityScanResult": {
         "properties": {
           "alpn": {
@@ -3918,7 +4182,7 @@
     },
     {
       "name": "DNS providers",
-      "description": "DNS zones the panel may write records into: ACME dns01 tokens today, node records during provisioning next. Cloudflare takes an API token with Zone.DNS edit rights; a self-hosted Technitium server takes its API URL and an API token from its console. The token is write-only: views report hasCredential instead. All endpoints under /panel/api/dns."
+      "description": "DNS accounts the panel writes records into: node A records during provisioning and ACME dns01 tokens. An account is a server address, port and API token; the panel reads every primary zone the token can manage and picks the owning zone per name, longest match first. Leave zone empty to manage all of them, or set it to pin the account to one zone. Cloudflare takes an API token with Zone.DNS edit rights; a self-hosted Technitium server takes its host (or URL), port (5380 by default) and an API token from its console. The token is write-only: views report hasCredential instead. All endpoints under /panel/api/dns."
     },
     {
       "name": "Filters",
@@ -11520,7 +11784,7 @@
         "tags": [
           "DNS providers"
         ],
-        "summary": "List every DNS provider.",
+        "summary": "List every DNS account with its discovered zones.",
         "operationId": "get_panel_api_dns_list",
         "responses": {
           "200": {
@@ -11548,14 +11812,20 @@
                   "success": true,
                   "obj": [
                     {
-                      "apiUrl": "https://ns1.example.com:53443",
+                      "apiPort": 5380,
+                      "apiUrl": "ns1.example.com",
                       "createdAt": 0,
                       "hasCredential": true,
                       "id": 1,
                       "name": "fire-core",
-                      "type": "cloudflare",
+                      "type": "technitium",
                       "updatedAt": 0,
-                      "zone": "fire-core.ru"
+                      "zone": "",
+                      "zones": [
+                        "fire-core.ru",
+                        "boykisser.online"
+                      ],
+                      "zonesSyncedAt": 1700000000
                     }
                   ]
                 }
@@ -11605,14 +11875,20 @@
                 "example": {
                   "success": true,
                   "obj": {
-                    "apiUrl": "https://ns1.example.com:53443",
+                    "apiPort": 5380,
+                    "apiUrl": "ns1.example.com",
                     "createdAt": 0,
                     "hasCredential": true,
                     "id": 1,
                     "name": "fire-core",
-                    "type": "cloudflare",
+                    "type": "technitium",
                     "updatedAt": 0,
-                    "zone": "fire-core.ru"
+                    "zone": "",
+                    "zones": [
+                      "fire-core.ru",
+                      "boykisser.online"
+                    ],
+                    "zonesSyncedAt": 1700000000
                   }
                 }
               }
@@ -11626,7 +11902,7 @@
         "tags": [
           "DNS providers"
         ],
-        "summary": "Add a DNS zone. type is cloudflare or technitium; apiUrl is required for technitium.",
+        "summary": "Add a DNS account and discover its zones. type is cloudflare or technitium; apiUrl (host or URL) is required for technitium, apiPort overrides its port. Fails when the token sees no writable zone.",
         "operationId": "post_panel_api_dns_add",
         "requestBody": {
           "required": true,
@@ -11636,10 +11912,11 @@
                 "type": "object"
               },
               "example": {
-                "name": "boykisser",
+                "name": "technitium",
                 "type": "technitium",
-                "zone": "boykisser.online",
-                "apiUrl": "https://ns1.boykisser.online:53443",
+                "zone": "",
+                "apiUrl": "ns1.boykisser.online",
+                "apiPort": 5380,
                 "credential": "<api token>"
               }
             }
@@ -11667,14 +11944,20 @@
                 "example": {
                   "success": true,
                   "obj": {
-                    "apiUrl": "https://ns1.example.com:53443",
+                    "apiPort": 5380,
+                    "apiUrl": "ns1.example.com",
                     "createdAt": 0,
                     "hasCredential": true,
                     "id": 1,
                     "name": "fire-core",
-                    "type": "cloudflare",
+                    "type": "technitium",
                     "updatedAt": 0,
-                    "zone": "fire-core.ru"
+                    "zone": "",
+                    "zones": [
+                      "fire-core.ru",
+                      "boykisser.online"
+                    ],
+                    "zonesSyncedAt": 1700000000
                   }
                 }
               }
@@ -11688,7 +11971,7 @@
         "tags": [
           "DNS providers"
         ],
-        "summary": "Edit a DNS zone. An empty credential keeps the stored token.",
+        "summary": "Edit a DNS account and rediscover its zones. An empty credential keeps the stored token.",
         "operationId": "post_panel_api_dns_update_id",
         "parameters": [
           {
@@ -11713,6 +11996,7 @@
                 "type": "cloudflare",
                 "zone": "fire-core.ru",
                 "apiUrl": "",
+                "apiPort": 0,
                 "credential": ""
               }
             }
@@ -11746,7 +12030,7 @@
         "tags": [
           "DNS providers"
         ],
-        "summary": "Delete a DNS zone. Refused while a certificate renews through it.",
+        "summary": "Delete a DNS account. Refused while a certificate renews through it.",
         "operationId": "post_panel_api_dns_del_id",
         "parameters": [
           {
@@ -11787,7 +12071,7 @@
         "tags": [
           "DNS providers"
         ],
-        "summary": "Check that the token can manage the zone without writing anything. id 0 tests the unsaved form; an id with a blank credential tests the stored token with the edited fields.",
+        "summary": "Check the token without writing anything and return the zones it would manage. id 0 tests the unsaved form; an id with a blank credential tests the stored token with the edited fields.",
         "operationId": "post_panel_api_dns_test",
         "requestBody": {
           "required": true,
@@ -11798,13 +12082,102 @@
               },
               "example": {
                 "id": 0,
-                "type": "cloudflare",
-                "zone": "fire-core.ru",
+                "type": "technitium",
+                "zone": "",
+                "apiUrl": "ns1.boykisser.online",
+                "apiPort": 5380,
                 "credential": "<api token>"
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/zones": {
+      "get": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Every zone the panel can write, with the account that owns it. Feeds zone pickers (certificates, provisioning).",
+        "operationId": "get_panel_api_dns_zones",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DnsZone"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "providerId": 1,
+                      "providerName": "technitium",
+                      "providerType": "technitium",
+                      "zone": "fire-core.ru"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/dns/sync/{id}": {
+      "post": {
+        "tags": [
+          "DNS providers"
+        ],
+        "summary": "Rediscover the zones of one account (id 0: every account). Also runs by itself when a name matches no known zone.",
+        "operationId": "post_panel_api_dns_sync_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "DNS account ID, or 0 for all.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response",

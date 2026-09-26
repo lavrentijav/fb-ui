@@ -403,6 +403,7 @@ export interface ClientTraffic {
 }
 
 export interface DnsProvider {
+  apiPort: number;
   apiUrl: string;
   createdAt: number;
   hasCredential: boolean;
@@ -411,13 +412,23 @@ export interface DnsProvider {
   type: string;
   updatedAt: number;
   zone: string;
+  zones: string[];
+  zonesSyncedAt: number;
 }
 
 export interface DnsProviderRequest {
+  apiPort: number;
   apiUrl: string;
   credential: string;
   name: string;
   type: string;
+  zone: string;
+}
+
+export interface DnsZone {
+  providerId: number;
+  providerName: string;
+  providerType: string;
   zone: string;
 }
 
@@ -707,6 +718,27 @@ export interface NodeMutationRequest {
   tlsVerifyMode: string;
 }
 
+export interface NodeProvisionRequest {
+  acmeEmail: string;
+  allowPrivateAddress: boolean;
+  authorizedKey: string;
+  disablePasswordAuth: boolean;
+  dnsProviderId: number;
+  domain: string;
+  force: boolean;
+  host: string;
+  hostKeySha256: string;
+  installSource: string;
+  name: string;
+  panelPort: number;
+  skipDns: boolean;
+  sshPassword: string;
+  sshPort: number;
+  sshPrivateKey: string;
+  sshUser: string;
+  zone: string;
+}
+
 export interface NodeRoleChangeRequest {
   address: string;
   allowPrivateAddress?: boolean | null;
@@ -821,6 +853,29 @@ export interface ProbeResultUI {
   xrayError: string;
   xrayState: string;
   xrayVersion: string;
+}
+
+export interface ProvisionJob {
+  createdAt: number;
+  domain: string;
+  error: string;
+  host: string;
+  hostKey: string;
+  id: string;
+  log: string[];
+  name: string;
+  nodeId: number;
+  panelUrl: string;
+  status: string;
+  steps: ProvisionStep[];
+}
+
+export interface ProvisionStep {
+  detail: string;
+  finishedAt: number;
+  name: string;
+  startedAt: number;
+  status: string;
 }
 
 export interface RealityScanResult {

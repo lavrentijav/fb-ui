@@ -113,7 +113,10 @@ export default function CertFormModal({ open, cert, dns, save, onOpenChange }: C
                 <Select
                   options={[
                     { value: 0, label: t('pages.certs.dnsAuto') },
-                    ...dns.map((d) => ({ value: d.id, label: `${d.name} (${d.zone})` })),
+                    ...dns.map((d) => ({
+                      value: d.id,
+                      label: `${d.name} (${d.zone || (d.zones ?? []).join(', ')})`,
+                    })),
                   ]}
                 />
               </FormField>

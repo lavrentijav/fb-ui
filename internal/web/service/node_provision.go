@@ -39,10 +39,11 @@ type NodeProvisionRequest struct {
 	SshPrivateKey string `json:"sshPrivateKey" form:"sshPrivateKey" example:""`
 	HostKeySha256 string `json:"hostKeySha256" form:"hostKeySha256" example:""`
 
-	// Domain is the node's FQDN. Empty with a DnsProviderId means
-	// <name>.<zone>; empty without one installs on the bare IP.
+	// Domain is the node's FQDN. Empty with a Zone means <name>.<zone>;
+	// empty without one installs on the bare IP.
 	Domain        string `json:"domain" form:"domain" example:"msk2.fire-core.ru"`
-	DnsProviderId int    `json:"dnsProviderId" form:"dnsProviderId" example:"1"`
+	Zone          string `json:"zone" form:"zone" example:"fire-core.ru"`
+	DnsProviderId int    `json:"dnsProviderId" form:"dnsProviderId" example:"0"`
 	SkipDns       bool   `json:"skipDns" form:"skipDns" example:"false"`
 	AcmeEmail     string `json:"acmeEmail" form:"acmeEmail" example:"ops@example.com"`
 	PanelPort     int    `json:"panelPort" form:"panelPort" example:"0"`
@@ -269,31 +270,44 @@ var nodeLabelRe = func(s string) bool {
 	return true
 }
 
-// resolveDomain applies the "<name>.<zone>" convenience and finds the zone
-// that will carry the node's address record.
+// resolveDomain applies the "<name>.<zone>" convenience and finds the account
+// and zone that will carry the node's address record.
 func (s *NodeProvisionService) resolveDomain(req *NodeProvisionRequest) (*model.DnsProvider, error) {
 	req.Domain = dnsprovider.NormalizeName(req.Domain)
+	req.Zone = dnsprovider.NormalizeName(req.Zone)
+	if req.Domain == "" && (req.Zone != "" || req.DnsProviderId > 0) {
+		zone := req.Zone
+		if zone == "" {
+			prov, err := s.dns.load(req.DnsProviderId)
+			if err != nil {
+				return nil, common.NewErrorf("DNS provider %d not found", req.DnsProviderId)
+			}
+			if zones := prov.ManagedZones(); len(zones) == 1 {
+				zone = zones[0]
+			} else {
+				return nil, common.NewErrorf("%s manages %d zones; pick one", prov.Name, len(zones))
+			}
+		}
+		label := strings.ToLower(req.Name)
+		if !nodeLabelRe(label) {
+			return nil, common.NewErrorf("name %q is not a DNS label; give the domain explicitly", req.Name)
+		}
+		req.Domain = label + "." + zone
+	}
+	if req.Domain == "" || req.SkipDns {
+		return nil, nil
+	}
 	if req.DnsProviderId > 0 {
 		prov, err := s.dns.load(req.DnsProviderId)
 		if err != nil {
 			return nil, common.NewErrorf("DNS provider %d not found", req.DnsProviderId)
 		}
-		if req.Domain == "" {
-			label := strings.ToLower(req.Name)
-			if !nodeLabelRe(label) {
-				return nil, common.NewErrorf("name %q is not a DNS label; give the domain explicitly", req.Name)
-			}
-			req.Domain = label + "." + prov.Zone
-		}
-		if !dnsprovider.InZone(req.Domain, prov.Zone) {
-			return nil, common.NewErrorf("%s is outside zone %s", req.Domain, prov.Zone)
+		if _, _, err := s.dns.ClientFor(prov.Id, req.Domain); err != nil {
+			return nil, common.NewErrorf("%s is outside every zone of %s", req.Domain, prov.Name)
 		}
 		return prov, nil
 	}
-	if req.Domain == "" || req.SkipDns {
-		return nil, nil
-	}
-	prov, err := s.dns.ForName(req.Domain)
+	prov, _, err := s.dns.ForName(req.Domain)
 	if err != nil {
 		return nil, common.NewErrorf("no DNS provider manages %s; add one or tick \"DNS is managed elsewhere\"", req.Domain)
 	}
@@ -582,7 +596,7 @@ func (s *NodeProvisionService) stepDNS(ctx context.Context, run *provisionRun, r
 	if addr.Unmap().Is6() {
 		rtype = "AAAA"
 	}
-	client, zone, err := s.dns.ClientFor(prov.Id)
+	client, zone, err := s.dns.ClientFor(prov.Id, req.Domain)
 	if err != nil {
 		return err
 	}
@@ -691,7 +705,7 @@ func (s *NodeProvisionService) register(ctx context.Context, run *provisionRun, 
 		if _, err := s.nodes.Probe(ctx, probeNode); err != nil {
 			fp, ferr := s.nodes.FetchCertFingerprint(ctx, probeNode)
 			if ferr != nil {
-				return 0, fmt.Errorf("node answers neither with a trusted certificate (%v) nor at all (%v)", err, ferr)
+				return 0, fmt.Errorf("node answers neither with a trusted certificate (%w) nor at all (%w)", err, ferr)
 			}
 			run.logf("certificate not publicly trusted (%v); pinning %s", err, fp)
 			mreq.TlsVerifyMode, mreq.PinnedCertSha256 = "pin", fp

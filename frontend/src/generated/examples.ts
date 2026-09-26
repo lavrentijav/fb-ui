@@ -387,20 +387,33 @@ export const EXAMPLES: Record<string, unknown> = {
     "uuid": "e18c9a96-71bf-48d4-933f-8b9a46d4290c"
   },
   "DnsProvider": {
-    "apiUrl": "https://ns1.example.com:53443",
+    "apiPort": 5380,
+    "apiUrl": "ns1.example.com",
     "createdAt": 0,
     "hasCredential": true,
     "id": 1,
     "name": "fire-core",
-    "type": "cloudflare",
+    "type": "technitium",
     "updatedAt": 0,
-    "zone": "fire-core.ru"
+    "zone": "",
+    "zones": [
+      "fire-core.ru",
+      "boykisser.online"
+    ],
+    "zonesSyncedAt": 1700000000
   },
   "DnsProviderRequest": {
-    "apiUrl": "https://ns1.example.com:53443",
-    "credential": "cf-api-token",
-    "name": "fire-core",
-    "type": "cloudflare",
+    "apiPort": 5380,
+    "apiUrl": "ns1.example.com",
+    "credential": "api-token",
+    "name": "technitium",
+    "type": "technitium",
+    "zone": ""
+  },
+  "DnsZone": {
+    "providerId": 1,
+    "providerName": "technitium",
+    "providerType": "technitium",
     "zone": "fire-core.ru"
   },
   "FallbackParentInfo": {
@@ -742,6 +755,26 @@ export const EXAMPLES: Record<string, unknown> = {
     "scheme": "http",
     "tlsVerifyMode": "verify"
   },
+  "NodeProvisionRequest": {
+    "acmeEmail": "ops@example.com",
+    "allowPrivateAddress": false,
+    "authorizedKey": "ssh-ed25519 AAAA... ops",
+    "disablePasswordAuth": false,
+    "dnsProviderId": 0,
+    "domain": "msk2.fire-core.ru",
+    "force": false,
+    "host": "203.0.113.10",
+    "hostKeySha256": "",
+    "installSource": "self",
+    "name": "msk2",
+    "panelPort": 0,
+    "skipDns": false,
+    "sshPassword": "root-password",
+    "sshPort": 22,
+    "sshPrivateKey": "",
+    "sshUser": "root",
+    "zone": "fire-core.ru"
+  },
   "NodeRoleChangeRequest": {
     "address": "node1.example.com",
     "allowPrivateAddress": null,
@@ -856,6 +889,37 @@ export const EXAMPLES: Record<string, unknown> = {
     "xrayError": "",
     "xrayState": "",
     "xrayVersion": "25.10.31"
+  },
+  "ProvisionJob": {
+    "createdAt": 1700000000,
+    "domain": "msk2.fire-core.ru",
+    "error": "",
+    "host": "203.0.113.10",
+    "hostKey": "SHA256:abc",
+    "id": "p-1700000000-1",
+    "log": [
+      "== preflight"
+    ],
+    "name": "msk2",
+    "nodeId": 3,
+    "panelUrl": "https://msk2.fire-core.ru:24501/abc/",
+    "status": "running",
+    "steps": [
+      {
+        "detail": "installed from this panel's build",
+        "finishedAt": 1700000060,
+        "name": "install",
+        "startedAt": 1700000000,
+        "status": "done"
+      }
+    ]
+  },
+  "ProvisionStep": {
+    "detail": "installed from this panel's build",
+    "finishedAt": 1700000060,
+    "name": "install",
+    "startedAt": 1700000000,
+    "status": "done"
   },
   "RealityScanResult": {
     "alpn": "h2",

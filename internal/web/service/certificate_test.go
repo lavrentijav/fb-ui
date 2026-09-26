@@ -307,3 +307,68 @@ func TestDnsProviderCredentialIsWriteOnly(t *testing.T) {
 		t.Fatalf("deleting a provider in use: %v", err)
 	}
 }
+
+func TestDnsAccountDiscoversZonesAndPicksTheOwner(t *testing.T) {
+	initCertTestDB(t)
+	installFakeCA(t)
+	served := []string{"boykisser.online", "lab.boykisser.online"}
+	var seen dnsprovider.Config
+	old := dnsZoneLister
+	dnsZoneLister = func(_ context.Context, cfg dnsprovider.Config) ([]string, error) {
+		seen = cfg
+		return slices.Clone(served), nil
+	}
+	t.Cleanup(func() { dnsZoneLister = old })
+	lastDnsResync.Store(0)
+
+	var dns DnsProviderService
+	acct, err := dns.Create(&DnsProviderRequest{Type: model.DnsProviderTechnitium, ApiUrl: "ns1.boykisser.online", ApiPort: 5380, Credential: "tok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seen.BaseURL != "http://ns1.boykisser.online:5380" || acct.Name != "ns1.boykisser.online" || !slices.Equal(acct.Zones, served) {
+		t.Fatalf("base=%q name=%q zones=%v", seen.BaseURL, acct.Name, acct.Zones)
+	}
+	if _, zone, err := dns.ForName("ru7.lab.boykisser.online"); err != nil || zone != "lab.boykisser.online" {
+		t.Fatalf("ForName sub-zone: zone=%q err=%v", zone, err)
+	}
+
+	// A zone created in Technitium after the account was saved is found by
+	// the lazy rediscovery, without anyone pressing "refresh".
+	served = append(served, "fire-core.ru")
+	if _, zone, err := dns.ForName("msk1.fire-core.ru"); err != nil || zone != "fire-core.ru" {
+		t.Fatalf("ForName after a new zone: zone=%q err=%v", zone, err)
+	}
+	if _, _, err := dns.ForName("x.other.org"); err == nil {
+		t.Fatal("a name no account covers must fail")
+	}
+
+	served = nil
+	if _, err := dns.Test(0, &DnsProviderRequest{Type: model.DnsProviderTechnitium, ApiUrl: "h", Credential: "t"}); err == nil ||
+		!strings.Contains(err.Error(), "no writable (primary) zone") {
+		t.Fatalf("token without zones: %v", err)
+	}
+}
+
+func TestDnsApiBaseURL(t *testing.T) {
+	cases := []struct {
+		raw  string
+		port int
+		want string
+	}{
+		{"ns1.example.com", 0, "http://ns1.example.com:5380"},
+		{"ns1.example.com", 5380, "http://ns1.example.com:5380"},
+		{"ns1.example.com", 53443, "https://ns1.example.com:53443"},
+		{"https://dns.example.com", 0, "https://dns.example.com"},
+		{"https://dns.example.com:8443/", 9443, "https://dns.example.com:9443"},
+		{"10.0.0.5", 5380, "http://10.0.0.5:5380"},
+	}
+	for _, tc := range cases {
+		if got, err := dnsApiBaseURL(tc.raw, tc.port); err != nil || got != tc.want {
+			t.Errorf("dnsApiBaseURL(%q, %d) = %q, %v; want %q", tc.raw, tc.port, got, err, tc.want)
+		}
+	}
+	if _, err := dnsApiBaseURL("ftp://x", 0); err == nil {
+		t.Error("ftp scheme must be rejected")
+	}
+}

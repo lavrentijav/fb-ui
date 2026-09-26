@@ -106,6 +106,10 @@ func run(root, outDir string) error {
 				"AcmeAccountView",
 				"AcmeAccountRequest",
 				"DnsProviderRequest",
+				"DnsZone",
+				"NodeProvisionRequest",
+				"ProvisionJob",
+				"ProvisionStep",
 			),
 		},
 		{

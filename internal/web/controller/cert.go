@@ -38,6 +38,8 @@ func (a *CertController) initRouter(certs *gin.RouterGroup, dns *gin.RouterGroup
 	dns.POST("/update/:id", a.dnsUpdate)
 	dns.POST("/del/:id", a.dnsDel)
 	dns.POST("/test", a.dnsTest)
+	dns.GET("/zones", a.dnsZones)
+	dns.POST("/sync/:id", a.dnsSync)
 }
 
 func pathID(c *gin.Context) (int, bool) {
@@ -192,5 +194,20 @@ func (a *CertController) dnsTest(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.certs.toasts.dnsTest"), err)
 		return
 	}
-	jsonMsg(c, I18nWeb(c, "pages.certs.toasts.dnsTest"), a.dnsService.Test(req.Id, &req.DnsProviderRequest))
+	zones, err := a.dnsService.Test(req.Id, &req.DnsProviderRequest)
+	jsonMsgObj(c, I18nWeb(c, "pages.certs.toasts.dnsTest"), zones, err)
+}
+
+func (a *CertController) dnsZones(c *gin.Context) {
+	zones, err := a.dnsService.Zones()
+	jsonObj(c, zones, err)
+}
+
+// dnsSync rediscovers the zones of one account; id 0 syncs every account.
+func (a *CertController) dnsSync(c *gin.Context) {
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	jsonMsg(c, I18nWeb(c, "pages.certs.toasts.dnsSync"), a.dnsService.Sync(id))
 }

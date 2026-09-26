@@ -165,6 +165,33 @@ func (t *technitium) DeleteRecords(ctx context.Context, name, rtype string) erro
 }
 
 func (t *technitium) Check(ctx context.Context) error {
+	if t.zone == "" {
+		_, err := t.listZones(ctx)
+		return err
+	}
 	_, err := t.list(ctx, t.zone, "SOA")
 	return err
+}
+
+// listZones keeps primary zones only: secondary and stub zones are
+// read-only copies, and internal ones (localhost, reverse) are not ours.
+func (t *technitium) listZones(ctx context.Context) ([]string, error) {
+	var resp struct {
+		Zones []struct {
+			Name     string `json:"name"`
+			Type     string `json:"type"`
+			Internal bool   `json:"internal"`
+			Disabled bool   `json:"disabled"`
+		} `json:"zones"`
+	}
+	if err := t.call(ctx, "/api/zones/list", url.Values{}, &resp); err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, z := range resp.Zones {
+		if strings.EqualFold(z.Type, "Primary") && !z.Internal && !z.Disabled {
+			out = append(out, z.Name)
+		}
+	}
+	return out, nil
 }

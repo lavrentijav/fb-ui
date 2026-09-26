@@ -16,6 +16,7 @@ export const keys = {
     root: () => ['certs'] as const,
     list: () => ['certs', 'list'] as const,
     dns: () => ['certs', 'dns'] as const,
+    zones: () => ['certs', 'zones'] as const,
     account: () => ['certs', 'account'] as const,
   },
   cluster: {

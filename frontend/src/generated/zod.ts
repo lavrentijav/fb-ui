@@ -433,6 +433,7 @@ export const ClientTrafficSchema = z.object({
 export type ClientTraffic = z.infer<typeof ClientTrafficSchema>;
 
 export const DnsProviderSchema = z.object({
+  apiPort: z.number().int(),
   apiUrl: z.string(),
   createdAt: z.number().int(),
   hasCredential: z.boolean(),
@@ -441,10 +442,13 @@ export const DnsProviderSchema = z.object({
   type: z.enum(['cloudflare', 'technitium']),
   updatedAt: z.number().int(),
   zone: z.string(),
+  zones: z.array(z.string()),
+  zonesSyncedAt: z.number().int(),
 });
 export type DnsProvider = z.infer<typeof DnsProviderSchema>;
 
 export const DnsProviderRequestSchema = z.object({
+  apiPort: z.number().int(),
   apiUrl: z.string(),
   credential: z.string(),
   name: z.string(),
@@ -452,6 +456,14 @@ export const DnsProviderRequestSchema = z.object({
   zone: z.string(),
 });
 export type DnsProviderRequest = z.infer<typeof DnsProviderRequestSchema>;
+
+export const DnsZoneSchema = z.object({
+  providerId: z.number().int(),
+  providerName: z.string(),
+  providerType: z.string(),
+  zone: z.string(),
+});
+export type DnsZone = z.infer<typeof DnsZoneSchema>;
 
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),
@@ -758,6 +770,28 @@ export const NodeMutationRequestSchema = z.object({
 });
 export type NodeMutationRequest = z.infer<typeof NodeMutationRequestSchema>;
 
+export const NodeProvisionRequestSchema = z.object({
+  acmeEmail: z.string(),
+  allowPrivateAddress: z.boolean(),
+  authorizedKey: z.string(),
+  disablePasswordAuth: z.boolean(),
+  dnsProviderId: z.number().int(),
+  domain: z.string(),
+  force: z.boolean(),
+  host: z.string(),
+  hostKeySha256: z.string(),
+  installSource: z.string(),
+  name: z.string(),
+  panelPort: z.number().int(),
+  skipDns: z.boolean(),
+  sshPassword: z.string(),
+  sshPort: z.number().int(),
+  sshPrivateKey: z.string(),
+  sshUser: z.string(),
+  zone: z.string(),
+});
+export type NodeProvisionRequest = z.infer<typeof NodeProvisionRequestSchema>;
+
 export const NodeRoleChangeRequestSchema = z.object({
   address: z.string(),
   allowPrivateAddress: z.boolean().nullable().optional(),
@@ -880,6 +914,31 @@ export const ProbeResultUISchema = z.object({
   xrayVersion: z.string(),
 });
 export type ProbeResultUI = z.infer<typeof ProbeResultUISchema>;
+
+export const ProvisionJobSchema = z.object({
+  createdAt: z.number().int(),
+  domain: z.string(),
+  error: z.string(),
+  host: z.string(),
+  hostKey: z.string(),
+  id: z.string(),
+  log: z.array(z.string()),
+  name: z.string(),
+  nodeId: z.number().int(),
+  panelUrl: z.string(),
+  status: z.string(),
+  steps: z.array(z.lazy(() => ProvisionStepSchema)),
+});
+export type ProvisionJob = z.infer<typeof ProvisionJobSchema>;
+
+export const ProvisionStepSchema = z.object({
+  detail: z.string(),
+  finishedAt: z.number().int(),
+  name: z.string(),
+  startedAt: z.number().int(),
+  status: z.string(),
+});
+export type ProvisionStep = z.infer<typeof ProvisionStepSchema>;
 
 export const RealityScanResultSchema = z.object({
   alpn: z.string(),

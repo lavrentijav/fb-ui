@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Input, Modal, Select, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Tag,
+  message,
+} from 'antd';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 
 import type { Msg } from '@/utils';
@@ -17,7 +30,7 @@ interface DnsProviderModalProps {
 }
 
 function defaults(): DnsProviderFormValues {
-  return { name: '', type: 'cloudflare', zone: '', apiUrl: '', credential: '' };
+  return { name: '', type: 'technitium', zone: '', apiUrl: '', apiPort: 5380, credential: '' };
 }
 
 export default function DnsProviderModal({
@@ -32,6 +45,7 @@ export default function DnsProviderModal({
   const [messageApi, messageContextHolder] = message.useMessage();
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [found, setFound] = useState<string[] | null>(null);
   const type = useWatch({ control: methods.control, name: 'type' });
 
   const [synced, setSynced] = useState<DnsProvider | null | undefined>(undefined);
@@ -39,6 +53,7 @@ export default function DnsProviderModal({
     if (synced !== undefined) setSynced(undefined);
   } else if (synced !== provider) {
     setSynced(provider);
+    setFound(provider ? (provider.zones ?? []) : null);
     methods.reset(
       provider
         ? {
@@ -46,6 +61,7 @@ export default function DnsProviderModal({
             type: provider.type,
             zone: provider.zone,
             apiUrl: provider.apiUrl,
+            apiPort: provider.apiPort,
             credential: '',
           }
         : defaults(),
@@ -55,7 +71,7 @@ export default function DnsProviderModal({
   function validated(): DnsProviderRequest | null {
     const result = DnsProviderFormSchema.safeParse(methods.getValues());
     if (!result.success) {
-      messageApi.error(t(result.error.issues[0]?.message ?? 'pages.certs.toasts.needZone'));
+      messageApi.error(t(result.error.issues[0]?.message ?? 'pages.certs.toasts.needApiUrl'));
       return null;
     }
     return { ...result.data, credential: result.data.credential.trim() };
@@ -67,7 +83,11 @@ export default function DnsProviderModal({
     setTesting(true);
     try {
       const msg = await test(provider?.id ?? 0, payload);
-      if (msg?.success) messageApi.success(t('pages.certs.dnsTestOk'));
+      if (msg?.success) {
+        const zones = Array.isArray(msg.obj) ? (msg.obj as string[]) : [];
+        setFound(zones);
+        messageApi.success(t('pages.certs.dnsTestOk', { count: zones.length }));
+      }
     } finally {
       setTesting(false);
     }
@@ -95,7 +115,7 @@ export default function DnsProviderModal({
         okText={t('save')}
         cancelText={t('cancel')}
         mask={{ closable: false }}
-        width="560px"
+        width="600px"
         onOk={onOk}
         onCancel={() => onOpenChange(false)}
         footer={(_, { OkBtn, CancelBtn }) => (
@@ -113,25 +133,32 @@ export default function DnsProviderModal({
             <FormField label={t('pages.certs.dnsType')} name="type">
               <Select
                 options={[
-                  { value: 'cloudflare', label: 'Cloudflare' },
                   { value: 'technitium', label: 'Technitium DNS Server' },
+                  { value: 'cloudflare', label: 'Cloudflare' },
                 ]}
               />
             </FormField>
-            <FormField label={t('pages.certs.zone')} name="zone">
-              <Input placeholder="fire-core.ru" />
-            </FormField>
-            <FormField label={t('pages.certs.dnsName')} name="name">
-              <Input placeholder={t('pages.certs.dnsNameHint')} />
-            </FormField>
             {type === 'technitium' && (
-              <FormField
-                label={t('pages.certs.apiUrl')}
-                name="apiUrl"
-                extra={t('pages.certs.apiUrlHint')}
-              >
-                <Input placeholder="https://ns1.example.com:53443" />
-              </FormField>
+              <Row gutter={12}>
+                <Col xs={24} sm={16}>
+                  <FormField
+                    label={t('pages.certs.apiUrl')}
+                    name="apiUrl"
+                    extra={t('pages.certs.apiUrlHint')}
+                  >
+                    <Input placeholder="ns1.example.com" />
+                  </FormField>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <FormField
+                    label={t('pages.certs.apiPort')}
+                    name="apiPort"
+                    extra={t('pages.certs.apiPortHint')}
+                  >
+                    <InputNumber min={0} max={65535} style={{ width: '100%' }} />
+                  </FormField>
+                </Col>
+              </Row>
             )}
             <FormField
               label={t('pages.certs.credential')}
@@ -147,6 +174,38 @@ export default function DnsProviderModal({
                 placeholder={provider?.hasCredential ? t('pages.certs.credentialKeep') : ''}
               />
             </FormField>
+            <Row gutter={12}>
+              <Col xs={24} sm={12}>
+                <FormField
+                  label={t('pages.certs.zone')}
+                  name="zone"
+                  extra={t('pages.certs.zoneHint')}
+                >
+                  <Input placeholder={t('pages.certs.allZones')} />
+                </FormField>
+              </Col>
+              <Col xs={24} sm={12}>
+                <FormField label={t('pages.certs.dnsName')} name="name">
+                  <Input placeholder={t('pages.certs.dnsNameHint')} />
+                </FormField>
+              </Col>
+            </Row>
+            {found !== null && (
+              <Alert
+                type={found.length > 0 ? 'info' : 'warning'}
+                showIcon
+                message={t('pages.certs.zonesFound', { count: found.length })}
+                description={
+                  found.length > 0 && (
+                    <Space size={[4, 4]} wrap>
+                      {found.map((z) => (
+                        <Tag key={z}>{z}</Tag>
+                      ))}
+                    </Space>
+                  )
+                }
+              />
+            )}
           </Form>
         </FormProvider>
       </Modal>

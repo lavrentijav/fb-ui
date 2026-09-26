@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
+	"slices"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
@@ -19,17 +23,34 @@ import (
 type DnsProviderService struct{}
 
 // DnsProviderRequest is the add/update payload. An empty Credential on update
-// keeps the stored one, so the UI can edit a zone without re-pasting a token.
+// keeps the stored one, so the UI can edit an account without re-pasting a
+// token. An empty Zone manages every zone the token can see.
 type DnsProviderRequest struct {
-	Name       string `json:"name" form:"name" example:"fire-core"`
-	Type       string `json:"type" form:"type" example:"cloudflare"`
-	Zone       string `json:"zone" form:"zone" example:"fire-core.ru"`
-	ApiUrl     string `json:"apiUrl" form:"apiUrl" example:"https://ns1.example.com:53443"`
-	Credential string `json:"credential" form:"credential" example:"cf-api-token"`
+	Name       string `json:"name" form:"name" example:"technitium"`
+	Type       string `json:"type" form:"type" example:"technitium"`
+	Zone       string `json:"zone" form:"zone" example:""`
+	ApiUrl     string `json:"apiUrl" form:"apiUrl" example:"ns1.example.com"`
+	ApiPort    int    `json:"apiPort" form:"apiPort" example:"5380"`
+	Credential string `json:"credential" form:"credential" example:"api-token"`
 }
 
-// dnsProviderFactory is swapped by tests to point providers at httptest.
-var dnsProviderFactory = dnsprovider.New
+// DnsZone is one zone the panel can write, with the account that owns it.
+type DnsZone struct {
+	Zone         string `json:"zone" example:"fire-core.ru"`
+	ProviderId   int    `json:"providerId" example:"1"`
+	ProviderName string `json:"providerName" example:"technitium"`
+	ProviderType string `json:"providerType" example:"technitium"`
+}
+
+// dnsProviderFactory and dnsZoneLister are swapped by tests.
+var (
+	dnsProviderFactory = dnsprovider.New
+	dnsZoneLister      = dnsprovider.ListZones
+)
+
+// dnsResyncEvery bounds how often a name no zone covers triggers a rediscovery,
+// so a zone just added in Technitium is picked up without a click.
+const dnsResyncEvery = time.Minute
 
 func (s *DnsProviderService) List() ([]*model.DnsProvider, error) {
 	var rows []*model.DnsProvider
@@ -69,27 +90,36 @@ func (s *DnsProviderService) fromRequest(dst *model.DnsProvider, req *DnsProvide
 	dst.Type = strings.TrimSpace(req.Type)
 	dst.Zone = dnsprovider.NormalizeName(req.Zone)
 	dst.ApiUrl = strings.TrimRight(strings.TrimSpace(req.ApiUrl), "/")
+	dst.ApiPort = req.ApiPort
 	if cred := strings.TrimSpace(req.Credential); cred != "" {
 		dst.Credential = cred
-	}
-	if dst.Name == "" {
-		dst.Name = dst.Zone
 	}
 	switch dst.Type {
 	case model.DnsProviderCloudflare, model.DnsProviderTechnitium:
 	default:
 		return common.NewErrorf("unknown DNS provider type %q", dst.Type)
 	}
-	if dst.Zone == "" || !strings.Contains(dst.Zone, ".") {
-		return common.NewError("a DNS zone such as example.com is required")
+	if dst.Name == "" {
+		dst.Name = dst.Zone
+	}
+	if dst.Name == "" {
+		dst.Name = dst.Type
+		if host := apiHost(dst.ApiUrl); host != "" {
+			dst.Name = host
+		}
+	}
+	if dst.Zone != "" && !strings.Contains(dst.Zone, ".") {
+		return common.NewError("a DNS zone looks like example.com; leave it empty to use every zone the token sees")
+	}
+	if dst.ApiPort < 0 || dst.ApiPort > 65535 {
+		return common.NewError("API port must be 1-65535")
 	}
 	if dst.Type == model.DnsProviderTechnitium && dst.ApiUrl == "" {
 		return common.NewError("Technitium needs its API URL, e.g. https://ns1.example.com:53443")
 	}
 	if dst.ApiUrl != "" {
-		u, err := url.Parse(dst.ApiUrl)
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return common.NewErrorf("API URL %q must be an http(s) URL", dst.ApiUrl)
+		if _, err := dnsApiBaseURL(dst.ApiUrl, dst.ApiPort); err != nil {
+			return err
 		}
 	}
 	if dst.Credential == "" {
@@ -98,9 +128,78 @@ func (s *DnsProviderService) fromRequest(dst *model.DnsProvider, req *DnsProvide
 	return nil
 }
 
+// dnsApiBaseURL joins what the operator typed: a bare host gets Technitium's
+// defaults (http on 5380, https on any other port) and a port field wins.
+func dnsApiBaseURL(raw string, port int) (string, error) {
+	if !strings.Contains(raw, "://") {
+		scheme := "https"
+		if port == 0 || port == 5380 {
+			scheme = "http"
+		}
+		raw = scheme + "://" + raw
+		if port == 0 {
+			port = 5380
+		}
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return "", common.NewErrorf("API URL %q must be a host or an http(s) URL", raw)
+	}
+	if port > 0 {
+		u.Host = net.JoinHostPort(u.Hostname(), strconv.Itoa(port))
+	}
+	return strings.TrimRight(u.String(), "/"), nil
+}
+
+func apiHost(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "http://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
+}
+
+// discover fills Zones from the provider; a pinned Zone is only checked.
+func (s *DnsProviderService) discover(ctx context.Context, row *model.DnsProvider) error {
+	if row.Zone != "" {
+		p, err := s.client(row, row.Zone)
+		if err != nil {
+			return err
+		}
+		if err := p.Check(ctx); err != nil {
+			return err
+		}
+		row.Zones = []string{row.Zone}
+	} else {
+		base, err := s.baseURL(row)
+		if err != nil {
+			return err
+		}
+		zones, err := dnsZoneLister(ctx, dnsprovider.Config{Type: row.Type, Credential: row.Credential, BaseURL: base})
+		if err != nil {
+			return err
+		}
+		if len(zones) == 0 {
+			return common.NewError("the token sees no writable (primary) zone")
+		}
+		row.Zones = zones
+	}
+	row.ZonesSyncedAt = time.Now().Unix()
+	return nil
+}
+
 func (s *DnsProviderService) Create(req *DnsProviderRequest) (*model.DnsProvider, error) {
 	row := &model.DnsProvider{}
 	if err := s.fromRequest(row, req); err != nil {
+		return nil, err
+	}
+	if err := s.discoverNow(row); err != nil {
 		return nil, err
 	}
 	if err := database.GetDB().Create(row).Error; err != nil {
@@ -118,7 +217,56 @@ func (s *DnsProviderService) Update(id int, req *DnsProviderRequest) error {
 	if err := s.fromRequest(row, req); err != nil {
 		return err
 	}
+	if err := s.discoverNow(row); err != nil {
+		return err
+	}
 	return database.GetDB().Save(row).Error
+}
+
+func (s *DnsProviderService) discoverNow(row *model.DnsProvider) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	return s.discover(ctx, row)
+}
+
+// Sync rediscovers the zones of one account, or of all when id is 0.
+func (s *DnsProviderService) Sync(id int) error {
+	var rows []*model.DnsProvider
+	q := database.GetDB()
+	if id > 0 {
+		q = q.Where("id = ?", id)
+	}
+	if err := q.Find(&rows).Error; err != nil {
+		return err
+	}
+	var errs []error
+	for _, row := range rows {
+		if err := s.discoverNow(row); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", row.Name, err))
+			continue
+		}
+		// A struct update, not a map: only it runs the json serializer on Zones.
+		if err := database.GetDB().Model(row).Select("zones", "zones_synced_at").Updates(row).Error; err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// Zones lists every zone the panel can write, for zone pickers.
+func (s *DnsProviderService) Zones() ([]DnsZone, error) {
+	var rows []*model.DnsProvider
+	if err := database.GetDB().Order("id asc").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	var out []DnsZone
+	for _, r := range rows {
+		for _, z := range r.ManagedZones() {
+			out = append(out, DnsZone{Zone: z, ProviderId: r.Id, ProviderName: r.Name, ProviderType: r.Type})
+		}
+	}
+	slices.SortStableFunc(out, func(a, b DnsZone) int { return strings.Compare(a.Zone, b.Zone) })
+	return out, nil
 }
 
 func (s *DnsProviderService) Delete(id int) error {
@@ -133,65 +281,104 @@ func (s *DnsProviderService) Delete(id int) error {
 }
 
 // Test checks a stored provider, or an unsaved request when id is 0, so the
-// add dialog can verify a token before it is stored.
-func (s *DnsProviderService) Test(id int, req *DnsProviderRequest) error {
+// add dialog can verify a token before it is stored. It returns the zones
+// the token would manage.
+func (s *DnsProviderService) Test(id int, req *DnsProviderRequest) ([]string, error) {
 	row := &model.DnsProvider{}
 	if id > 0 {
 		var err error
 		if row, err = s.load(id); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if req != nil {
 		if err := s.fromRequest(row, req); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	p, err := s.client(row)
-	if err != nil {
-		return err
+	if err := s.discoverNow(row); err != nil {
+		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	return p.Check(ctx)
+	return row.Zones, nil
 }
 
-func (s *DnsProviderService) client(row *model.DnsProvider) (dnsprovider.Provider, error) {
+func (s *DnsProviderService) baseURL(row *model.DnsProvider) (string, error) {
+	if row.ApiUrl == "" {
+		return "", nil
+	}
+	return dnsApiBaseURL(row.ApiUrl, row.ApiPort)
+}
+
+func (s *DnsProviderService) client(row *model.DnsProvider, zone string) (dnsprovider.Provider, error) {
+	base, err := s.baseURL(row)
+	if err != nil {
+		return nil, err
+	}
 	return dnsProviderFactory(dnsprovider.Config{
 		Type:       row.Type,
-		Zone:       row.Zone,
+		Zone:       zone,
 		Credential: row.Credential,
-		BaseURL:    row.ApiUrl,
+		BaseURL:    base,
 	})
 }
 
-// ClientFor returns the provider client and zone of a stored row.
-func (s *DnsProviderService) ClientFor(id int) (dnsprovider.Provider, string, error) {
+// ClientFor returns the client and zone of account id that will hold name.
+func (s *DnsProviderService) ClientFor(id int, name string) (dnsprovider.Provider, string, error) {
 	row, err := s.load(id)
 	if err != nil {
 		return nil, "", fmt.Errorf("DNS provider %d: %w", id, err)
 	}
-	p, err := s.client(row)
-	return p, row.Zone, err
+	zone := dnsprovider.ZoneFor(name, row.ManagedZones())
+	if zone == "" && row.Zone == "" {
+		if err := s.Sync(id); err == nil {
+			if row, err = s.load(id); err != nil {
+				return nil, "", err
+			}
+			zone = dnsprovider.ZoneFor(name, row.ManagedZones())
+		}
+	}
+	if zone == "" {
+		return nil, "", fmt.Errorf("%w: %s is not in any zone of %s", errNoZoneForName, name, row.Name)
+	}
+	p, err := s.client(row, zone)
+	return p, zone, err
 }
 
-var errNoZoneForName = errors.New("no DNS provider manages this name")
+var (
+	errNoZoneForName = errors.New("no DNS provider manages this name")
+	lastDnsResync    atomic.Int64
+)
 
-// ForName picks the provider whose zone is the longest suffix of name, so a
-// delegated sub-zone wins over its parent.
-func (s *DnsProviderService) ForName(name string) (*model.DnsProvider, error) {
+// ForName picks the account and zone that hold name: the longest zone across
+// all accounts wins, so a delegated sub-zone beats its parent. A miss
+// rediscovers zones once a minute before giving up.
+func (s *DnsProviderService) ForName(name string) (*model.DnsProvider, string, error) {
+	row, zone, err := s.bestZone(name)
+	if err == nil || row != nil {
+		return row, zone, err
+	}
+	if now := time.Now().Unix(); now-lastDnsResync.Load() >= int64(dnsResyncEvery/time.Second) {
+		lastDnsResync.Store(now)
+		_ = s.Sync(0)
+		return s.bestZone(name)
+	}
+	return nil, "", fmt.Errorf("%w: %s", errNoZoneForName, name)
+}
+
+func (s *DnsProviderService) bestZone(name string) (*model.DnsProvider, string, error) {
 	var rows []*model.DnsProvider
-	if err := database.GetDB().Find(&rows).Error; err != nil {
-		return nil, err
+	if err := database.GetDB().Order("id asc").Find(&rows).Error; err != nil {
+		return nil, "", err
 	}
 	var best *model.DnsProvider
+	bestZone := ""
 	for _, r := range rows {
-		if dnsprovider.InZone(name, r.Zone) && (best == nil || len(r.Zone) > len(best.Zone)) {
-			best = r
+		if z := dnsprovider.ZoneFor(name, r.ManagedZones()); len(z) > len(bestZone) {
+			best, bestZone = r, z
 		}
 	}
 	if best == nil {
-		return nil, fmt.Errorf("%w: %s", errNoZoneForName, name)
+		return nil, "", fmt.Errorf("%w: %s", errNoZoneForName, name)
 	}
-	return best, nil
+	return best, bestZone, nil
 }
