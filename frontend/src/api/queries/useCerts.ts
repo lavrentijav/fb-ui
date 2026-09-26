@@ -8,12 +8,14 @@ import {
   AcmeAccountViewSchema,
   CertificateSchema,
   DnsProviderSchema,
+  DnsZoneSchema,
   type AcmeAccountRequest,
   type AcmeAccountView,
   type Certificate,
   type CertificateRequest,
   type DnsProvider,
   type DnsProviderRequest,
+  type DnsZone,
 } from '@/generated/zod';
 
 export type {
@@ -23,10 +25,12 @@ export type {
   CertificateRequest,
   DnsProvider,
   DnsProviderRequest,
+  DnsZone,
 };
 
 const CertificatesSchema = z.array(CertificateSchema);
 const DnsProvidersSchema = z.array(DnsProviderSchema);
+const DnsZonesSchema = z.array(DnsZoneSchema);
 
 async function fetchCerts(): Promise<Certificate[]> {
   const msg = await HttpUtil.get('/panel/api/certs/list', undefined, { silent: true });
@@ -38,6 +42,18 @@ async function fetchDns(): Promise<DnsProvider[]> {
   const msg = await HttpUtil.get('/panel/api/dns/list', undefined, { silent: true });
   if (!msg?.success) throw new Error(msg?.msg || 'Failed to fetch DNS providers');
   return parseMsg(msg, DnsProvidersSchema, 'dns/list').obj ?? [];
+}
+
+async function fetchZones(): Promise<DnsZone[]> {
+  const msg = await HttpUtil.get('/panel/api/dns/zones', undefined, { silent: true });
+  if (!msg?.success) throw new Error(msg?.msg || 'Failed to fetch DNS zones');
+  return parseMsg(msg, DnsZonesSchema, 'dns/zones').obj ?? [];
+}
+
+// Every zone the panel can write, for zone pickers outside the certs page.
+export function useDnsZones() {
+  const q = useQuery({ queryKey: keys.certs.zones(), queryFn: fetchZones });
+  return { zones: q.data ?? [], loading: q.isFetching };
 }
 
 async function fetchAccount(): Promise<AcmeAccountView | null> {
@@ -89,6 +105,7 @@ export function useCerts() {
     post(`/panel/api/dns/update/${id}`, p),
   );
   const removeDns = useCertMutation((id: number) => post(`/panel/api/dns/del/${id}`));
+  const syncDns = useCertMutation((id: number) => post(`/panel/api/dns/sync/${id}`));
 
   return {
     certs: certsQuery.data ?? [],
@@ -112,6 +129,7 @@ export function useCerts() {
     createDns: (p: DnsProviderRequest) => createDns.mutateAsync(p),
     updateDns: (id: number, p: DnsProviderRequest) => updateDns.mutateAsync({ id, p }),
     removeDns: (id: number) => removeDns.mutateAsync(id),
+    syncDns: (id: number) => syncDns.mutateAsync(id),
     testDns: (id: number, p: DnsProviderRequest) => post('/panel/api/dns/test', { id, ...p }),
   };
 }

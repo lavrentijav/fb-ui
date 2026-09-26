@@ -7,14 +7,19 @@ const (
 	DnsProviderTechnitium = "technitium"
 )
 
-// DnsProvider is one DNS zone this panel may write records into: node A
+// DnsProvider is one DNS account this panel may write records into: node A
 // records during provisioning, ACME DNS-01 tokens and multi-address domains.
+// An empty Zone means every zone the token can see, discovered into Zones.
 type DnsProvider struct {
-	Id     int    `json:"id" gorm:"primaryKey;autoIncrement" example:"1"`
-	Name   string `json:"name" form:"name" gorm:"uniqueIndex" validate:"required" example:"corp"`
-	Type   string `json:"type" form:"type" gorm:"default:cloudflare" validate:"required,oneof=cloudflare technitium" example:"cloudflare"`
-	Zone   string `json:"zone" form:"zone" gorm:"index" validate:"required" example:"corp.example"`
-	ApiUrl string `json:"apiUrl" form:"apiUrl" gorm:"column:api_url" example:"https://ns1.example.com:53443"`
+	Id      int    `json:"id" gorm:"primaryKey;autoIncrement" example:"1"`
+	Name    string `json:"name" form:"name" gorm:"uniqueIndex" validate:"required" example:"corp"`
+	Type    string `json:"type" form:"type" gorm:"default:cloudflare" validate:"required,oneof=cloudflare technitium" example:"technitium"`
+	Zone    string `json:"zone" form:"zone" gorm:"index" example:""`
+	ApiUrl  string `json:"apiUrl" form:"apiUrl" gorm:"column:api_url" example:"ns1.example.com"`
+	ApiPort int    `json:"apiPort" form:"apiPort" gorm:"column:api_port" example:"5380"`
+
+	Zones         []string `json:"zones" gorm:"serializer:json" example:"[\"corp.example\",\"home.example\"]"`
+	ZonesSyncedAt int64    `json:"zonesSyncedAt" gorm:"column:zones_synced_at" example:"1700000000"`
 
 	// Credential is write-only over the API, like a node's ApiToken.
 	Credential    string `json:"-" form:"-" gorm:"column:credential"`
@@ -25,6 +30,14 @@ type DnsProvider struct {
 }
 
 func (DnsProvider) TableName() string { return "dns_providers" }
+
+// ManagedZones is Zone alone when pinned, else every discovered zone.
+func (p *DnsProvider) ManagedZones() []string {
+	if p.Zone != "" {
+		return []string{p.Zone}
+	}
+	return p.Zones
+}
 
 // ACME challenge kinds a Certificate can be issued with. "imported" marks a
 // certificate found on disk (acme.sh, manual upload) that we only watch.

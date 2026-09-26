@@ -122,18 +122,20 @@ func (s *CertificateService) fromRequest(dst *model.Certificate, req *Certificat
 	switch dst.Challenge {
 	case model.CertChallengeDNS01:
 		dst.DnsProviderId = req.DnsProviderId
-		var prov *model.DnsProvider
+		first := strings.TrimPrefix(domains[0], "*.")
+		zone := ""
 		if dst.DnsProviderId == 0 {
-			if prov, err = s.dns.ForName(strings.TrimPrefix(domains[0], "*.")); err != nil {
+			var prov *model.DnsProvider
+			if prov, zone, err = s.dns.ForName(first); err != nil {
 				return common.NewErrorf("add a DNS provider for %s first, or use http01", domains[0])
 			}
 			dst.DnsProviderId = prov.Id
-		} else if prov, err = s.dns.load(dst.DnsProviderId); err != nil {
-			return common.NewErrorf("DNS provider %d not found", dst.DnsProviderId)
+		} else if _, zone, err = s.dns.ClientFor(dst.DnsProviderId, first); err != nil {
+			return common.NewErrorf("DNS provider %d cannot write %s: %v", dst.DnsProviderId, first, err)
 		}
 		for _, d := range domains {
-			if !dnsprovider.InZone(strings.TrimPrefix(d, "*."), prov.Zone) {
-				return common.NewErrorf("%s is outside zone %s; issue it separately", d, prov.Zone)
+			if !dnsprovider.InZone(strings.TrimPrefix(d, "*."), zone) {
+				return common.NewErrorf("%s is outside zone %s; issue it separately", d, zone)
 			}
 		}
 	case model.CertChallengeHTTP01:
@@ -257,7 +259,7 @@ func (s *CertificateService) issue(row *model.Certificate) error {
 		},
 	}
 	if row.Challenge == model.CertChallengeDNS01 {
-		if req.DNS, req.Zone, err = s.dns.ClientFor(row.DnsProviderId); err != nil {
+		if req.DNS, req.Zone, err = s.dns.ClientFor(row.DnsProviderId, strings.TrimPrefix(row.Domains[0], "*.")); err != nil {
 			return err
 		}
 	}

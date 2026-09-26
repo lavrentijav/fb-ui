@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -175,6 +176,10 @@ func (c *cloudflare) DeleteRecords(ctx context.Context, name, rtype string) erro
 }
 
 func (c *cloudflare) Check(ctx context.Context) error {
+	if c.zone == "" {
+		_, err := c.listZones(ctx)
+		return err
+	}
 	zid, err := c.zoneIDFor(ctx)
 	if err != nil {
 		return err
@@ -184,4 +189,27 @@ func (c *cloudflare) Check(ctx context.Context) error {
 	}
 	_, err = c.list(ctx, zid, c.zone, "NS")
 	return err
+}
+
+func (c *cloudflare) listZones(ctx context.Context) ([]string, error) {
+	const perPage = 50
+	var out []string
+	for page := 1; ; page++ {
+		var zones []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		}
+		q := url.Values{"per_page": {strconv.Itoa(perPage)}, "page": {strconv.Itoa(page)}}
+		if err := c.do(ctx, http.MethodGet, "/zones?"+q.Encode(), nil, &zones); err != nil {
+			return nil, err
+		}
+		for _, z := range zones {
+			if z.Status != "deactivated" {
+				out = append(out, z.Name)
+			}
+		}
+		if len(zones) < perPage || page >= 100 {
+			return out, nil
+		}
+	}
 }

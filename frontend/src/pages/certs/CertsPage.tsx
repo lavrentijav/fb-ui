@@ -28,6 +28,7 @@ import {
   ImportOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -241,14 +242,24 @@ export default function CertsPage() {
   const dnsColumns = useMemo<ColumnsType<DnsProvider>>(
     () => [
       {
-        title: t('pages.certs.zone'),
+        title: t('pages.certs.dnsAccount'),
         key: 'zone',
-        render: (_: unknown, d) => (
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong>{d.zone}</Typography.Text>
-            {d.name !== d.zone && <Typography.Text type="secondary">{d.name}</Typography.Text>}
-          </Space>
-        ),
+        render: (_: unknown, d) => {
+          const zones = d.zone ? [d.zone] : (d.zones ?? []);
+          return (
+            <Space direction="vertical" size={2}>
+              <Typography.Text strong>{d.name}</Typography.Text>
+              <Space size={[4, 4]} wrap>
+                {zones.map((z) => (
+                  <Tag key={z}>{z}</Tag>
+                ))}
+                {zones.length === 0 && (
+                  <Tag color="red">{t('pages.certs.zonesFound', { count: 0 })}</Tag>
+                )}
+              </Space>
+            </Space>
+          );
+        },
       },
       {
         title: t('pages.certs.dnsType'),
@@ -281,6 +292,14 @@ export default function CertsPage() {
         key: 'actions',
         render: (_: unknown, d) => (
           <Space size={4}>
+            <Tooltip title={t('pages.certs.dnsSync')}>
+              <Button
+                size="small"
+                icon={<SyncOutlined />}
+                onClick={() => api.syncDns(d.id)}
+                aria-label={t('pages.certs.dnsSync')}
+              />
+            </Tooltip>
             <Tooltip title={t('edit')}>
               <Button
                 size="small"
@@ -298,7 +317,7 @@ export default function CertsPage() {
                 danger
                 icon={<DeleteOutlined />}
                 onClick={() =>
-                  confirmDelete(t('pages.certs.deleteDnsConfirm', { name: d.zone }), () =>
+                  confirmDelete(t('pages.certs.deleteDnsConfirm', { name: d.name }), () =>
                     api.removeDns(d.id),
                   )
                 }

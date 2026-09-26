@@ -1634,12 +1634,12 @@ export const sections: readonly Section[] = [
     id: 'dns',
     title: 'DNS providers',
     description:
-      'DNS zones the panel may write records into: ACME dns01 tokens today, node records during provisioning next. Cloudflare takes an API token with Zone.DNS edit rights; a self-hosted Technitium server takes its API URL and an API token from its console. The token is write-only: views report hasCredential instead. All endpoints under /panel/api/dns.',
+      'DNS accounts the panel writes records into: node A records during provisioning and ACME dns01 tokens. An account is a server address, port and API token; the panel reads every primary zone the token can manage and picks the owning zone per name, longest match first. Leave zone empty to manage all of them, or set it to pin the account to one zone. Cloudflare takes an API token with Zone.DNS edit rights; a self-hosted Technitium server takes its host (or URL), port (5380 by default) and an API token from its console. The token is write-only: views report hasCredential instead. All endpoints under /panel/api/dns.',
     endpoints: [
       {
         method: 'GET',
         path: '/panel/api/dns/list',
-        summary: 'List every DNS provider.',
+        summary: 'List every DNS account with its discovered zones.',
         responseSchema: 'DnsProvider',
         responseSchemaArray: true,
       },
@@ -1654,29 +1654,45 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/dns/add',
         summary:
-          'Add a DNS zone. type is cloudflare or technitium; apiUrl is required for technitium.',
-        body: '{\n  "name": "home",\n  "type": "technitium",\n  "zone": "home.example",\n  "apiUrl": "https://ns1.home.example:53443",\n  "credential": "<api token>"\n}',
+          'Add a DNS account and discover its zones. type is cloudflare or technitium; apiUrl (host or URL) is required for technitium, apiPort overrides its port. Fails when the token sees no writable zone.',
+        body: '{\n  "name": "technitium",\n  "type": "technitium",\n  "zone": "",\n  "apiUrl": "ns1.home.example",\n  "apiPort": 5380,\n  "credential": "<api token>"\n}',
         responseSchema: 'DnsProvider',
       },
       {
         method: 'POST',
         path: '/panel/api/dns/update/:id',
-        summary: 'Edit a DNS zone. An empty credential keeps the stored token.',
+        summary:
+          'Edit a DNS account and rediscover its zones. An empty credential keeps the stored token.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'DNS provider ID.' }],
-        body: '{\n  "name": "corp",\n  "type": "cloudflare",\n  "zone": "corp.example",\n  "apiUrl": "",\n  "credential": ""\n}',
+        body: '{\n  "name": "corp",\n  "type": "cloudflare",\n  "zone": "corp.example",\n  "apiUrl": "",\n  "apiPort": 0,\n  "credential": ""\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/dns/del/:id',
-        summary: 'Delete a DNS zone. Refused while a certificate renews through it.',
+        summary: 'Delete a DNS account. Refused while a certificate renews through it.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'DNS provider ID.' }],
       },
       {
         method: 'POST',
         path: '/panel/api/dns/test',
         summary:
-          'Check that the token can manage the zone without writing anything. id 0 tests the unsaved form; an id with a blank credential tests the stored token with the edited fields.',
-        body: '{\n  "id": 0,\n  "type": "cloudflare",\n  "zone": "corp.example",\n  "credential": "<api token>"\n}',
+          'Check the token without writing anything and return the zones it would manage. id 0 tests the unsaved form; an id with a blank credential tests the stored token with the edited fields.',
+        body: '{\n  "id": 0,\n  "type": "technitium",\n  "zone": "",\n  "apiUrl": "ns1.home.example",\n  "apiPort": 5380,\n  "credential": "<api token>"\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/dns/zones',
+        summary:
+          'Every zone the panel can write, with the account that owns it. Feeds zone pickers (certificates, provisioning).',
+        responseSchema: 'DnsZone',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/dns/sync/:id',
+        summary:
+          'Rediscover the zones of one account (id 0: every account). Also runs by itself when a name matches no known zone.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'DNS account ID, or 0 for all.' }],
       },
     ],
   },

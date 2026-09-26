@@ -8,16 +8,19 @@ export const CertFormSchema = z.object({
   autoRenew: z.boolean(),
 });
 
+// An empty zone manages every zone the token can see; apiUrl may be a bare
+// host, and apiPort 0 keeps Technitium's default (5380).
 export const DnsProviderFormSchema = z
   .object({
     name: z.string().trim(),
     type: z.enum(['cloudflare', 'technitium']),
-    zone: z.string().trim().min(3, 'pages.certs.toasts.needZone'),
+    zone: z.string().trim(),
     apiUrl: z.string().trim(),
+    apiPort: z.number().int().min(0).max(65535),
     credential: z.string(),
   })
   .superRefine((val, ctx) => {
-    if (val.type === 'technitium' && !/^https?:\/\/\S+$/.test(val.apiUrl)) {
+    if (val.type === 'technitium' && !/^(https?:\/\/)?[^\s/]+/.test(val.apiUrl)) {
       ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: 'pages.certs.toasts.needApiUrl' });
     }
   });

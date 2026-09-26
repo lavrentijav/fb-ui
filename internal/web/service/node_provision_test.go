@@ -225,7 +225,7 @@ func TestProvisionDerivesDomainAndWritesTheRecord(t *testing.T) {
 		want string
 	}{
 		{NodeProvisionRequest{Name: "bad name", Host: "h", SshPassword: "x", DnsProviderId: prov.Id}, "is not a DNS label"},
-		{NodeProvisionRequest{Name: "a", Host: "h", SshPassword: "x", Domain: "a.other.org", DnsProviderId: prov.Id}, "outside zone"},
+		{NodeProvisionRequest{Name: "a", Host: "h", SshPassword: "x", Domain: "a.other.org", DnsProviderId: prov.Id}, "outside every zone"},
 		{NodeProvisionRequest{Name: "a", Host: "h", SshPassword: "x", DisablePasswordAuth: true}, "only be disabled when the job itself logs in with a key"},
 		{NodeProvisionRequest{Name: "a", Host: "h"}, "password or private key is required"},
 	}

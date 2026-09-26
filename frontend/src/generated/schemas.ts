@@ -1699,10 +1699,14 @@ export const SCHEMAS: Record<string, unknown> = {
     "type": "object"
   },
   "DnsProvider": {
-    "description": "DnsProvider is one DNS zone this panel may write records into: node A\nrecords during provisioning, ACME DNS-01 tokens and multi-address domains.",
+    "description": "DnsProvider is one DNS account this panel may write records into: node A\nrecords during provisioning, ACME DNS-01 tokens and multi-address domains.\nAn empty Zone means every zone the token can see, discovered into Zones.",
     "properties": {
+      "apiPort": {
+        "example": 5380,
+        "type": "integer"
+      },
       "apiUrl": {
-        "example": "https://ns1.example.com:53443",
+        "example": "ns1.example.com",
         "type": "string"
       },
       "createdAt": {
@@ -1726,7 +1730,7 @@ export const SCHEMAS: Record<string, unknown> = {
           "cloudflare",
           "technitium"
         ],
-        "example": "cloudflare",
+        "example": "technitium",
         "type": "string"
       },
       "updatedAt": {
@@ -1734,11 +1738,26 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "integer"
       },
       "zone": {
-        "example": "corp.example",
         "type": "string"
+      },
+      "zones": {
+        "example": [
+          "corp.example",
+          "home.example"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "zonesSyncedAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
       }
     },
     "required": [
+      "apiPort",
       "apiUrl",
       "createdAt",
       "hasCredential",
@@ -1746,27 +1765,62 @@ export const SCHEMAS: Record<string, unknown> = {
       "name",
       "type",
       "updatedAt",
-      "zone"
+      "zone",
+      "zones",
+      "zonesSyncedAt"
     ],
     "type": "object"
   },
   "DnsProviderRequest": {
-    "description": "DnsProviderRequest is the add/update payload. An empty Credential on update\nkeeps the stored one, so the UI can edit a zone without re-pasting a token.",
+    "description": "DnsProviderRequest is the add/update payload. An empty Credential on update\nkeeps the stored one, so the UI can edit an account without re-pasting a\ntoken. An empty Zone manages every zone the token can see.",
     "properties": {
+      "apiPort": {
+        "example": 5380,
+        "type": "integer"
+      },
       "apiUrl": {
-        "example": "https://ns1.example.com:53443",
+        "example": "ns1.example.com",
         "type": "string"
       },
       "credential": {
-        "example": "cf-api-token",
+        "example": "api-token",
         "type": "string"
       },
       "name": {
-        "example": "corp",
+        "example": "technitium",
         "type": "string"
       },
       "type": {
-        "example": "cloudflare",
+        "example": "technitium",
+        "type": "string"
+      },
+      "zone": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "apiPort",
+      "apiUrl",
+      "credential",
+      "name",
+      "type",
+      "zone"
+    ],
+    "type": "object"
+  },
+  "DnsZone": {
+    "description": "DnsZone is one zone the panel can write, with the account that owns it.",
+    "properties": {
+      "providerId": {
+        "example": 1,
+        "type": "integer"
+      },
+      "providerName": {
+        "example": "technitium",
+        "type": "string"
+      },
+      "providerType": {
+        "example": "technitium",
         "type": "string"
       },
       "zone": {
@@ -1775,10 +1829,9 @@ export const SCHEMAS: Record<string, unknown> = {
       }
     },
     "required": [
-      "apiUrl",
-      "credential",
-      "name",
-      "type",
+      "providerId",
+      "providerName",
+      "providerType",
       "zone"
     ],
     "type": "object"
@@ -3126,6 +3179,105 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "NodeProvisionRequest": {
+    "description": "NodeProvisionRequest is \"here is a fresh server, make it a node\": an address,\nroot credentials and the name it should get. The SSH secrets are used for\nthis one job and never stored.",
+    "properties": {
+      "acmeEmail": {
+        "example": "ops@example.com",
+        "type": "string"
+      },
+      "allowPrivateAddress": {
+        "description": "AllowPrivateAddress lets the node sit on a private network with this\npanel, the same opt-in the Nodes form has.",
+        "example": false,
+        "type": "boolean"
+      },
+      "authorizedKey": {
+        "example": "ssh-ed25519 AAAA... ops",
+        "type": "string"
+      },
+      "disablePasswordAuth": {
+        "example": false,
+        "type": "boolean"
+      },
+      "dnsProviderId": {
+        "example": 0,
+        "type": "integer"
+      },
+      "domain": {
+        "description": "Domain is the node's FQDN. Empty with a Zone means \u003cname\u003e.\u003czone\u003e;\nempty without one installs on the bare IP.",
+        "example": "msk2.corp.example",
+        "type": "string"
+      },
+      "force": {
+        "example": false,
+        "type": "boolean"
+      },
+      "host": {
+        "example": "203.0.113.10",
+        "type": "string"
+      },
+      "hostKeySha256": {
+        "type": "string"
+      },
+      "installSource": {
+        "description": "InstallSource \"self\" ships this panel's own build (the node never needs\nGitHub); \"github\" lets install.sh download the latest release.",
+        "example": "self",
+        "type": "string"
+      },
+      "name": {
+        "example": "msk2",
+        "type": "string"
+      },
+      "panelPort": {
+        "example": 0,
+        "type": "integer"
+      },
+      "skipDns": {
+        "example": false,
+        "type": "boolean"
+      },
+      "sshPassword": {
+        "example": "root-password",
+        "type": "string"
+      },
+      "sshPort": {
+        "example": 22,
+        "type": "integer"
+      },
+      "sshPrivateKey": {
+        "type": "string"
+      },
+      "sshUser": {
+        "example": "root",
+        "type": "string"
+      },
+      "zone": {
+        "example": "corp.example",
+        "type": "string"
+      }
+    },
+    "required": [
+      "acmeEmail",
+      "allowPrivateAddress",
+      "authorizedKey",
+      "disablePasswordAuth",
+      "dnsProviderId",
+      "domain",
+      "force",
+      "host",
+      "hostKeySha256",
+      "installSource",
+      "name",
+      "panelPort",
+      "skipDns",
+      "sshPassword",
+      "sshPort",
+      "sshPrivateKey",
+      "sshUser",
+      "zone"
+    ],
+    "type": "object"
+  },
   "NodeRoleChangeRequest": {
     "description": "NodeRoleChangeRequest carries only what the *target* role needs. Fields of\nthe role being left stay on the row, so flipping back does not re-ask them.",
     "properties": {
@@ -3690,6 +3842,118 @@ export const SCHEMAS: Record<string, unknown> = {
       "xrayError",
       "xrayState",
       "xrayVersion"
+    ],
+    "type": "object"
+  },
+  "ProvisionJob": {
+    "description": "ProvisionJob is the observable state of one provisioning run.",
+    "properties": {
+      "createdAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
+      "domain": {
+        "example": "msk2.corp.example",
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "host": {
+        "example": "203.0.113.10",
+        "type": "string"
+      },
+      "hostKey": {
+        "example": "SHA256:abc",
+        "type": "string"
+      },
+      "id": {
+        "example": "p-1700000000-1",
+        "type": "string"
+      },
+      "log": {
+        "example": [
+          "== preflight"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "name": {
+        "example": "msk2",
+        "type": "string"
+      },
+      "nodeId": {
+        "example": 3,
+        "type": "integer"
+      },
+      "panelUrl": {
+        "example": "https://msk2.corp.example:24501/abc/",
+        "type": "string"
+      },
+      "status": {
+        "description": "running|done|failed",
+        "example": "running",
+        "type": "string"
+      },
+      "steps": {
+        "items": {
+          "$ref": "#/components/schemas/ProvisionStep"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "createdAt",
+      "domain",
+      "error",
+      "host",
+      "hostKey",
+      "id",
+      "log",
+      "name",
+      "nodeId",
+      "panelUrl",
+      "status",
+      "steps"
+    ],
+    "type": "object"
+  },
+  "ProvisionStep": {
+    "description": "ProvisionStep is one stage of a job as the UI shows it.",
+    "properties": {
+      "detail": {
+        "example": "installed from this panel's build",
+        "type": "string"
+      },
+      "finishedAt": {
+        "example": 1700000060,
+        "format": "int64",
+        "type": "integer"
+      },
+      "name": {
+        "example": "install",
+        "type": "string"
+      },
+      "startedAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
+      "status": {
+        "description": "pending|running|done|skipped|failed",
+        "example": "done",
+        "type": "string"
+      }
+    },
+    "required": [
+      "detail",
+      "finishedAt",
+      "name",
+      "startedAt",
+      "status"
     ],
     "type": "object"
   },

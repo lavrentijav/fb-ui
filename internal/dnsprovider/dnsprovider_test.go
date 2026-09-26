@@ -160,6 +160,14 @@ func (f *fakeTechnitium) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name, rtype := r.PostForm.Get("domain"), r.PostForm.Get("type")
 	value := r.PostForm.Get("ipAddress") + r.PostForm.Get("text")
 	switch r.URL.Path {
+	case "/api/zones/list":
+		ok(map[string]any{"zones": []map[string]any{
+			{"name": "home.example", "type": "Primary"},
+			{"name": "Lab.Home.Example", "type": "Primary"},
+			{"name": "mirror.example", "type": "Secondary"},
+			{"name": "localhost", "type": "Primary", "internal": true},
+			{"name": "old.example", "type": "Primary", "disabled": true},
+		}})
 	case "/api/zones/records/get":
 		var out []tnRecord
 		for _, rec := range f.records {
@@ -223,5 +231,23 @@ func TestTechnitiumSetRecordsConverges(t *testing.T) {
 	bad, _ := New(Config{Type: TypeTechnitium, Zone: "home.example", Credential: "nope", BaseURL: srv.URL})
 	if err := bad.Check(ctx); err == nil || !strings.Contains(err.Error(), "invalid or expired API token") {
 		t.Fatalf("Check with bad token: err = %v", err)
+	}
+}
+
+func TestTechnitiumListZonesKeepsWritablePrimaries(t *testing.T) {
+	srv := httptest.NewServer(&fakeTechnitium{})
+	t.Cleanup(srv.Close)
+	zones, err := ListZones(context.Background(), Config{Type: TypeTechnitium, Credential: "tok", BaseURL: srv.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"home.example", "lab.home.example"}; !slices.Equal(zones, want) {
+		t.Fatalf("zones = %v, want %v", zones, want)
+	}
+	if got := ZoneFor("ru7.lab.home.example", zones); got != "lab.home.example" {
+		t.Fatalf("ZoneFor sub-zone = %q", got)
+	}
+	if got := ZoneFor("corp.example", zones); got != "" {
+		t.Fatalf("ZoneFor foreign name = %q, want empty", got)
 	}
 }

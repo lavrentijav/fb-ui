@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -37,12 +38,55 @@ type Config struct {
 
 var ErrUnknownType = errors.New("dnsprovider: unknown provider type")
 
+// ListZones returns the writable zones cfg's credential can see, sorted and
+// normalized. cfg.Zone is ignored.
+func ListZones(ctx context.Context, cfg Config) ([]string, error) {
+	p, err := build(cfg, "")
+	if err != nil {
+		return nil, err
+	}
+	zones, err := p.listZones(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(zones))
+	for _, z := range zones {
+		if z = NormalizeName(z); z != "" && !slices.Contains(out, z) {
+			out = append(out, z)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+// ZoneFor picks the longest zone that contains name, so a delegated sub-zone
+// wins over its parent. It returns "" when none does.
+func ZoneFor(name string, zones []string) string {
+	best := ""
+	for _, z := range zones {
+		if InZone(name, z) && len(z) > len(best) {
+			best = NormalizeName(z)
+		}
+	}
+	return best
+}
+
 // New builds the provider for cfg.
 func New(cfg Config) (Provider, error) {
 	zone := NormalizeName(cfg.Zone)
 	if zone == "" {
 		return nil, errors.New("dnsprovider: zone is required")
 	}
+	return build(cfg, zone)
+}
+
+// provider adds zone discovery, so an account needs no zone typed by hand.
+type provider interface {
+	Provider
+	listZones(ctx context.Context) ([]string, error)
+}
+
+func build(cfg Config, zone string) (provider, error) {
 	if strings.TrimSpace(cfg.Credential) == "" {
 		return nil, errors.New("dnsprovider: credential is required")
 	}
