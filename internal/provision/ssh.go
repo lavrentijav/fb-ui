@@ -82,10 +82,41 @@ func Dial(ctx context.Context, t Target) (*Session, error) {
 		return nil, errors.New("provision: a password or a private key is required")
 	}
 
+	if strings.TrimSpace(t.HostKeySHA256) == "" {
+		return handshake(ctx, t, auths, usedKey, hostKeyPreference)
+	}
+	// A pinned fingerprint names one key type, but a server offers several
+	// and the client picks; try each type until the pinned one is presented.
+	var lastErr error
+	for _, algo := range hostKeyPreference {
+		s, err := handshake(ctx, t, auths, usedKey, []string{algo})
+		if err == nil {
+			return s, nil
+		}
+		if !errors.Is(err, ErrHostKeyMismatch) && !strings.Contains(err.Error(), "no common algorithm") {
+			return nil, err
+		}
+		if lastErr == nil || errors.Is(err, ErrHostKeyMismatch) {
+			lastErr = err
+		}
+	}
+	return nil, lastErr
+}
+
+// hostKeyPreference puts ed25519 first: it is the key operators copy from
+// ssh-keyscan or a provider console, so the reported fingerprint matches.
+var hostKeyPreference = []string{
+	ssh.KeyAlgoED25519,
+	ssh.KeyAlgoECDSA256, ssh.KeyAlgoECDSA384, ssh.KeyAlgoECDSA521,
+	ssh.KeyAlgoRSASHA512, ssh.KeyAlgoRSASHA256,
+}
+
+func handshake(ctx context.Context, t Target, auths []ssh.AuthMethod, usedKey bool, hostKeyAlgos []string) (*Session, error) {
 	var seen string
 	cfg := &ssh.ClientConfig{
-		User: t.User,
-		Auth: auths,
+		User:              t.User,
+		Auth:              auths,
+		HostKeyAlgorithms: hostKeyAlgos,
 		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
 			seen = Fingerprint(key)
 			if t.HostKeySHA256 != "" && seen != strings.TrimSpace(t.HostKeySHA256) {
