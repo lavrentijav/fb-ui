@@ -27,5 +27,8 @@ secure random / default):
 `XUI_SSL_IPV6` (optional IPv6 address to add to an `ip`-mode cert),
 `XUI_SERVER_IP` (fallback IP for the displayed access URL when auto-detection fails),
 `XUI_DB_TYPE` (`sqlite`|`postgres`), `XUI_DB_DSN`.
+`XUI_ARCHIVE` (path to a release tarball already on disk; skips the GitHub
+download and uses the archive's own `x-ui.sh` — how a master panel installs
+its own build on a node it provisions).
 
 The resulting credentials are written to `/etc/x-ui/install-result.env` (mode 600).

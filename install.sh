@@ -1414,8 +1414,20 @@ _install_xui_service_unit() {
 install_x-ui() {
     cd ${xui_folder%/x-ui}/
 
-    # Download resources
-    if [ $# == 0 ]; then
+    # Download resources. XUI_ARCHIVE points at a release tarball already on
+    # disk (a master panel provisioning this node ships its own build), so a
+    # node that cannot reach GitHub still installs.
+    if [[ -n "${XUI_ARCHIVE:-}" ]]; then
+        if [[ ! -s "${XUI_ARCHIVE}" ]]; then
+            echo -e "${red}XUI_ARCHIVE=${XUI_ARCHIVE} is missing or empty${plain}"
+            exit 1
+        fi
+        tag_version="local"
+        echo -e "Installing x-ui from local archive ${XUI_ARCHIVE}"
+        if [[ "$(readlink -f "${XUI_ARCHIVE}")" != "$(readlink -f "${xui_folder}-linux-$(arch).tar.gz")" ]]; then
+            cp -f "${XUI_ARCHIVE}" "${xui_folder}-linux-$(arch).tar.gz" || exit 1
+        fi
+    elif [ $# == 0 ]; then
         tag_version=$(curl -Ls --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
@@ -1465,13 +1477,18 @@ install_x-ui() {
     fi
     local xui_script_temp="/usr/bin/x-ui-temp.$$"
     rm -f "${xui_script_temp}"
-    curl -fLRo "${xui_script_temp}" https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
+    if [[ -n "${XUI_ARCHIVE:-}" ]]; then
+        # The archive carries its own x-ui.sh; copied in after extraction.
+        : > "${xui_script_temp}"
+    else
+        curl -fLRo "${xui_script_temp}" https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
+    fi
     if [[ $? -ne 0 ]]; then
         rm -f "${xui_script_temp}"
         echo -e "${red}Failed to download x-ui.sh${plain}"
         exit 1
     fi
-    if [[ ! -s "${xui_script_temp}" ]]; then
+    if [[ -z "${XUI_ARCHIVE:-}" && ! -s "${xui_script_temp}" ]]; then
         rm -f "${xui_script_temp}"
         echo -e "${red}Downloaded x-ui.sh is empty${plain}"
         exit 1
@@ -1536,6 +1553,9 @@ install_x-ui() {
     fi
     chmod +x x-ui
     chmod +x x-ui.sh
+    if [[ -n "${XUI_ARCHIVE:-}" ]]; then
+        cp -f x-ui.sh "${xui_script_temp}" || exit 1
+    fi
 
     # Check the system's architecture and rename the file accordingly.
     # The panel binary maps GOARCH=arm to "arm32" (internal/xray/process.go),
