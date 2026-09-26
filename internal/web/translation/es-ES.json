@@ -128,7 +128,8 @@
     "subFormats": "Sub Formats",
     "network": "Red",
     "filters": "Filtros",
-    "certs": "Certificados"
+    "certs": "Certificados",
+    "edge": "Edge (443)"
   },
   "pages": {
     "login": {
@@ -2592,6 +2593,52 @@
       "step_harden": "Harden SSH",
       "toasts": {
         "start": "Start provisioning"
+      }
+    },
+    "edge": {
+      "intro": "One public port for everything: TLS connections are routed by server name (SNI) without being decrypted — to this panel or to a local service such as an Xray inbound on 127.0.0.1; unknown names and clients without SNI take the default route. HTTP routes forward by host and path inside the panel's TLS (WebSocket, XHTTP, sites).",
+      "portTitle": "Shared port",
+      "running": "running on {addr}",
+      "stopped": "off",
+      "noPanelTls": "The panel has no TLS certificate, so routes to the panel cannot work.",
+      "enableEdge": "Route the port",
+      "listen": "Listen address",
+      "listenHint": ":443 for all addresses; if the port is busy nothing changes",
+      "default": "Unknown SNI, no SNI, not TLS",
+      "defaultHint": "Usually a Reality inbound on 127.0.0.1, which passes strangers on to its decoy site",
+      "ppOff": "off",
+      "ppHint": "Keeps the client IP; the inbound needs acceptProxyProtocol",
+      "routesTitle": "Routes",
+      "check": "Check targets",
+      "addRoute": "Add route",
+      "editRoute": "Edit route",
+      "noRoutes": "No routes yet",
+      "deleteConfirm": "Delete route {name}?",
+      "match": "Match",
+      "target": "Target",
+      "enable": "On",
+      "actions": "Actions",
+      "noSni": "(no SNI)",
+      "anyHost": "(any host)",
+      "action_tcp": "pass through (TCP)",
+      "action_panel": "this panel",
+      "action_reject": "reject",
+      "action_proxy": "reverse proxy",
+      "kind": "Type",
+      "kindSni": "SNI (TLS untouched)",
+      "kindHttp": "HTTP host/path (inside the panel's TLS)",
+      "name": "Name",
+      "sni": "Server name",
+      "sniHint": "Exact name, *.zone for any subdomain, empty for clients without SNI",
+      "host": "Host",
+      "hostHint": "Empty matches any host (then the path must be narrower than /)",
+      "path": "Path prefix",
+      "action": "Send to",
+      "urlHint": "Local http(s) URL; https to 127.0.0.1 skips certificate checks",
+      "stripPrefix": "Strip the prefix before forwarding",
+      "toasts": {
+        "save": "Save edge",
+        "delete": "Delete route"
       }
     }
   },

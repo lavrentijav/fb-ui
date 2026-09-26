@@ -615,6 +615,48 @@ export const DnsZoneSchema = z.object({
 });
 export type DnsZone = z.infer<typeof DnsZoneSchema>;
 
+export const EdgeRouteSchema = z.object({
+  action: z.string(),
+  createdAt: z.number().int(),
+  enable: z.boolean(),
+  id: z.number().int(),
+  kind: z.string(),
+  match: z.string(),
+  name: z.string(),
+  pathPrefix: z.string(),
+  proxyProtocol: z.number().int(),
+  sortOrder: z.number().int(),
+  stripPrefix: z.boolean(),
+  target: z.string(),
+  updatedAt: z.number().int(),
+});
+export type EdgeRoute = z.infer<typeof EdgeRouteSchema>;
+
+export const EdgeSettingsSchema = z.object({
+  defaultAction: z.string(),
+  defaultProxyProtocol: z.number().int(),
+  defaultTarget: z.string(),
+  enable: z.boolean(),
+  listen: z.string(),
+});
+export type EdgeSettings = z.infer<typeof EdgeSettingsSchema>;
+
+export const EdgeStatusSchema = z.object({
+  lastError: z.string(),
+  listen: z.string(),
+  panelTls: z.boolean(),
+  running: z.boolean(),
+});
+export type EdgeStatus = z.infer<typeof EdgeStatusSchema>;
+
+export const EdgeTargetCheckSchema = z.object({
+  error: z.string(),
+  ok: z.boolean(),
+  routeId: z.number().int(),
+  target: z.string(),
+});
+export type EdgeTargetCheck = z.infer<typeof EdgeTargetCheckSchema>;
+
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),
   path: z.string().optional(),

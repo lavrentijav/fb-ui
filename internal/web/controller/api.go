@@ -216,6 +216,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	filters := api.Group("/filters")
 	a.filterController = NewFilterController(filters)
 
+	// Edge API — one public port shared by the panel, inbounds and sites
+	NewEdgeController(api.Group("/edge"))
+
 	// Provisioning API — bare server over SSH to a registered node
 	NewProvisionController(api.Group("/provision"))
 
