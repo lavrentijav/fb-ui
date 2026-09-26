@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -243,5 +244,49 @@ func TestParseEnvFileUnquotesPrintfQ(t *testing.T) {
 		if got[k] != v {
 			t.Errorf("%s = %q, want %q", k, got[k], v)
 		}
+	}
+}
+
+func TestProvisionShipsACentrallyIssuedCertificate(t *testing.T) {
+	initCertTestDB(t)
+	ca := installFakeCA(t)
+	rec := &recordingDNS{}
+	dnsProviderFactory = func(dnsprovider.Config) (dnsprovider.Provider, error) { return rec, nil }
+	oldWait := dnsWaitVisible
+	dnsWaitVisible = func(context.Context, string, string, string, []string, time.Duration) error { return nil }
+	t.Cleanup(func() { dnsWaitVisible = oldWait })
+	addZone(t, "example.com")
+	SetReleaseAssets(ReleaseAssets{InstallScript: []byte("#!/bin/bash\n")})
+
+	box := newFakeNodeBox(t, false)
+	srv := provisiontest.Start(t, "pw", box.handle)
+	var s NodeProvisionService
+	job, err := s.Start(&NodeProvisionRequest{
+		Name: "msk4", Zone: "example.com", Host: srv.Host, SshPort: srv.Port, SshPassword: "pw",
+		InstallSource: "github", AllowPrivateAddress: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j := waitJob(t, &s, job.Id)
+	if j.Status != "done" {
+		t.Fatalf("job %s: %s\nlog:\n%s", j.Status, j.Error, strings.Join(j.Log, "\n"))
+	}
+	if len(ca.requests) != 1 || ca.requests[0].Domains[0] != "msk4.example.com" || ca.requests[0].Challenge != "dns01" {
+		t.Fatalf("CA requests = %+v", ca.requests)
+	}
+	if !strings.Contains(box.envFile, "XUI_SSL_MODE='custom'") ||
+		envValue(box.envFile, "XUI_CERT_FILE") != "/root/cert/msk4.example.com/fullchain.pem" ||
+		envValue(box.envFile, "XUI_KEY_FILE") != "/root/cert/msk4.example.com/privkey.pem" {
+		t.Fatalf("env file:\n%s", box.envFile)
+	}
+	var certs CertificateService
+	rows, _ := certs.List()
+	if len(rows) != 1 || rows[0].NodeId != j.NodeId || rows[0].PushedAt == 0 {
+		t.Fatalf("certificate rows = %+v, job node %d", rows, j.NodeId)
+	}
+	key, _ := os.ReadFile(rows[0].KeyFile)
+	if got := box.uploads["/root/cert/msk4.example.com/privkey.pem"]; got == "" || got != string(key) {
+		t.Fatalf("node got key %q, want the one issued here", got)
 	}
 }

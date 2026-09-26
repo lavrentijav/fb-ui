@@ -202,6 +202,36 @@ func (s *CertificateService) Create(req *CertificateRequest) (*model.Certificate
 	return row, nil
 }
 
+// ensureNodeCert returns the certificate a node being provisioned will get,
+// reusing the row a failed earlier attempt left for the same domain.
+func (s *CertificateService) ensureNodeCert(domain string, dnsProviderId int) (*model.Certificate, error) {
+	dir := nodeCertDir(domain)
+	row := &model.Certificate{}
+	err := database.GetDB().Where("cert_file = ?", filepath.Join(dir, "fullchain.pem")).First(row).Error
+	if err == nil {
+		return row, nil
+	}
+	if !database.IsNotFound(err) {
+		return nil, err
+	}
+	row = &model.Certificate{
+		AutoRenew: true, Status: model.CertStatusPending,
+		CertFile: filepath.Join(dir, "fullchain.pem"), KeyFile: filepath.Join(dir, "privkey.pem"),
+	}
+	if err := s.fromRequest(row, &CertificateRequest{Domains: []string{domain}, DnsProviderId: dnsProviderId}); err != nil {
+		return nil, err
+	}
+	return row, database.GetDB().Create(row).Error
+}
+
+// attachToNode binds a provisioning certificate to the node it now lives on;
+// the provisioner already copied the files, so it counts as pushed.
+func (s *CertificateService) attachToNode(id, nodeId int) error {
+	return database.GetDB().Model(&model.Certificate{}).Where("id = ?", id).Updates(map[string]any{
+		"node_id": nodeId, "pushed_at": time.Now().Unix(), "push_error": "",
+	}).Error
+}
+
 func (s *CertificateService) Update(id int, req *CertificateRequest) error {
 	row, err := s.GetById(id)
 	if err != nil {

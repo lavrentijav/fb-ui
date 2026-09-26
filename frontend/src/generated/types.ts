@@ -740,6 +740,7 @@ export interface NodeProvisionRequest {
   hostKeySha256: string;
   installSource: string;
   name: string;
+  nodeAcme: boolean;
   panelPort: number;
   skipDns: boolean;
   sshPassword: string;

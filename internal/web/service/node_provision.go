@@ -45,8 +45,11 @@ type NodeProvisionRequest struct {
 	Zone          string `json:"zone" form:"zone" example:"corp.example"`
 	DnsProviderId int    `json:"dnsProviderId" form:"dnsProviderId" example:"0"`
 	SkipDns       bool   `json:"skipDns" form:"skipDns" example:"false"`
-	AcmeEmail     string `json:"acmeEmail" form:"acmeEmail" example:"ops@example.com"`
-	PanelPort     int    `json:"panelPort" form:"panelPort" example:"0"`
+	// NodeAcme leaves the certificate to acme.sh on the node (HTTP-01 on :80)
+	// instead of ordering it here over DNS-01 and renewing it centrally.
+	NodeAcme  bool   `json:"nodeAcme" form:"nodeAcme" example:"false"`
+	AcmeEmail string `json:"acmeEmail" form:"acmeEmail" example:"ops@example.com"`
+	PanelPort int    `json:"panelPort" form:"panelPort" example:"0"`
 
 	// InstallSource "self" ships this panel's own build (the node never needs
 	// GitHub); "github" lets install.sh download the latest release.
@@ -64,6 +67,7 @@ type NodeProvisionRequest struct {
 const (
 	stepPreflight = "preflight"
 	stepDNS       = "dns"
+	stepCert      = "cert"
 	stepUpload    = "upload"
 	stepInstall   = "install"
 	stepRegister  = "register"
@@ -107,6 +111,7 @@ var (
 	releaseAssets   ReleaseAssets
 	provisionJobs   = &jobStore{jobs: map[string]*provisionRun{}}
 	provisionDialer = provision.Dial
+	dnsWaitVisible  = dnsprovider.WaitVisible
 )
 
 const (
@@ -124,6 +129,7 @@ func SetReleaseAssets(a ReleaseAssets) { releaseAssets = a }
 type NodeProvisionService struct {
 	nodes NodeService
 	dns   DnsProviderService
+	certs CertificateService
 }
 
 type provisionRun struct {
@@ -375,7 +381,7 @@ func (s *NodeProvisionService) Start(req *NodeProvisionRequest) (*ProvisionJob, 
 	run := &provisionRun{job: ProvisionJob{
 		Name: req.Name, Host: req.Host, Domain: req.Domain, Status: "running", CreatedAt: time.Now().Unix(),
 	}}
-	for _, n := range []string{stepPreflight, stepDNS, stepUpload, stepInstall, stepRegister, stepVerify, stepHarden} {
+	for _, n := range []string{stepPreflight, stepDNS, stepCert, stepUpload, stepInstall, stepRegister, stepVerify, stepHarden} {
 		run.job.Steps = append(run.job.Steps, ProvisionStep{Name: n, Status: "pending"})
 	}
 	run.addSecret(req.SshPassword)
@@ -468,6 +474,12 @@ func (s *NodeProvisionService) run(ctx context.Context, run *provisionRun, req *
 		return err
 	}
 
+	// cert: order it here over DNS-01 and hand the node the files.
+	cert, err := s.stepCert(ctx, run, sess, req, prov)
+	if err != nil {
+		return err
+	}
+
 	// upload: installer, and this panel's own build when the arch matches.
 	run.step(stepUpload, "running", "")
 	if len(releaseAssets.InstallScript) == 0 {
@@ -503,7 +515,10 @@ func (s *NodeProvisionService) run(ctx context.Context, run *provisionRun, req *
 		port = randomPanelPort()
 	}
 	sslMode := "ip"
-	if req.Domain != "" {
+	switch {
+	case cert != nil:
+		sslMode = "custom"
+	case req.Domain != "":
 		sslMode = "domain"
 	}
 	env := map[string]string{
@@ -517,6 +532,8 @@ func (s *NodeProvisionService) run(ctx context.Context, run *provisionRun, req *
 		"XUI_ACME_EMAIL":     req.AcmeEmail,
 		"XUI_SERVER_IP":      req.Host,
 		"XUI_ARCHIVE":        archive,
+		"XUI_CERT_FILE":      certFileOn(cert, req.Domain, "fullchain.pem"),
+		"XUI_KEY_FILE":       certFileOn(cert, req.Domain, "privkey.pem"),
 		"DEBIAN_FRONTEND":    "noninteractive",
 	}
 	var envFile strings.Builder
@@ -564,6 +581,12 @@ func (s *NodeProvisionService) run(ctx context.Context, run *provisionRun, req *
 	run.mu.Lock()
 	run.job.NodeId = nodeID
 	run.mu.Unlock()
+	if cert != nil {
+		if err := s.certs.attachToNode(cert.Id, nodeID); err != nil {
+			return err
+		}
+		run.logf("certificate %d now renews here and is pushed to the node", cert.Id)
+	}
 
 	// harden: optional, and only after the node is reachable through the API.
 	if err := s.harden(ctx, run, sess, req); err != nil {
@@ -604,11 +627,68 @@ func (s *NodeProvisionService) stepDNS(ctx context.Context, run *provisionRun, r
 		return err
 	}
 	run.logf("%s %s -> %s written to %s", req.Domain, rtype, addr.Unmap(), zone)
-	if err := dnsprovider.WaitVisible(ctx, zone, req.Domain, rtype, []string{addr.Unmap().String()}, 3*time.Minute); err != nil {
+	if err := dnsWaitVisible(ctx, zone, req.Domain, rtype, []string{addr.Unmap().String()}, 3*time.Minute); err != nil {
 		run.logf("warning: %v; continuing, the CA may still see it", err)
 	}
 	run.step(stepDNS, "done", fmt.Sprintf("%s %s %s", req.Domain, rtype, addr.Unmap()))
 	return nil
+}
+
+// nodeCertRoot is where install.sh and x-ui.sh keep a host's certificates.
+const nodeCertRoot = "/root/cert"
+
+func certFileOn(cert *model.Certificate, domain, name string) string {
+	if cert == nil {
+		return ""
+	}
+	return nodeCertRoot + "/" + domain + "/" + name
+}
+
+// stepCert orders the node's certificate here over DNS-01 and copies it over.
+// A failed order falls back to acme.sh on the node rather than failing the job.
+func (s *NodeProvisionService) stepCert(ctx context.Context, run *provisionRun, sess *provision.Session, req *NodeProvisionRequest, prov *model.DnsProvider) (*model.Certificate, error) {
+	switch {
+	case req.Domain == "":
+		run.step(stepCert, "skipped", "no domain: install.sh issues an IP certificate")
+		return nil, nil
+	case prov == nil || req.NodeAcme:
+		run.step(stepCert, "skipped", "acme.sh on the node (HTTP-01, needs port 80)")
+		return nil, nil
+	}
+	run.step(stepCert, "running", "")
+	cert, err := s.certs.ensureNodeCert(req.Domain, prov.Id)
+	if err != nil {
+		return nil, err
+	}
+	if cert.Status != model.CertStatusValid || cert.NotAfter-time.Now().Unix() < int64(certRenewBefore/time.Second) {
+		run.logf("== ordering a certificate for %s over DNS-01 (%s)", req.Domain, prov.Name)
+		if err := s.certs.Issue(cert.Id); err != nil {
+			run.logf("warning: DNS-01 order failed (%v); falling back to acme.sh on the node", err)
+			run.step(stepCert, "skipped", "DNS-01 failed, acme.sh on the node instead")
+			return nil, nil
+		}
+		if cert, err = s.certs.GetById(cert.Id); err != nil {
+			return nil, err
+		}
+	}
+	dir := nodeCertRoot + "/" + req.Domain
+	if _, err := sess.Output(ctx, "mkdir -p -m 700 "+provision.ShellQuote(dir)); err != nil {
+		return nil, err
+	}
+	for _, f := range []struct {
+		src, name string
+		mode      uint32
+	}{{cert.CertFile, "fullchain.pem", 0o644}, {cert.KeyFile, "privkey.pem", 0o600}} {
+		data, err := os.ReadFile(f.src)
+		if err != nil {
+			return nil, err
+		}
+		if err := sess.Upload(ctx, dir+"/"+f.name, f.mode, strings.NewReader(string(data))); err != nil {
+			return nil, err
+		}
+	}
+	run.step(stepCert, "done", fmt.Sprintf("%s, %s, valid until %s", req.Domain, cert.Issuer, time.Unix(cert.NotAfter, 0).Format("2006-01-02")))
+	return cert, nil
 }
 
 func (s *NodeProvisionService) uploadSelf(ctx context.Context, run *provisionRun, sess *provision.Session, dst string) error {

@@ -776,6 +776,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "hostKeySha256": "",
     "installSource": "self",
     "name": "msk2",
+    "nodeAcme": false,
     "panelPort": 0,
     "skipDns": false,
     "sshPassword": "root-password",

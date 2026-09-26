@@ -29,12 +29,13 @@ Edit the `export XUI_*` lines inside the `write_files` block of
 
 | Env var | Default | Meaning |
 | --- | --- | --- |
-| `XUI_SSL_MODE` | `none` | `none` (plain HTTP), `ip` (Let's Encrypt IP cert), `domain` |
+| `XUI_SSL_MODE` | `none` | `none` (plain HTTP), `ip` (Let's Encrypt IP cert), `domain`, `custom` (use `XUI_CERT_FILE` + `XUI_KEY_FILE`) |
 | `XUI_USERNAME` | random | Admin username |
 | `XUI_PASSWORD` | random | Admin password |
 | `XUI_PANEL_PORT` | random high port | Panel listen port |
 | `XUI_WEB_BASE_PATH` | random | Panel base path (obscures the URL) |
-| `XUI_DOMAIN` | — | Required when `XUI_SSL_MODE=domain` |
+| `XUI_DOMAIN` | — | Required when `XUI_SSL_MODE=domain`; the access URL host in `custom` mode |
+| `XUI_CERT_FILE` / `XUI_KEY_FILE` | — | Certificate and key paths for `XUI_SSL_MODE=custom` |
 | `XUI_ACME_EMAIL` | — | Let's Encrypt account email (domain mode) |
 | `XUI_DB_TYPE` / `XUI_DB_DSN` | `sqlite` | Set `postgres` + DSN to use PostgreSQL |
 

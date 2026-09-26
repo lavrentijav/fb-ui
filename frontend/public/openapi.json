@@ -3298,6 +3298,11 @@
             "example": "msk2",
             "type": "string"
           },
+          "nodeAcme": {
+            "description": "NodeAcme leaves the certificate to acme.sh on the node (HTTP-01 on :80)\ninstead of ordering it here over DNS-01 and renewing it centrally.",
+            "example": false,
+            "type": "boolean"
+          },
           "panelPort": {
             "example": 0,
             "type": "integer"
@@ -3338,6 +3343,7 @@
           "hostKeySha256",
           "installSource",
           "name",
+          "nodeAcme",
           "panelPort",
           "skipDns",
           "sshPassword",
@@ -4223,6 +4229,10 @@
     {
       "name": "Certificates",
       "description": "TLS certificates the panel issues through ACME (Let’s Encrypt by default) and renews on its own, plus certificates found on disk that it only watches for expiry. dns01 is the default challenge because http01 needs port 80, which a real fallback site usually holds. Files are written to /root/cert/<domain>/fullchain.pem and privkey.pem. All endpoints under /panel/api/certs."
+    },
+    {
+      "name": "Provisioning",
+      "description": "Turn a fresh server into a registered node from its IP and root credentials. A job connects over SSH (the host key is reported, or pinned with hostKeySha256), writes <name>.<zone> into the DNS account that owns the zone, orders the certificate here over DNS-01 and copies it over, uploads this panel’s own build (the node never needs GitHub), runs install.sh unattended, registers the node and optionally hardens SSH. SSH secrets live only for the job and are masked in its log. Jobs are kept in memory (the last 50) and do not survive a restart. All endpoints under /panel/api/provision."
     },
     {
       "name": "DNS providers",
@@ -11870,6 +11880,219 @@
                       "type": "string"
                     },
                     "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/provision/start": {
+      "post": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "Start a job in the background and return it. zone + name derive the domain; domain overrides it; neither installs on the bare IP. nodeAcme leaves the certificate to acme.sh on the node. force reinstalls over an existing x-ui.",
+        "operationId": "post_panel_api_provision_start",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "msk2",
+                "host": "203.0.113.10",
+                "sshPort": 22,
+                "sshUser": "root",
+                "sshPassword": "<root password>",
+                "zone": "corp.example",
+                "installSource": "self",
+                "authorizedKey": "ssh-ed25519 AAAA... ops"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/ProvisionJob"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 1700000000,
+                    "domain": "msk2.corp.example",
+                    "error": "",
+                    "host": "203.0.113.10",
+                    "hostKey": "SHA256:abc",
+                    "id": "p-1700000000-1",
+                    "log": [
+                      "== preflight"
+                    ],
+                    "name": "msk2",
+                    "nodeId": 3,
+                    "panelUrl": "https://msk2.corp.example:24501/abc/",
+                    "status": "running",
+                    "steps": [
+                      {
+                        "detail": "installed from this panel's build",
+                        "finishedAt": 1700000060,
+                        "name": "install",
+                        "startedAt": 1700000000,
+                        "status": "done"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/provision/list": {
+      "get": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "Recent jobs, newest first, with their steps and logs.",
+        "operationId": "get_panel_api_provision_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProvisionJob"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "createdAt": 1700000000,
+                      "domain": "msk2.corp.example",
+                      "error": "",
+                      "host": "203.0.113.10",
+                      "hostKey": "SHA256:abc",
+                      "id": "p-1700000000-1",
+                      "log": [
+                        "== preflight"
+                      ],
+                      "name": "msk2",
+                      "nodeId": 3,
+                      "panelUrl": "https://msk2.corp.example:24501/abc/",
+                      "status": "running",
+                      "steps": [
+                        {
+                          "detail": "installed from this panel's build",
+                          "finishedAt": 1700000060,
+                          "name": "install",
+                          "startedAt": 1700000000,
+                          "status": "done"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/provision/get/{id}": {
+      "get": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "One job; poll it while status is running.",
+        "operationId": "get_panel_api_provision_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Job ID, e.g. p-1700000000-1.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/ProvisionJob"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 1700000000,
+                    "domain": "msk2.corp.example",
+                    "error": "",
+                    "host": "203.0.113.10",
+                    "hostKey": "SHA256:abc",
+                    "id": "p-1700000000-1",
+                    "log": [
+                      "== preflight"
+                    ],
+                    "name": "msk2",
+                    "nodeId": 3,
+                    "panelUrl": "https://msk2.corp.example:24501/abc/",
+                    "status": "running",
+                    "steps": [
+                      {
+                        "detail": "installed from this panel's build",
+                        "finishedAt": 1700000060,
+                        "name": "install",
+                        "startedAt": 1700000000,
+                        "status": "done"
+                      }
+                    ]
                   }
                 }
               }
