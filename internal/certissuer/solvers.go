@@ -5,20 +5,17 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/crypto/acme"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/dnsprovider"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
 )
 
-const (
-	propagationTimeout = 3 * time.Minute
-	propagationPoll    = 5 * time.Second
-)
+const propagationTimeout = 3 * time.Minute
 
 // challengeName is where a dns-01 token lives; a wildcard and its apex share
 // one name, which is why values are grouped per name before writing.
@@ -67,74 +64,8 @@ func presentDNS01(ctx context.Context, client *acme.Client, req *Request, pendin
 	return cleanup, nil
 }
 
-// authoritativePropagated asks the zone's own nameservers, bypassing caches
-// that would otherwise hold the NXDOMAIN seen before the record existed.
 func authoritativePropagated(ctx context.Context, zone, name string, values []string) error {
-	servers, err := zoneNameservers(ctx, zone)
-	if err != nil {
-		return err
-	}
-	deadline := time.Now().Add(propagationTimeout)
-	for {
-		missing := ""
-		for _, ns := range servers {
-			got, err := lookupTXTAt(ctx, ns, name)
-			if err != nil || !containsAll(got, values) {
-				missing = ns
-				break
-			}
-		}
-		if missing == "" {
-			return nil
-		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("dns01: %s not visible at %s after %s", name, missing, propagationTimeout)
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(propagationPoll):
-		}
-	}
-}
-
-func zoneNameservers(ctx context.Context, zone string) ([]string, error) {
-	nss, err := net.DefaultResolver.LookupNS(ctx, zone)
-	if err != nil {
-		return nil, fmt.Errorf("dns01: NS lookup for %s: %w", zone, err)
-	}
-	var out []string
-	for _, ns := range nss {
-		ips, err := net.DefaultResolver.LookupHost(ctx, ns.Host)
-		if err != nil || len(ips) == 0 {
-			continue
-		}
-		out = append(out, net.JoinHostPort(ips[0], "53"))
-	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("dns01: no reachable nameserver for %s", zone)
-	}
-	return out, nil
-}
-
-func lookupTXTAt(ctx context.Context, server, name string) ([]string, error) {
-	r := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			d := net.Dialer{Timeout: 5 * time.Second}
-			return d.DialContext(ctx, network, server)
-		},
-	}
-	return r.LookupTXT(ctx, name)
-}
-
-func containsAll(have, want []string) bool {
-	for _, w := range want {
-		if !slices.Contains(have, w) {
-			return false
-		}
-	}
-	return true
+	return dnsprovider.WaitVisible(ctx, zone, name, "TXT", values, propagationTimeout)
 }
 
 // presentHTTP01 serves tokens from a short-lived listener. A busy port is the
