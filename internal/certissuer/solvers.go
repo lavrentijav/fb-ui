@@ -37,19 +37,31 @@ func presentDNS01(ctx context.Context, client *acme.Client, req *Request, pendin
 		}
 		byName[n] = append(byName[n], v)
 	}
+	type target struct {
+		dns  dnsprovider.Provider
+		zone string
+	}
+	targets := map[string]target{}
+	var written []string
 	cleanup := func() {
 		cctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		for _, n := range names {
-			if err := req.DNS.DeleteRecords(cctx, n, "TXT"); err != nil {
+		for _, n := range written {
+			if err := targets[n].dns.DeleteRecords(cctx, n, "TXT"); err != nil {
 				req.logf("cleanup of %s failed: %v", n, err)
 			}
 		}
 	}
 	for _, n := range names {
-		if err := req.DNS.SetRecords(ctx, n, "TXT", byName[n], 60); err != nil {
+		dns, zone, err := req.dnsFor(strings.TrimPrefix(n, "_acme-challenge."))
+		if err != nil {
+			return cleanup, err
+		}
+		targets[n] = target{dns, zone}
+		if err := dns.SetRecords(ctx, n, "TXT", byName[n], 60); err != nil {
 			return cleanup, fmt.Errorf("dns01: write %s: %w", n, err)
 		}
+		written = append(written, n)
 		req.logf("TXT %s published", n)
 	}
 	check := req.Propagated
@@ -57,7 +69,7 @@ func presentDNS01(ctx context.Context, client *acme.Client, req *Request, pendin
 		check = authoritativePropagated
 	}
 	for _, n := range names {
-		if err := check(ctx, req.Zone, n, byName[n]); err != nil {
+		if err := check(ctx, targets[n].zone, n, byName[n]); err != nil {
 			return cleanup, err
 		}
 	}

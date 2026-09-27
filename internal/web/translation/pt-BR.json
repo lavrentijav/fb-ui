@@ -2612,7 +2612,9 @@
       "toasts": {
         "start": "Start provisioning"
       },
-      "subdomainOf": "subdomain · "
+      "subdomainOf": "subdomain · ",
+      "extraZones": "Extra domains",
+      "extraZonesHint": "The node is also named <name>.<domain> in each: a record in every one, and all names on its certificate. The first domain stays its address."
     },
     "edge": {
       "intro": "One public port for everything: TLS connections are routed by server name (SNI) without being decrypted — to this panel or to a local service such as an Xray inbound on 127.0.0.1; unknown names and clients without SNI take the default route. HTTP routes forward by host and path inside the panel's TLS (WebSocket, XHTTP, sites).",

@@ -4615,6 +4615,16 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "msk2.fire-core.ru",
         "type": "string"
       },
+      "extraZones": {
+        "description": "ExtraZones names the node in more base domains too: \u003cname\u003e.\u003czone\u003e for\neach gets its record and a place on the node's certificate.",
+        "example": [
+          "walk.example.com"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "force": {
         "example": false,
         "type": "boolean"
@@ -4675,6 +4685,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "disablePasswordAuth",
       "dnsProviderId",
       "domain",
+      "extraZones",
       "force",
       "host",
       "hostKeySha256",
