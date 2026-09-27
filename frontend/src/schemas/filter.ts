@@ -10,6 +10,11 @@ export const FilterListSchema = z.object({
   enable: z.boolean().optional(),
   createdAt: z.number().optional(),
   updatedAt: z.number().optional(),
+  sourceUrl: z.string().optional(),
+  refreshHours: z.number().optional(),
+  remoteCount: z.number().optional(),
+  fetchedAt: z.number().optional(),
+  fetchError: z.string().optional(),
 });
 
 export const FilterRuleSchema = z.object({
@@ -37,6 +42,8 @@ export const FilterListFormSchema = z.object({
   kind: z.enum(['domain', 'ip']),
   entriesText: z.string(),
   enable: z.boolean(),
+  sourceUrl: z.string().trim(),
+  refreshHours: z.number().int().min(1).max(720),
 });
 
 // A rule's required fields depend on its action, so the check is a refinement.

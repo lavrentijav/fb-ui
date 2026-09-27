@@ -19,7 +19,7 @@ import {
   message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
 
 import { useTheme } from '@/hooks/useTheme';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -50,6 +50,7 @@ export default function FiltersPage() {
     createList,
     updateList,
     removeList,
+    refreshList,
     createRule,
     updateRule,
     removeRule,
@@ -170,9 +171,28 @@ export default function FiltersPage() {
         title: t('pages.filters.entriesCount'),
         key: 'entries',
         render: (_: unknown, list) => (
-          <Tooltip title={(list.entries ?? []).slice(0, 20).join('\n')}>
-            <span>{(list.entries ?? []).length}</span>
-          </Tooltip>
+          <Space size={4} wrap>
+            <Tooltip title={(list.entries ?? []).slice(0, 20).join('\n')}>
+              <span>{(list.entries ?? []).length}</span>
+            </Tooltip>
+            {list.sourceUrl && (
+              <Tooltip
+                title={
+                  <>
+                    <div>{list.sourceUrl}</div>
+                    {(list.fetchedAt ?? 0) > 0 && (
+                      <div>{new Date((list.fetchedAt ?? 0) * 1000).toLocaleString()}</div>
+                    )}
+                    {list.fetchError && <div>{list.fetchError}</div>}
+                  </>
+                }
+              >
+                <Tag color={list.fetchError && !list.remoteCount ? 'red' : 'blue'}>
+                  {t('pages.filters.remoteCount', { count: list.remoteCount ?? 0 })}
+                </Tag>
+              </Tooltip>
+            )}
+          </Space>
         ),
       },
       {
@@ -189,6 +209,16 @@ export default function FiltersPage() {
         key: 'actions',
         render: (_: unknown, list) => (
           <Space size={4}>
+            {list.sourceUrl && (
+              <Tooltip title={t('pages.filters.refreshNow')}>
+                <Button
+                  size="small"
+                  icon={<SyncOutlined />}
+                  onClick={() => refreshList(list.id)}
+                  aria-label={t('pages.filters.refreshNow')}
+                />
+              </Tooltip>
+            )}
             <Tooltip title={t('edit')}>
               <Button
                 size="small"
@@ -210,7 +240,7 @@ export default function FiltersPage() {
         ),
       },
     ],
-    [t, onEdit, onDeleteList],
+    [t, onEdit, onDeleteList, refreshList],
   );
 
   const ruleColumns = useMemo<ColumnsType<FilterRule>>(

@@ -2443,7 +2443,8 @@
         "deleteRule": "删除规则",
         "deletedRule": "规则已删除",
         "fillRequired": "名称为必填项",
-        "needLink": "請選擇該規則轉發到的級聯連線"
+        "needLink": "請選擇該規則轉發到的級聯連線",
+        "refreshList": "Refresh list"
       },
       "addRule": "新增規則",
       "editRule": "編輯規則",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "留空表示該面板的所有入站。",
       "ruleActionHint": "阻擋會丟棄匹配流量，直連從本機出站，級聯則經所選連線轉發。",
       "ruleLink": "級聯連線",
-      "ruleLinkHint": "匹配流量經由轉發的連線。"
+      "ruleLinkHint": "匹配流量經由轉發的連線。",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "由 {name} 主導",

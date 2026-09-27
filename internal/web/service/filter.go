@@ -63,9 +63,16 @@ func (s *FilterService) UpdateList(id int, in *model.FilterList) error {
 	if err := db.Where("id = ?", id).First(existing).Error; err != nil {
 		return err
 	}
-	return db.Model(existing).Select("Name", "Remark", "Kind", "Entries", "Enable").Updates(model.FilterList{
+	cols := []any{"Remark", "Kind", "Entries", "Enable", "SourceUrl", "RefreshHours"}
+	upd := model.FilterList{
 		Name: in.Name, Remark: in.Remark, Kind: in.Kind, Entries: in.Entries, Enable: in.Enable,
-	}).Error
+		SourceUrl: in.SourceUrl, RefreshHours: in.RefreshHours,
+	}
+	if in.SourceUrl != existing.SourceUrl || in.Kind != existing.Kind {
+		// Entries from another source or kind must not linger until the next fetch.
+		cols = append(cols, "RemoteEntries", "RemoteCount", "FetchedAt", "FetchError")
+	}
+	return db.Model(existing).Select("Name", cols...).Updates(upd).Error
 }
 
 // DeleteList refuses to strand a rule: a list still referenced would leave the
@@ -98,6 +105,20 @@ func (s *FilterService) normalizeList(list *model.FilterList) error {
 	list.Remark = strings.TrimSpace(list.Remark)
 	if list.Kind != model.FilterKindIP {
 		list.Kind = model.FilterKindDomain
+	}
+	list.SourceUrl = strings.TrimSpace(list.SourceUrl)
+	if list.SourceUrl != "" {
+		clean, err := SanitizeHTTPURL(list.SourceUrl)
+		if err != nil {
+			return common.NewError("source URL: " + err.Error())
+		}
+		list.SourceUrl = clean
+	}
+	if list.RefreshHours <= 0 {
+		list.RefreshHours = 24
+	}
+	if list.RefreshHours > 24*30 {
+		list.RefreshHours = 24 * 30
 	}
 
 	seen := make(map[string]struct{}, len(list.Entries))

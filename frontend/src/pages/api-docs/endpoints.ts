@@ -2223,6 +2223,14 @@ export const sections: readonly Section[] = [
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'List ID.' }],
       },
       {
+        method: 'POST',
+        path: '/panel/api/filters/lists/refresh/:id',
+        summary:
+          'Fetch the list\u2019s sourceUrl now. Plain lines, hosts files (0.0.0.0 name) and adblock (||name^) are read; comments are skipped and a line Xray would reject is counted in fetchError, not fatal. A failed fetch keeps the entries the list had. Lists with a sourceUrl also refresh every refreshHours (default 24).',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'List ID.' }],
+        responseSchema: 'FilterList',
+      },
+      {
         method: 'GET',
         path: '/panel/api/filters/rules',
         summary: 'List every filter rule, in the order they are emitted into the routing config.',

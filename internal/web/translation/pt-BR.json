@@ -2443,7 +2443,8 @@
         "deleteRule": "Excluir regra",
         "deletedRule": "Regra excluída",
         "fillRequired": "O nome é obrigatório",
-        "needLink": "Escolha o link em cascata desta regra"
+        "needLink": "Escolha o link em cascata desta regra",
+        "refreshList": "Refresh list"
       },
       "addRule": "Adicionar regra",
       "editRule": "Editar regra",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "Vazio significa todos os inbounds desse painel.",
       "ruleActionHint": "Bloquear descarta o tráfego, Direto o envia localmente, Cascata o encaminha pelo link escolhido.",
       "ruleLink": "Link em cascata",
-      "ruleLinkHint": "O link por onde o tráfego correspondente é encaminhado."
+      "ruleLinkHint": "O link por onde o tráfego correspondente é encaminhado.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "Liderado por {name}",

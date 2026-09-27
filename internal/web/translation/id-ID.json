@@ -2443,7 +2443,8 @@
         "deleteRule": "Hapus aturan",
         "deletedRule": "Aturan dihapus",
         "fillRequired": "Nama wajib diisi",
-        "needLink": "Pilih tautan cascade untuk aturan ini"
+        "needLink": "Pilih tautan cascade untuk aturan ini",
+        "refreshList": "Refresh list"
       },
       "addRule": "Tambah aturan",
       "editRule": "Ubah aturan",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "Kosong berarti semua inbound di panel itu.",
       "ruleActionHint": "Blokir membuang trafik, Direct mengeluarkannya lokal, Cascade meneruskannya lewat tautan terpilih.",
       "ruleLink": "Tautan cascade",
-      "ruleLinkHint": "Tautan tempat trafik yang cocok diteruskan."
+      "ruleLinkHint": "Tautan tempat trafik yang cocok diteruskan.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "Dipimpin {name}",

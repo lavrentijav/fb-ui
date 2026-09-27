@@ -15933,6 +15933,69 @@
         }
       }
     },
+    "/panel/api/filters/lists/refresh/{id}": {
+      "post": {
+        "tags": [
+          "Filters"
+        ],
+        "summary": "Fetch the list’s sourceUrl now. Plain lines, hosts files (0.0.0.0 name) and adblock (||name^) are read; comments are skipped and a line Xray would reject is counted in fetchError, not fatal. A failed fetch keeps the entries the list had. Lists with a sourceUrl also refresh every refreshHours (default 24).",
+        "operationId": "post_panel_api_filters_lists_refresh_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "List ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/FilterList"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 0,
+                    "enable": true,
+                    "entries": [
+                      ""
+                    ],
+                    "fetchError": "",
+                    "fetchedAt": 1700000000,
+                    "id": 1,
+                    "kind": "domain",
+                    "name": "ads",
+                    "refreshHours": 24,
+                    "remark": "",
+                    "remoteCount": 8412,
+                    "sourceUrl": "https://antifilter.download/list/allyouneed.lst",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/filters/rules": {
       "get": {
         "tags": [

@@ -29,11 +29,30 @@ type FilterList struct {
 	Entries []string `json:"entries" form:"entries" gorm:"serializer:json"`
 	Enable  bool     `json:"enable" form:"enable" gorm:"default:true" example:"true"`
 
+	// SourceUrl makes the list follow a published one (antifilter, v2fly,
+	// adblock, hosts files); what it yields is kept apart from Entries, which
+	// stay the operator's own additions.
+	SourceUrl     string   `json:"sourceUrl" form:"sourceUrl" gorm:"column:source_url" example:"https://antifilter.download/list/allyouneed.lst"`
+	RefreshHours  int      `json:"refreshHours" form:"refreshHours" gorm:"column:refresh_hours;default:24" example:"24"`
+	RemoteEntries []string `json:"-" gorm:"column:remote_entries;serializer:json"`
+	RemoteCount   int      `json:"remoteCount" gorm:"column:remote_count" example:"8412"`
+	FetchedAt     int64    `json:"fetchedAt" gorm:"column:fetched_at" example:"1700000000"`
+	FetchError    string   `json:"fetchError" gorm:"column:fetch_error"`
+
 	CreatedAt int64 `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt int64 `json:"updatedAt" gorm:"autoUpdateTime:milli"`
 }
 
 func (FilterList) TableName() string { return "filter_lists" }
+
+// Matchers is everything the list contributes to a rule: the operator's own
+// entries first, then whatever the source URL yielded.
+func (l *FilterList) Matchers() []string {
+	if len(l.RemoteEntries) == 0 {
+		return l.Entries
+	}
+	return append(append(make([]string, 0, len(l.Entries)+len(l.RemoteEntries)), l.Entries...), l.RemoteEntries...)
+}
 
 // FilterRule is a filtering node on the topology canvas: traffic entering the
 // named inbounds of one panel is matched against the referenced lists and sent

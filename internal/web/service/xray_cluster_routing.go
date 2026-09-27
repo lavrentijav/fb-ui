@@ -149,10 +149,10 @@ func ruleMatchers(rule *model.FilterRule, lists map[int]*model.FilterList) ([]st
 			continue
 		}
 		if list.Kind == model.FilterKindIP {
-			ips = append(ips, list.Entries...)
+			ips = append(ips, list.Matchers()...)
 			continue
 		}
-		domains = append(domains, list.Entries...)
+		domains = append(domains, list.Matchers()...)
 	}
 	return domains, ips
 }

@@ -2443,7 +2443,8 @@
         "deleteRule": "حذف قاعده",
         "deletedRule": "قاعده حذف شد",
         "fillRequired": "نام الزامی است",
-        "needLink": "لینک کسکید این قانون را انتخاب کنید"
+        "needLink": "لینک کسکید این قانون را انتخاب کنید",
+        "refreshList": "Refresh list"
       },
       "addRule": "افزودن قانون",
       "editRule": "ویرایش قانون",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "خالی یعنی همهٔ اینباندهای آن پنل.",
       "ruleActionHint": "بلاک ترافیک منطبق را دور می‌ریزد، مستقیم آن را محلی خارج می‌کند و کسکید آن را از لینک انتخاب‌شده عبور می‌دهد.",
       "ruleLink": "لینک کسکید",
-      "ruleLinkHint": "لینکی که ترافیک منطبق از آن عبور می‌کند."
+      "ruleLinkHint": "لینکی که ترافیک منطبق از آن عبور می‌کند.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "راهبر: {name}",

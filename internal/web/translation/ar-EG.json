@@ -2443,7 +2443,8 @@
         "deleteRule": "حذف القاعدة",
         "deletedRule": "تم حذف القاعدة",
         "fillRequired": "الاسم مطلوب",
-        "needLink": "اختر رابط الكاسكيد الذي تمرّر إليه هذه القاعدة"
+        "needLink": "اختر رابط الكاسكيد الذي تمرّر إليه هذه القاعدة",
+        "refreshList": "Refresh list"
       },
       "addRule": "إضافة قاعدة",
       "editRule": "تعديل القاعدة",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "اتركه فارغًا ليشمل كل الإنباوندات على تلك اللوحة.",
       "ruleActionHint": "الحظر يُسقط الترافيك المطابق، والمباشر يُخرجه محليًا، والكاسكيد يمرّره عبر الرابط المختار.",
       "ruleLink": "رابط الكاسكيد",
-      "ruleLinkHint": "الرابط الذي يُمرَّر عبره الترافيك المطابق."
+      "ruleLinkHint": "الرابط الذي يُمرَّر عبره الترافيك المطابق.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "يقودها {name}",
