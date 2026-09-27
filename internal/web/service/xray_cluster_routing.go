@@ -24,14 +24,15 @@ var (
 // takes the first matching rule, so that order is the chain. Returns the ids of
 // the rules that actually reached the config.
 //
-// Rules owned by another panel belong in that panel's own config and are left
-// to it; the same goes for a cascade whose outbound does not exist here yet.
+// Only rules and links owned by panelId are emitted: the master builds each
+// node's share separately and ships it (see routing_sync.go).
 func injectClusterRouting(
 	cfg *xray.Config,
 	rules []*model.FilterRule,
 	lists []*model.FilterList,
 	links []*model.CascadeLink,
 	localInboundTags []string,
+	panelId int,
 ) (appliedRules []int, appliedLinks []int) {
 	if len(rules) == 0 && len(links) == 0 {
 		return nil, nil
@@ -56,7 +57,7 @@ func injectClusterRouting(
 	newRules := make([]any, 0, len(rules)+len(links))
 	applied := make([]int, 0, len(rules))
 	for _, rule := range rules {
-		if !rule.Enable || rule.PanelId != SelfPanelId {
+		if !rule.Enable || rule.PanelId != panelId {
 			continue
 		}
 		domains, ips := ruleMatchers(rule, listById)
@@ -103,7 +104,7 @@ func injectClusterRouting(
 	// inbound's traffic, the link is what happens to the rest of it.
 	appliedLinks = make([]int, 0, len(links))
 	for _, link := range links {
-		if !link.Enable || link.SourcePanelId != SelfPanelId || link.SourceInboundTag == "" {
+		if !link.Enable || link.SourcePanelId != panelId || link.SourceInboundTag == "" {
 			continue
 		}
 		tag := link.EffectiveOutboundTag()

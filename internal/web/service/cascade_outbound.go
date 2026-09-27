@@ -62,11 +62,14 @@ func buildCascadeOutbound(link *model.CascadeLink) (json_util.RawMessage, bool) 
 // cascadeTargetAddress is where the target panel answers. Its registry row
 // carries one address whether it is a node or a master.
 func cascadeTargetAddress(panelId int) (string, bool) {
-	if panelId == SelfPanelId {
-		return "", false
-	}
 	node := &model.Node{}
-	if err := database.GetDB().Where("id = ?", panelId).First(node).Error; err != nil {
+	q := database.GetDB().Where("id = ?", panelId)
+	if panelId == SelfPanelId {
+		// A node dialing back into this master uses the address the cluster
+		// registered for it.
+		q = database.GetDB().Where("is_self = ?", true)
+	}
+	if err := q.First(node).Error; err != nil {
 		return "", false
 	}
 	if node.Address == "" {
@@ -95,12 +98,12 @@ func cascadeClient(target *model.Inbound, email string) (model.Client, bool) {
 	return model.Client{}, false
 }
 
-// injectCascadeOutbounds adds the generated outbound for every enabled local
-// link that did not name one, so the routing pass can target it by tag.
-func injectCascadeOutbounds(cfg *xray.Config, links []*model.CascadeLink) {
+// injectCascadeOutbounds adds the generated outbound for every enabled link
+// of panelId that did not name one, so the routing pass can target it by tag.
+func injectCascadeOutbounds(cfg *xray.Config, links []*model.CascadeLink, panelId int) {
 	var generated []any
 	for _, link := range links {
-		if !link.Enable || link.SourcePanelId != SelfPanelId || link.OutboundTag != "" {
+		if !link.Enable || link.SourcePanelId != panelId || link.OutboundTag != "" {
 			continue
 		}
 		built, ok := buildCascadeOutbound(link)

@@ -127,6 +127,7 @@ func run(root, outDir string) error {
 				"InboundTemplateFromInbounds",
 				"InboundTemplateApply",
 				"InboundTemplateResult",
+				"ManagedRouting",
 				"EdgeStatus",
 				"EdgeTargetCheck",
 				"NodeProvisionRequest",

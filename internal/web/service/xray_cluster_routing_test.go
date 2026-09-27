@@ -65,7 +65,7 @@ func TestClusterRoutingEmitsTheChainInOrder(t *testing.T) {
 		{Id: 2, Name: "ru direct", PanelId: SelfPanelId, SourceInboundTags: []string{"in-a"}, ListIds: []int{2}, Action: model.FilterActionDirect, Enable: true},
 	}
 
-	applied, _ := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"})
+	applied, _ := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"}, SelfPanelId)
 	if len(applied) != 2 || applied[0] != 1 || applied[1] != 2 {
 		t.Fatalf("applied = %v, want both rules in order", applied)
 	}
@@ -100,7 +100,7 @@ func TestClusterRoutingSkipsARuleWithNoMatchers(t *testing.T) {
 	rules := []*model.FilterRule{
 		{Id: 1, Name: "empty", PanelId: SelfPanelId, ListIds: []int{3}, Action: model.FilterActionBlock, Enable: true},
 	}
-	if applied, _ := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"}); len(applied) != 0 {
+	if applied, _ := injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a"}, SelfPanelId); len(applied) != 0 {
 		t.Fatalf("applied = %v, want the matcher-less rule skipped", applied)
 	}
 	if got := len(routingRules(t, cfg)); got != 1 {
@@ -115,7 +115,7 @@ func TestClusterRoutingScopesAPanelWideRuleToOwnInbounds(t *testing.T) {
 	rules := []*model.FilterRule{
 		{Id: 1, Name: "panel wide", PanelId: SelfPanelId, ListIds: []int{1}, Action: model.FilterActionBlock, Enable: true},
 	}
-	injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a", "in-b"})
+	injectClusterRouting(cfg, rules, clusterLists(), nil, []string{"in-a", "in-b"}, SelfPanelId)
 
 	tags := matcherStrings(t, routingRules(t, cfg)[0], "inboundTag")
 	if len(tags) != 2 || tags[0] != "in-a" || tags[1] != "in-b" {
@@ -154,7 +154,7 @@ func TestClusterRoutingLeavesForeignAndUnbackedRulesPending(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := clusterTestConfig(t)
-			applied, _ := injectClusterRouting(cfg, []*model.FilterRule{tt.rule}, clusterLists(), links, []string{"in-a"})
+			applied, _ := injectClusterRouting(cfg, []*model.FilterRule{tt.rule}, clusterLists(), links, []string{"in-a"}, SelfPanelId)
 			if len(applied) != 0 {
 				t.Fatalf("applied = %v, want it left pending", applied)
 			}
@@ -177,7 +177,7 @@ func TestClusterRoutingUsesTheCascadeOutboundWhenItExists(t *testing.T) {
 		ListIds: []int{1}, Action: model.FilterActionCascade, CascadeLinkId: link.Id, Enable: true,
 	}
 
-	applied, _ := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"})
+	applied, _ := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"}, SelfPanelId)
 	if len(applied) != 1 || applied[0] != 3 {
 		t.Fatalf("applied = %v, want the cascade layer", applied)
 	}
@@ -273,7 +273,7 @@ func TestClusterRoutingEmitsLinksAfterTheLayers(t *testing.T) {
 		{Id: 4, SourcePanelId: SelfPanelId, SourceInboundTag: "in-a", OutboundTag: "to-fi2", Enable: true},
 	}
 
-	appliedRules, appliedLinks := injectClusterRouting(cfg, rules, clusterLists(), links, []string{"in-a"})
+	appliedRules, appliedLinks := injectClusterRouting(cfg, rules, clusterLists(), links, []string{"in-a"}, SelfPanelId)
 	if len(appliedRules) != 1 || len(appliedLinks) != 1 || appliedLinks[0] != 4 {
 		t.Fatalf("applied rules=%v links=%v, want both", appliedRules, appliedLinks)
 	}
@@ -319,7 +319,7 @@ func TestClusterRoutingLeavesLinksWithoutAnOutboundPending(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := clusterTestConfig(t)
-			_, appliedLinks := injectClusterRouting(cfg, nil, clusterLists(), []*model.CascadeLink{tt.link}, []string{"in-a"})
+			_, appliedLinks := injectClusterRouting(cfg, nil, clusterLists(), []*model.CascadeLink{tt.link}, []string{"in-a"}, SelfPanelId)
 			if len(appliedLinks) != 0 {
 				t.Fatalf("applied = %v, want it left pending", appliedLinks)
 			}
@@ -342,7 +342,7 @@ func TestClusterRoutingCascadeLayerFollowsTheLinksOutbound(t *testing.T) {
 		ListIds: []int{2}, Action: model.FilterActionCascade, CascadeLinkId: link.Id, Enable: true,
 	}
 
-	appliedRules, _ := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"})
+	appliedRules, _ := injectClusterRouting(cfg, []*model.FilterRule{rule}, clusterLists(), []*model.CascadeLink{link}, []string{"in-a"}, SelfPanelId)
 	if len(appliedRules) != 1 {
 		t.Fatalf("applied = %v, want the cascade layer", appliedRules)
 	}

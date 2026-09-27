@@ -1965,6 +1965,28 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'routing-managed',
+    title: 'Managed routing (node side)',
+    description:
+      'Filter layers and cascades a master defines for one of its nodes are rendered on the master into that node\u2019s share — the cascade outbounds it dials and the routing rules for its inbounds — and pushed here every 30 seconds when it changes. The node splices the share into the config it generates: outbounds by tag (its own win) and rules ahead of its template\u2019s, dropping a rule whose target it does not have. All endpoints under /panel/api/routing.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/routing/managed',
+        summary: 'The share this panel currently holds (empty when it has no master).',
+        responseSchema: 'ManagedRouting',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/routing/managed',
+        summary:
+          'Store a share from the master; Xray regenerates only when the version changed. Allowed for node-sync tokens.',
+        body: '{\n  "version": "3f2a…",\n  "outbounds": [],\n  "rules": []\n}',
+      },
+    ],
+  },
+
+  {
     id: 'templates',
     title: 'Inbound templates',
     description:
