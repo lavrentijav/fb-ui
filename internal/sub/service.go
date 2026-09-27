@@ -472,6 +472,8 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 		}
 	}
 
+	result = dedupeLinks(result)
+
 	uniqueEmails := make([]string, 0, len(seenEmails))
 	for e := range seenEmails {
 		uniqueEmails = append(uniqueEmails, e)

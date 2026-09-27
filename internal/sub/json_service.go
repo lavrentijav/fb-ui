@@ -178,6 +178,7 @@ func (s *SubJsonService) GetJson(subId string, host string, alwaysReturnArray bo
 	for _, entry := range entries {
 		configArray = append(configArray, entry.configs...)
 	}
+	configArray = dedupeJSONConfigs(configArray)
 	for _, ext := range externalLinks {
 		if ext.Enable {
 			hasEnabledClient = true
