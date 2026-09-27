@@ -183,3 +183,25 @@ func TestUpdateInboundAllowsUntouchedLegacyTLSCertificates(t *testing.T) {
 		})
 	}
 }
+
+func TestTrustedXForwardedForOnlyBehindLoopback(t *testing.T) {
+	trusting := `{"network":"ws","sockopt":{"trustedXForwardedFor":["X-Edge-Proxy"]}}`
+	for _, tc := range []struct {
+		listen, stream string
+		ok             bool
+	}{
+		{"127.0.0.1", trusting, true},
+		{"::1", trusting, true},
+		{"localhost", trusting, true},
+		{"", trusting, false},
+		{"0.0.0.0", trusting, false},
+		{"203.0.113.5", trusting, false},
+		{"", `{"network":"ws","sockopt":{"trustedXForwardedFor":[]}}`, true},
+		{"", `{"network":"ws"}`, true},
+	} {
+		err := validateTrustedXForwardedFor(tc.listen, tc.stream)
+		if (err == nil) != tc.ok {
+			t.Errorf("listen %q stream %s: err = %v, want ok=%v", tc.listen, tc.stream, err, tc.ok)
+		}
+	}
+}

@@ -681,6 +681,31 @@ func canonicalizeStreamNetworkKey(streamSettings string) string {
 	return string(out)
 }
 
+// validateTrustedXForwardedFor refuses trusting a client-supplied address on an
+// inbound anyone can reach: Xray trusts the header by name alone, not by peer.
+func validateTrustedXForwardedFor(listen, streamSettings string) error {
+	if strings.TrimSpace(streamSettings) == "" {
+		return nil
+	}
+	var stream struct {
+		Sockopt struct {
+			TrustedXForwardedFor []string `json:"trustedXForwardedFor"`
+		} `json:"sockopt"`
+	}
+	if json.Unmarshal([]byte(streamSettings), &stream) != nil || len(stream.Sockopt.TrustedXForwardedFor) == 0 {
+		return nil
+	}
+	host := strings.Trim(strings.TrimSpace(listen), "[]")
+	if host == "localhost" {
+		return nil
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		return nil
+	}
+	return common.NewError("sockopt.trustedXForwardedFor lets a client choose its own address; " +
+		"use it only on an inbound that listens on 127.0.0.1 behind a proxy")
+}
+
 // validateInboundTLSCertificates rejects incomplete TLS credentials before a save
 // can restart Xray. File paths belong to the node, so only presence is checked.
 func validateInboundTLSCertificates(streamSettings string) error {
@@ -1099,6 +1124,9 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 	s.normalizeStreamSettings(inbound)
 	if !s.FromNodeSync {
 		if err := validateInboundTLSCertificates(inbound.StreamSettings); err != nil {
+			return inbound, false, err
+		}
+		if err := validateTrustedXForwardedFor(inbound.Listen, inbound.StreamSettings); err != nil {
 			return inbound, false, err
 		}
 	}
@@ -1728,6 +1756,11 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 	if !s.FromNodeSync {
 		if err := validateInboundTLSCertificates(inbound.StreamSettings); err != nil {
 			if validateInboundTLSCertificates(oldInbound.StreamSettings) == nil {
+				return inbound, false, err
+			}
+		}
+		if err := validateTrustedXForwardedFor(inbound.Listen, inbound.StreamSettings); err != nil {
+			if validateTrustedXForwardedFor(oldInbound.Listen, oldInbound.StreamSettings) == nil {
 				return inbound, false, err
 			}
 		}
