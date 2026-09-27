@@ -1068,6 +1068,12 @@ export interface NodeProvisionRequest {
   zone: string;
 }
 
+export interface NodeRelease {
+  cascades: number;
+  filters: number;
+  inbounds: number;
+}
+
 export interface NodeRoleChangeRequest {
   address: string;
   allowPrivateAddress?: boolean | null;

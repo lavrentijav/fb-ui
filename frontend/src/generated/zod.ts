@@ -1146,6 +1146,13 @@ export const NodeProvisionRequestSchema = z.object({
 });
 export type NodeProvisionRequest = z.infer<typeof NodeProvisionRequestSchema>;
 
+export const NodeReleaseSchema = z.object({
+  cascades: z.number().int(),
+  filters: z.number().int(),
+  inbounds: z.number().int(),
+});
+export type NodeRelease = z.infer<typeof NodeReleaseSchema>;
+
 export const NodeRoleChangeRequestSchema = z.object({
   address: z.string(),
   allowPrivateAddress: z.boolean().nullable().optional(),

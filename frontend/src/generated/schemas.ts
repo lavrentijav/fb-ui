@@ -4769,6 +4769,29 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "NodeRelease": {
+    "description": "NodeRelease reports what a release dropped from this panel.",
+    "properties": {
+      "cascades": {
+        "example": 4,
+        "type": "integer"
+      },
+      "filters": {
+        "example": 0,
+        "type": "integer"
+      },
+      "inbounds": {
+        "example": 9,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "cascades",
+      "filters",
+      "inbounds"
+    ],
+    "type": "object"
+  },
   "NodeRoleChangeRequest": {
     "description": "NodeRoleChangeRequest carries only what the *target* role needs. Fields of\nthe role being left stay on the row, so flipping back does not re-ask them.",
     "properties": {

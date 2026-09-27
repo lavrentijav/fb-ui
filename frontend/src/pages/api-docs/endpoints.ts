@@ -1686,6 +1686,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
+        path: '/panel/api/nodes/release/:id',
+        summary:
+          'Forget a node without touching it, to hand it to another master: it is disabled, then its inbounds, host groups, cascade links and filter rules leave this panel\u2019s database and the node row is deleted. Nothing is sent to the node, which keeps serving every inbound and client until the new master takes it over.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
+        responseSchema: 'NodeRelease',
+      },
+      {
+        method: 'POST',
         path: '/panel/api/nodes/maintenance/:id',
         summary:
           'Put a node into maintenance or take it out: its edge refuses new tunnels and closes idle ones, and its inbounds leave every subscription until it is switched back. The switch is stored here and re-sent by the heartbeat if the node missed it.',
