@@ -508,10 +508,23 @@ func StripVlessInboundEncryption(settings string) (string, bool) {
 	if err := json.Unmarshal([]byte(settings), &parsed); err != nil {
 		return settings, false
 	}
-	if _, has := parsed["encryption"]; !has {
+	_, changed := parsed["encryption"]
+	delete(parsed, "encryption")
+	// Clients may carry their share-link encryption too; the core refuses the
+	// whole inbound for it, which on a runtime re-add leaves the port closed.
+	if clients, ok := parsed["clients"].([]any); ok {
+		for _, c := range clients {
+			if m, ok := c.(map[string]any); ok {
+				if _, has := m["encryption"]; has {
+					delete(m, "encryption")
+					changed = true
+				}
+			}
+		}
+	}
+	if !changed {
 		return settings, false
 	}
-	delete(parsed, "encryption")
 	out, err := json.MarshalIndent(parsed, "", "  ")
 	if err != nil {
 		return settings, false
