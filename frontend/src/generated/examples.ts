@@ -1191,6 +1191,11 @@ export const EXAMPLES: Record<string, unknown> = {
     "sshUser": "root",
     "zone": "corp.example"
   },
+  "NodeRelease": {
+    "cascades": 4,
+    "filters": 0,
+    "inbounds": 9
+  },
   "NodeRoleChangeRequest": {
     "address": "node1.example.com",
     "allowPrivateAddress": null,

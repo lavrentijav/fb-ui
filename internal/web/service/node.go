@@ -935,6 +935,52 @@ func (s *NodeService) PushMaintenance(n *model.Node) error {
 	return remote.SetMaintenance(ctx, n.Maintenance, n.MaintenanceIdle)
 }
 
+// NodeRelease reports what a release dropped from this panel.
+type NodeRelease struct {
+	Inbounds int `json:"inbounds" example:"9"`
+	Cascades int `json:"cascades" example:"4"`
+	Filters  int `json:"filters" example:"0"`
+}
+
+// Release forgets a node without touching it: its inbounds, cascade links and
+// filter rules leave this panel's database, while the node keeps serving
+// everything, ready to be registered on another master.
+func (s *NodeService) Release(id int) (*NodeRelease, error) {
+	n, err := s.GetById(id)
+	if err != nil || n == nil {
+		return nil, fmt.Errorf("node not found")
+	}
+	if err := s.SetEnable(id, false); err != nil {
+		return nil, err
+	}
+	db := database.GetDB()
+	var ids []int
+	if err := db.Model(&model.Inbound{}).Where("node_id = ?", id).Pluck("id", &ids).Error; err != nil {
+		return nil, err
+	}
+	out := &NodeRelease{}
+	var inbounds InboundService
+	for _, ibId := range ids {
+		// The returned push would delete the inbound on the node; dropping
+		// it is the whole point of a release.
+		if _, _, err := inbounds.delInbound(ibId); err != nil {
+			return out, err
+		}
+		out.Inbounds++
+	}
+	res := db.Where("source_panel_id = ? OR target_panel_id = ?", id, id).Delete(&model.CascadeLink{})
+	if res.Error != nil {
+		return out, res.Error
+	}
+	out.Cascades = int(res.RowsAffected)
+	res = db.Where("panel_id = ?", id).Delete(&model.FilterRule{})
+	if res.Error != nil {
+		return out, res.Error
+	}
+	out.Filters = int(res.RowsAffected)
+	return out, s.Delete(id)
+}
+
 // GetWebCertFiles asks a node for its own web TLS certificate/key file paths,
 // used by "Set Cert from Panel" so a node-assigned inbound gets paths that
 // exist on the node rather than the central panel. See issue #4854.

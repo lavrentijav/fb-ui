@@ -132,6 +132,7 @@ func run(root, outDir string) error {
 				"MaintenanceRequest",
 				"DomainMigrateRequest",
 				"DomainMigrateAction",
+				"NodeRelease",
 				"EdgeTargetCheck",
 				"NodeProvisionRequest",
 				"ProvisionJob",
