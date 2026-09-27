@@ -20,6 +20,7 @@ const cloudflareAPI = "https://api.cloudflare.com/client/v4"
 type cloudflare struct {
 	zone    string
 	token   string
+	email   string // set with a Global API Key, given as "email:key"
 	baseURL string
 	hc      *http.Client
 
@@ -31,9 +32,14 @@ func newCloudflare(zone, token, baseURL string) *cloudflare {
 	if baseURL == "" {
 		baseURL = cloudflareAPI
 	}
+	var email string
+	if user, key, ok := strings.Cut(token, ":"); ok && strings.Contains(user, "@") {
+		email, token = strings.TrimSpace(user), strings.TrimSpace(key)
+	}
 	return &cloudflare{
 		zone:    zone,
 		token:   token,
+		email:   email,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		hc:      &http.Client{Timeout: 30 * time.Second},
 	}
@@ -72,7 +78,12 @@ func (c *cloudflare) do(ctx context.Context, method, path string, body, out any)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	if c.email != "" {
+		req.Header.Set("X-Auth-Email", c.email)
+		req.Header.Set("X-Auth-Key", c.token)
+	} else {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.hc.Do(req)
 	if err != nil {
@@ -88,9 +99,14 @@ func (c *cloudflare) do(ctx context.Context, method, path string, body, out any)
 		return fmt.Errorf("cloudflare: HTTP %d: undecodable response", resp.StatusCode)
 	}
 	if !env.Success {
-		msgs := make([]string, 0, len(env.Errors))
+		msgs := make([]string, 0, len(env.Errors)+1)
+		badHeaders := false
 		for _, e := range env.Errors {
 			msgs = append(msgs, fmt.Sprintf("%d %s", e.Code, e.Message))
+			badHeaders = badHeaders || e.Code == 6003 || e.Code == 6111
+		}
+		if badHeaders && c.email == "" {
+			msgs = append(msgs, "this looks like a Global API Key: enter it as email:key, or create an API Token with Zone:Read and DNS:Edit")
 		}
 		return fmt.Errorf("cloudflare: HTTP %d: %s", resp.StatusCode, strings.Join(msgs, "; "))
 	}

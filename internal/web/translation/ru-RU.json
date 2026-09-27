@@ -2493,7 +2493,7 @@
       "challenge": "Проверка",
       "challengeHint": "DNS-01 работает за сайтом-заглушкой и для wildcard; HTTP-01 требует свободный порт 80.",
       "credential": "API-токен",
-      "credentialHintCloudflare": "API-токен Cloudflare с правом Zone → DNS → Edit на эту зону.",
+      "credentialHintCloudflare": "API-токен Cloudflare с правами Zone → Zone → Read и Zone → DNS → Edit. Подойдёт и Global API Key, если ввести его как email:ключ.",
       "credentialHintTechnitium": "API-токен Technitium: Administration → Sessions → Create Token.",
       "credentialKeep": "Оставьте пустым, чтобы сохранить текущий токен",
       "credentialMissing": "нет",
