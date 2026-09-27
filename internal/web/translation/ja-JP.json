@@ -1119,7 +1119,15 @@
       "pinnedCertPlaceholder": "base64 または hex の SHA-256",
       "fetchPin": "取得",
       "pinFetched": "ノードの現在の証明書を取得しました",
-      "pinFetchFailed": "証明書を取得できませんでした"
+      "pinFetchFailed": "証明書を取得できませんでした",
+      "maintenance": {
+        "start": "Maintenance",
+        "end": "End maintenance",
+        "tip": "New connections are refused and idle ones are closed; the node is left out of subscriptions. Tunnels still open are counted here.",
+        "tag": "maintenance · {{active}} open",
+        "confirmTitle": "Put {{name}} into maintenance?",
+        "confirmBody": "The node stops taking new connections on its shared port, closes connections idle for two minutes and drops out of subscriptions. The panel stays reachable. Switch it back when the work is done."
+      }
     },
     "settings": {
       "defaultTag": "デフォルト",

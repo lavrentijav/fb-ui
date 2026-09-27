@@ -637,6 +637,12 @@ export const EXAMPLES: Record<string, unknown> = {
     "providerType": "technitium",
     "zone": "corp.example"
   },
+  "DrainState": {
+    "active": 12,
+    "enable": true,
+    "idleSeconds": 120,
+    "since": 1700000000
+  },
   "EdgeRoute": {
     "action": "tcp",
     "createdAt": 0,
@@ -1039,6 +1045,10 @@ export const EXAMPLES: Record<string, unknown> = {
     "client": "mlkem768-client",
     "seed": "mlkem768-seed"
   },
+  "MaintenanceRequest": {
+    "enable": true,
+    "idleSeconds": 120
+  },
   "ManagedRouting": {
     "outbounds": [
       null
@@ -1068,6 +1078,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "createdAt": 1700000000,
     "depletedCount": 1,
     "disabledCount": 3,
+    "drainActive": 4,
+    "drainEnabled": false,
+    "drainSince": 0,
     "enable": true,
     "guid": "",
     "id": 1,
@@ -1080,6 +1093,8 @@ export const EXAMPLES: Record<string, unknown> = {
     "lastError": "",
     "lastHeartbeat": 1700000000,
     "latencyMs": 42,
+    "maintenance": false,
+    "maintenanceIdle": 120,
     "memPct": 45.1,
     "name": "de-fra-1",
     "netDown": 2097152,

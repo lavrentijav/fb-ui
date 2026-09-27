@@ -37,6 +37,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/edge"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/sys"
@@ -102,12 +103,13 @@ type Status struct {
 		Configured bool `json:"configured"`
 		Running    bool `json:"running"`
 	} `json:"amneziawg"`
-	PanelVersion string    `json:"panelVersion"`
-	PanelGuid    string    `json:"panelGuid"`
-	Uptime       uint64    `json:"uptime"`
-	Loads        []float64 `json:"loads"`
-	TcpCount     int       `json:"tcpCount"`
-	UdpCount     int       `json:"udpCount"`
+	PanelVersion string          `json:"panelVersion"`
+	PanelGuid    string          `json:"panelGuid"`
+	Maintenance  edge.DrainState `json:"maintenance"`
+	Uptime       uint64          `json:"uptime"`
+	Loads        []float64       `json:"loads"`
+	TcpCount     int             `json:"tcpCount"`
+	UdpCount     int             `json:"udpCount"`
 	NetIO        struct {
 		Up      uint64 `json:"up"`
 		Down    uint64 `json:"down"`
@@ -654,6 +656,7 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 	if guid, err := s.settingService.GetPanelGuid(); err == nil {
 		status.PanelGuid = guid
 	}
+	status.Maintenance = MaintenanceState()
 
 	// Application stats
 	if rss := sys.SelfRSS(); rss > 0 {

@@ -622,6 +622,14 @@ export const DnsZoneSchema = z.object({
 });
 export type DnsZone = z.infer<typeof DnsZoneSchema>;
 
+export const DrainStateSchema = z.object({
+  active: z.number().int(),
+  enable: z.boolean(),
+  idleSeconds: z.number().int(),
+  since: z.number().int(),
+});
+export type DrainState = z.infer<typeof DrainStateSchema>;
+
 export const EdgeRouteSchema = z.object({
   action: z.string(),
   createdAt: z.number().int(),
@@ -993,6 +1001,12 @@ export const MLKEM768ResponseSchema = z.object({
 });
 export type MLKEM768Response = z.infer<typeof MLKEM768ResponseSchema>;
 
+export const MaintenanceRequestSchema = z.object({
+  enable: z.boolean(),
+  idleSeconds: z.number().int(),
+});
+export type MaintenanceRequest = z.infer<typeof MaintenanceRequestSchema>;
+
 export const ManagedRoutingSchema = z.object({
   outbounds: z.array(z.unknown()),
   rules: z.array(z.unknown()),
@@ -1024,6 +1038,9 @@ export const NodeSchema = z.object({
   createdAt: z.number().int(),
   depletedCount: z.number().int(),
   disabledCount: z.number().int(),
+  drainActive: z.number().int(),
+  drainEnabled: z.boolean(),
+  drainSince: z.number().int(),
   enable: z.boolean(),
   guid: z.string(),
   id: z.number().int(),
@@ -1034,6 +1051,8 @@ export const NodeSchema = z.object({
   lastError: z.string(),
   lastHeartbeat: z.number().int(),
   latencyMs: z.number().int(),
+  maintenance: z.boolean(),
+  maintenanceIdle: z.number().int(),
   memPct: z.number(),
   name: z.string(),
   netDown: z.number().int(),

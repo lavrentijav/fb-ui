@@ -129,6 +129,7 @@ func run(root, outDir string) error {
 				"InboundTemplateResult",
 				"ManagedRouting",
 				"EdgeStatus",
+				"MaintenanceRequest",
 				"EdgeTargetCheck",
 				"NodeProvisionRequest",
 				"ProvisionJob",
@@ -141,6 +142,10 @@ func run(root, outDir string) error {
 		{
 			Path:        resolveRel(root, "internal/web/service/panel"),
 			StructAllow: setOf("ApiTokenView", "PanelUpdateStatus"),
+		},
+		{
+			Path:        resolveRel(root, "internal/edge"),
+			StructAllow: setOf("DrainState"),
 		},
 		{
 			Path:        resolveRel(root, "internal/amneziawg"),

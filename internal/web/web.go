@@ -122,6 +122,7 @@ type Server struct {
 	// owns edgeLn and hands panel-bound TLS connections to panelHandoff.
 	edgeMu       sync.Mutex
 	edgeHTTP     *edge.HTTPRouter
+	edgeDrain    *edge.Drain
 	edgeRouter   *edge.Router
 	edgeLn       net.Listener
 	edgeListen   string
@@ -678,7 +679,8 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	}
 	s.listener = listener
 
-	s.edgeHTTP = edge.NewHTTPRouter(engine)
+	s.edgeDrain = edge.NewDrain()
+	s.edgeHTTP = edge.NewHTTPRouter(engine, s.edgeDrain)
 	s.httpServer = &http.Server{
 		Handler:           s.edgeHTTP,
 		ReadHeaderTimeout: 5 * time.Second,
@@ -693,6 +695,7 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 		go network.ServeHTTP(s.httpServer, tls.NewListener(s.panelHandoff, s.panelTLS), "Web server (edge)")
 	}
 	service.SetEdgeRuntime(s.applyEdge, s.edgeStatus)
+	service.SetEdgeDrain(s.edgeDrain)
 	if err := (&service.EdgeService{}).Apply(); err != nil {
 		logger.Warning("edge: not started:", err)
 	}

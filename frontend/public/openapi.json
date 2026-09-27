@@ -2569,6 +2569,35 @@
         ],
         "type": "object"
       },
+      "DrainState": {
+        "description": "DrainState is what a master shows for the node.",
+        "properties": {
+          "active": {
+            "example": 12,
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "idleSeconds": {
+            "example": 120,
+            "type": "integer"
+          },
+          "since": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active",
+          "enable",
+          "idleSeconds",
+          "since"
+        ],
+        "type": "object"
+      },
       "EdgeRoute": {
         "description": "EdgeRoute is one rule of the shared public port. An sni route matches the\nTLS server name without decrypting and sends the connection to the panel or\nto a local address; an http route matches host and path inside the panel's\nown TLS and reverse-proxies to a local URL.",
         "properties": {
@@ -4109,6 +4138,24 @@
         ],
         "type": "object"
       },
+      "MaintenanceRequest": {
+        "description": "MaintenanceRequest takes this panel out of service or brings it back.",
+        "properties": {
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "idleSeconds": {
+            "example": 120,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enable",
+          "idleSeconds"
+        ],
+        "type": "object"
+      },
       "ManagedRouting": {
         "description": "ManagedRouting is the share of the cluster routing a master owns for one\nnode: the cascade outbounds that node dials and the filter and cascade rules\nfor its inbounds. The node splices it into the config it generates.",
         "properties": {
@@ -4207,6 +4254,17 @@
             "example": 3,
             "type": "integer"
           },
+          "drainActive": {
+            "example": 4,
+            "type": "integer"
+          },
+          "drainEnabled": {
+            "type": "boolean"
+          },
+          "drainSince": {
+            "format": "int64",
+            "type": "integer"
+          },
           "enable": {
             "example": true,
             "type": "boolean"
@@ -4250,6 +4308,14 @@
           },
           "latencyMs": {
             "example": 42,
+            "type": "integer"
+          },
+          "maintenance": {
+            "description": "Maintenance is the master's switch; Drain* is what the node's edge\nreported on the last heartbeat.",
+            "type": "boolean"
+          },
+          "maintenanceIdle": {
+            "example": 120,
             "type": "integer"
           },
           "memPct": {
@@ -4387,6 +4453,9 @@
           "createdAt",
           "depletedCount",
           "disabledCount",
+          "drainActive",
+          "drainEnabled",
+          "drainSince",
           "enable",
           "guid",
           "id",
@@ -4397,6 +4466,8 @@
           "lastError",
           "lastHeartbeat",
           "latencyMs",
+          "maintenance",
+          "maintenanceIdle",
           "memPct",
           "name",
           "netDown",
@@ -12510,6 +12581,61 @@
         }
       }
     },
+    "/panel/api/nodes/maintenance/{id}": {
+      "post": {
+        "tags": [
+          "Nodes"
+        ],
+        "summary": "Put a node into maintenance or take it out: its edge refuses new tunnels and closes idle ones, and its inbounds leave every subscription until it is switched back. The switch is stored here and re-sent by the heartbeat if the node missed it.",
+        "operationId": "post_panel_api_nodes_maintenance_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Node ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "enable": true,
+                "idleSeconds": 120
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/nodes/test": {
       "post": {
         "tags": [
@@ -12940,6 +13066,9 @@
                       "createdAt": 1700000000,
                       "depletedCount": 1,
                       "disabledCount": 3,
+                      "drainActive": 4,
+                      "drainEnabled": false,
+                      "drainSince": 0,
                       "enable": true,
                       "guid": "",
                       "id": 1,
@@ -12952,6 +13081,8 @@
                       "lastError": "",
                       "lastHeartbeat": 1700000000,
                       "latencyMs": 42,
+                      "maintenance": false,
+                      "maintenanceIdle": 120,
                       "memPct": 45.1,
                       "name": "de-fra-1",
                       "netDown": 2097152,
@@ -13077,6 +13208,9 @@
                     "createdAt": 1700000000,
                     "depletedCount": 1,
                     "disabledCount": 3,
+                    "drainActive": 4,
+                    "drainEnabled": false,
+                    "drainSince": 0,
                     "enable": true,
                     "guid": "",
                     "id": 1,
@@ -13089,6 +13223,8 @@
                     "lastError": "",
                     "lastHeartbeat": 1700000000,
                     "latencyMs": 42,
+                    "maintenance": false,
+                    "maintenanceIdle": 120,
                     "memPct": 45.1,
                     "name": "de-fra-1",
                     "netDown": 2097152,
@@ -13190,6 +13326,9 @@
                     "createdAt": 1700000000,
                     "depletedCount": 1,
                     "disabledCount": 3,
+                    "drainActive": 4,
+                    "drainEnabled": false,
+                    "drainSince": 0,
                     "enable": true,
                     "guid": "",
                     "id": 1,
@@ -13202,6 +13341,8 @@
                     "lastError": "",
                     "lastHeartbeat": 1700000000,
                     "latencyMs": 42,
+                    "maintenance": false,
+                    "maintenanceIdle": 120,
                     "memPct": 45.1,
                     "name": "de-fra-1",
                     "netDown": 2097152,
@@ -14998,6 +15139,100 @@
                       "target": "127.0.0.1:8443"
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/edge/maintenance": {
+      "get": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "This panel’s maintenance state: whether the edge refuses new tunnels, the idle timeout and how many tunnels are still open.",
+        "operationId": "get_panel_api_edge_maintenance",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/DrainState"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "active": 12,
+                    "enable": true,
+                    "idleSeconds": 120,
+                    "since": 1700000000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Take this panel out of service or bring it back. While on, the edge refuses new proxied tunnels (the panel itself stays reachable) and closes tunnels idle for longer than idleSeconds (0 = 120). Stored, so it survives a restart. A master calls this with its node-sync token.",
+        "operationId": "post_panel_api_edge_maintenance",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "enable": true,
+                "idleSeconds": 120
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/DrainState"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "active": 12,
+                    "enable": true,
+                    "idleSeconds": 120,
+                    "since": 1700000000
+                  }
                 }
               }
             }

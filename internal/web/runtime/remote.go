@@ -691,6 +691,13 @@ func (r *Remote) ApplyManagedRouting(ctx context.Context, payload any) error {
 	return err
 }
 
+// SetMaintenance switches the node's edge into or out of drain.
+func (r *Remote) SetMaintenance(ctx context.Context, enable bool, idleSeconds int) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/edge/maintenance",
+		map[string]any{"enable": enable, "idleSeconds": idleSeconds})
+	return err
+}
+
 // GetDescendants fetches the node's read-only summaries of the nodes IT
 // manages, so this panel can surface them as transitive sub-nodes in a chained
 // topology (#4983). Best-effort: an old-build node without the endpoint returns

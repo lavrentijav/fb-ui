@@ -75,6 +75,18 @@ export function useNodeMutations() {
     },
   });
 
+  const setMaintenanceMut = useMutation({
+    mutationFn: ({ id, enable }: { id: number; enable: boolean }) =>
+      HttpUtil.post(
+        `/panel/api/nodes/maintenance/${id}`,
+        { enable, idleSeconds: 0 },
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
+    onSuccess: (msg) => {
+      if (msg?.success) invalidate();
+    },
+  });
+
   const setRoleMut = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: NodeRoleChangePayload }) =>
       HttpUtil.post(`/panel/api/nodes/setRole/${id}`, payload),
@@ -116,6 +128,7 @@ export function useNodeMutations() {
     update: (id: number, payload: Partial<NodeRecord>) => updateMut.mutateAsync({ id, payload }),
     remove: (id: number) => removeMut.mutateAsync(id),
     setEnable: (id: number, enable: boolean) => setEnableMut.mutateAsync({ id, enable }),
+    setMaintenance: (id: number, enable: boolean) => setMaintenanceMut.mutateAsync({ id, enable }),
     setRole: (id: number, payload: NodeRoleChangePayload) =>
       setRoleMut.mutateAsync({ id, payload }),
     probe: (id: number) => probeMut.mutateAsync(id),

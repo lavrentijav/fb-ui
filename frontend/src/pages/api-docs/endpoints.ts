@@ -1686,6 +1686,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
+        path: '/panel/api/nodes/maintenance/:id',
+        summary:
+          'Put a node into maintenance or take it out: its edge refuses new tunnels and closes idle ones, and its inbounds leave every subscription until it is switched back. The switch is stored here and re-sent by the heartbeat if the node missed it.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
+        body: '{\n  "enable": true,\n  "idleSeconds": 120\n}',
+      },
+      {
+        method: 'POST',
         path: '/panel/api/nodes/test',
         summary:
           'Probe a node without saving it. Uses the body as connection details and returns the same heartbeat snapshot a registered node would have.',
@@ -2078,6 +2086,21 @@ export const sections: readonly Section[] = [
         summary: 'Dial every tcp target and http upstream once and report which answer.',
         responseSchema: 'EdgeTargetCheck',
         responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/edge/maintenance',
+        summary:
+          'This panel\u2019s maintenance state: whether the edge refuses new tunnels, the idle timeout and how many tunnels are still open.',
+        responseSchema: 'DrainState',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/edge/maintenance',
+        summary:
+          'Take this panel out of service or bring it back. While on, the edge refuses new proxied tunnels (the panel itself stays reachable) and closes tunnels idle for longer than idleSeconds (0 = 120). Stored, so it survives a restart. A master calls this with its node-sync token.',
+        body: '{\n  "enable": true,\n  "idleSeconds": 120\n}',
+        responseSchema: 'DrainState',
       },
     ],
   },

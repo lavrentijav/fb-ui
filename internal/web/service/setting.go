@@ -55,6 +55,7 @@ const (
 
 var defaultValueMap = map[string]string{
 	"managedRouting":           "",
+	"maintenance":              "",
 	"edgeEnable":               "false",
 	"edgeListen":               ":443",
 	"edgeDefaultAction":        "reject",

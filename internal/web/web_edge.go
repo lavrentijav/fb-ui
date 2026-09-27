@@ -62,6 +62,7 @@ func (s *Server) applyEdge(rt service.EdgeRuntime) error {
 		handoffs["panel"] = s.panelHandoff
 	}
 	router := edge.NewRouter(rt.Config, handoffs)
+	router.Drain = s.edgeDrain
 	router.Logf = func(format string, args ...any) { logger.Debugf(format, args...) }
 	s.edgeRouter, s.edgeLn, s.edgeListen, s.edgeLastErr = router, ln, rt.Settings.Listen, ""
 	logger.Info("edge: routing", ln.Addr(), "by SNI")

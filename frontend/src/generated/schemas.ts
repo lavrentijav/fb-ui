@@ -2543,6 +2543,35 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "DrainState": {
+    "description": "DrainState is what a master shows for the node.",
+    "properties": {
+      "active": {
+        "example": 12,
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "idleSeconds": {
+        "example": 120,
+        "type": "integer"
+      },
+      "since": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "active",
+      "enable",
+      "idleSeconds",
+      "since"
+    ],
+    "type": "object"
+  },
   "EdgeRoute": {
     "description": "EdgeRoute is one rule of the shared public port. An sni route matches the\nTLS server name without decrypting and sends the connection to the panel or\nto a local address; an http route matches host and path inside the panel's\nown TLS and reverse-proxies to a local URL.",
     "properties": {
@@ -4083,6 +4112,24 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "MaintenanceRequest": {
+    "description": "MaintenanceRequest takes this panel out of service or brings it back.",
+    "properties": {
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "idleSeconds": {
+        "example": 120,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "enable",
+      "idleSeconds"
+    ],
+    "type": "object"
+  },
   "ManagedRouting": {
     "description": "ManagedRouting is the share of the cluster routing a master owns for one\nnode: the cascade outbounds that node dials and the filter and cascade rules\nfor its inbounds. The node splices it into the config it generates.",
     "properties": {
@@ -4181,6 +4228,17 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": 3,
         "type": "integer"
       },
+      "drainActive": {
+        "example": 4,
+        "type": "integer"
+      },
+      "drainEnabled": {
+        "type": "boolean"
+      },
+      "drainSince": {
+        "format": "int64",
+        "type": "integer"
+      },
       "enable": {
         "example": true,
         "type": "boolean"
@@ -4224,6 +4282,14 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "latencyMs": {
         "example": 42,
+        "type": "integer"
+      },
+      "maintenance": {
+        "description": "Maintenance is the master's switch; Drain* is what the node's edge\nreported on the last heartbeat.",
+        "type": "boolean"
+      },
+      "maintenanceIdle": {
+        "example": 120,
         "type": "integer"
       },
       "memPct": {
@@ -4361,6 +4427,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "createdAt",
       "depletedCount",
       "disabledCount",
+      "drainActive",
+      "drainEnabled",
+      "drainSince",
       "enable",
       "guid",
       "id",
@@ -4371,6 +4440,8 @@ export const SCHEMAS: Record<string, unknown> = {
       "lastError",
       "lastHeartbeat",
       "latencyMs",
+      "maintenance",
+      "maintenanceIdle",
       "memPct",
       "name",
       "netDown",

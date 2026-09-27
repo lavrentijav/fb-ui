@@ -36,6 +36,7 @@ func (a *NodeController) initRouter(g *gin.RouterGroup) {
 	g.POST("/del/:id", a.del)
 	g.POST("/setEnable/:id", a.setEnable)
 	g.POST("/setRole/:id", a.setRole)
+	g.POST("/maintenance/:id", a.setMaintenance)
 
 	g.POST("/test", a.test)
 	g.POST("/certFingerprint", a.certFingerprint)
@@ -386,4 +387,18 @@ func (a *NodeController) history(c *gin.Context) {
 		return
 	}
 	jsonObj(c, a.nodeService.AggregateNodeMetric(id, metric, bucket, 60), nil)
+}
+
+func (a *NodeController) setMaintenance(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	req := &service.MaintenanceRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.update"), err)
+		return
+	}
+	jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.update"), a.nodeService.SetMaintenance(id, req.Enable, req.IdleSeconds))
 }

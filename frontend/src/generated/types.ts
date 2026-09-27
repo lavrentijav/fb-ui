@@ -585,6 +585,13 @@ export interface DnsZone {
   zone: string;
 }
 
+export interface DrainState {
+  active: number;
+  enable: boolean;
+  idleSeconds: number;
+  since: number;
+}
+
 export interface EdgeRoute {
   action: string;
   createdAt: number;
@@ -925,6 +932,11 @@ export interface MLKEM768Response {
   seed: string;
 }
 
+export interface MaintenanceRequest {
+  enable: boolean;
+  idleSeconds: number;
+}
+
 export interface ManagedRouting {
   outbounds: unknown[];
   rules: unknown[];
@@ -953,6 +965,9 @@ export interface Node {
   createdAt: number;
   depletedCount: number;
   disabledCount: number;
+  drainActive: number;
+  drainEnabled: boolean;
+  drainSince: number;
   enable: boolean;
   guid: string;
   id: number;
@@ -963,6 +978,8 @@ export interface Node {
   lastError: string;
   lastHeartbeat: number;
   latencyMs: number;
+  maintenance: boolean;
+  maintenanceIdle: number;
   memPct: number;
   name: string;
   netDown: number;

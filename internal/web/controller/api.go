@@ -121,6 +121,7 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/hosts/list":                  {http.MethodGet: {}},
 	"/certs/install":               {http.MethodPost: {}},
 	"/routing/managed":             {http.MethodPost: {}},
+	"/edge/maintenance":            {http.MethodPost: {}},
 }
 
 // enforceTokenScope applies explicit allowlists to monitor and node-sync tokens.
