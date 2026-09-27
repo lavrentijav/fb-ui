@@ -909,6 +909,53 @@ export const InboundOptionSchema = z.object({
 });
 export type InboundOption = z.infer<typeof InboundOptionSchema>;
 
+export const InboundTemplateSchema = z.object({
+  createdAt: z.number().int(),
+  id: z.number().int(),
+  items: z.array(z.lazy(() => InboundTemplateItemSchema)),
+  name: z.string(),
+  remark: z.string(),
+  updatedAt: z.number().int(),
+});
+export type InboundTemplate = z.infer<typeof InboundTemplateSchema>;
+
+export const InboundTemplateApplySchema = z.object({
+  nodeIds: z.array(z.number().int()),
+});
+export type InboundTemplateApply = z.infer<typeof InboundTemplateApplySchema>;
+
+export const InboundTemplateFromInboundsSchema = z.object({
+  inboundIds: z.array(z.number().int()),
+  name: z.string(),
+  remark: z.string(),
+});
+export type InboundTemplateFromInbounds = z.infer<typeof InboundTemplateFromInboundsSchema>;
+
+export const InboundTemplateItemSchema = z.object({
+  clientsFromInboundId: z.number().int(),
+  enable: z.boolean(),
+  listen: z.string(),
+  port: z.number().int(),
+  protocol: z.string(),
+  remark: z.string(),
+  settings: z.string(),
+  shareAddr: z.string(),
+  shareAddrStrategy: z.string(),
+  sniffing: z.string(),
+  streamSettings: z.string(),
+  subSortIndex: z.number().int(),
+});
+export type InboundTemplateItem = z.infer<typeof InboundTemplateItemSchema>;
+
+export const InboundTemplateResultSchema = z.object({
+  attached: z.number().int(),
+  created: z.array(z.string()),
+  errors: z.array(z.string()),
+  nodeId: z.number().int(),
+  skipped: z.array(z.string()),
+});
+export type InboundTemplateResult = z.infer<typeof InboundTemplateResultSchema>;
+
 export const InboundTrafficSummarySchema = z.object({
   down: z.number().int(),
   enable: z.boolean(),

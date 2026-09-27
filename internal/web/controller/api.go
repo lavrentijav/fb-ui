@@ -216,6 +216,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	filters := api.Group("/filters")
 	a.filterController = NewFilterController(filters)
 
+	// Inbound templates — save a set of inbounds, stamp it onto nodes
+	NewInboundTemplateController(api.Group("/templates"))
+
 	// Edge API — one public port shared by the panel, inbounds and sites
 	NewEdgeController(api.Group("/edge"))
 

@@ -850,6 +850,48 @@ export interface InboundOption {
   wgPublicKey?: string;
 }
 
+export interface InboundTemplate {
+  createdAt: number;
+  id: number;
+  items: InboundTemplateItem[];
+  name: string;
+  remark: string;
+  updatedAt: number;
+}
+
+export interface InboundTemplateApply {
+  nodeIds: number[];
+}
+
+export interface InboundTemplateFromInbounds {
+  inboundIds: number[];
+  name: string;
+  remark: string;
+}
+
+export interface InboundTemplateItem {
+  clientsFromInboundId: number;
+  enable: boolean;
+  listen: string;
+  port: number;
+  protocol: string;
+  remark: string;
+  settings: string;
+  shareAddr: string;
+  shareAddrStrategy: string;
+  sniffing: string;
+  streamSettings: string;
+  subSortIndex: number;
+}
+
+export interface InboundTemplateResult {
+  attached: number;
+  created: string[];
+  errors: string[];
+  nodeId: number;
+  skipped: string[];
+}
+
 export interface InboundTrafficSummary {
   down: number;
   enable: boolean;

@@ -66,6 +66,7 @@ func migrationModels() []any {
 		&model.AcmeAccount{},
 		&model.CertificateDelivery{},
 		&model.EdgeRoute{},
+		&model.InboundTemplate{},
 		&model.SubBalancer{},
 	}
 }

@@ -3770,6 +3770,207 @@
         ],
         "type": "object"
       },
+      "InboundTemplate": {
+        "description": "InboundTemplate is a reusable set of inbounds, such as \"RU entry: one\nWS+TLS inbound per exit country\". Applying it to a node creates the missing\ninbounds there and attaches the clients their source inbounds had.",
+        "properties": {
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InboundTemplateItem"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "RU entry",
+            "type": "string"
+          },
+          "remark": {
+            "example": "4 cascade countries + 443 twins",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "items",
+          "name",
+          "remark",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "InboundTemplateApply": {
+        "description": "InboundTemplateApply names the panels to stamp a template onto; 0 is this one.",
+        "properties": {
+          "nodeIds": {
+            "example": [
+              18,
+              19
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodeIds"
+        ],
+        "type": "object"
+      },
+      "InboundTemplateFromInbounds": {
+        "description": "InboundTemplateFromInbounds is the \"save these inbounds as a template\" payload.",
+        "properties": {
+          "inboundIds": {
+            "example": [
+              116,
+              120,
+              124,
+              128
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "name": {
+            "example": "RU entry",
+            "type": "string"
+          },
+          "remark": {
+            "example": "4 cascade countries",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inboundIds",
+          "name",
+          "remark"
+        ],
+        "type": "object"
+      },
+      "InboundTemplateItem": {
+        "description": "InboundTemplateItem is one inbound without its clients. {{NODE_DOMAIN}} and\n{{NODE_NAME}} in its text fields become the target node's address and name.",
+        "properties": {
+          "clientsFromInboundId": {
+            "description": "ClientsFromInboundId: at apply time the new inbound gets the clients\nthis inbound has then, so later sign-ups are not frozen into the template.",
+            "example": 116,
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "listen": {
+            "type": "string"
+          },
+          "port": {
+            "example": 2053,
+            "type": "integer"
+          },
+          "protocol": {
+            "example": "vless",
+            "type": "string"
+          },
+          "remark": {
+            "example": "🇩🇪 Germany",
+            "type": "string"
+          },
+          "settings": {
+            "type": "string"
+          },
+          "shareAddr": {
+            "example": "ru.walk.example.com",
+            "type": "string"
+          },
+          "shareAddrStrategy": {
+            "example": "custom",
+            "type": "string"
+          },
+          "sniffing": {
+            "type": "string"
+          },
+          "streamSettings": {
+            "type": "string"
+          },
+          "subSortIndex": {
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clientsFromInboundId",
+          "enable",
+          "listen",
+          "port",
+          "protocol",
+          "remark",
+          "settings",
+          "shareAddr",
+          "shareAddrStrategy",
+          "sniffing",
+          "streamSettings",
+          "subSortIndex"
+        ],
+        "type": "object"
+      },
+      "InboundTemplateResult": {
+        "description": "InboundTemplateResult is what happened on one panel.",
+        "properties": {
+          "attached": {
+            "example": 15,
+            "type": "integer"
+          },
+          "created": {
+            "example": [
+              "n18-in-2053-tcp"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "errors": {
+            "example": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "nodeId": {
+            "example": 18,
+            "type": "integer"
+          },
+          "skipped": {
+            "example": [
+              "2083"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "attached",
+          "created",
+          "errors",
+          "nodeId",
+          "skipped"
+        ],
+        "type": "object"
+      },
       "InboundTrafficSummary": {
         "properties": {
           "down": {
@@ -5667,6 +5868,10 @@
     {
       "name": "Certificates",
       "description": "TLS certificates the panel issues through ACME (Let’s Encrypt by default) and renews on its own, plus certificates found on disk that it only watches for expiry. dns01 is the default challenge because http01 needs port 80, which a real fallback site usually holds. Files are written to /root/cert/<domain>/fullchain.pem and privkey.pem. All endpoints under /panel/api/certs."
+    },
+    {
+      "name": "Inbound templates",
+      "description": "A template is a set of inbounds without their clients, such as one RU entry: an inbound per exit country plus its 443 twin. Taking one from existing inbounds turns the source node’s own address into {{NODE_DOMAIN}}, so certificate paths and SNIs follow the node a copy lands on. Applying it to panels (0 is this one) creates the missing inbounds through the normal path — remote nodes get them over the runtime — and attaches the clients each source inbound has at that moment. An inbound already on the same listen address and port is skipped, so applying twice is safe. All endpoints under /panel/api/templates."
     },
     {
       "name": "Edge (shared port)",
@@ -14038,6 +14243,266 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/templates/list": {
+      "get": {
+        "tags": [
+          "Inbound templates"
+        ],
+        "summary": "Every template.",
+        "operationId": "get_panel_api_templates_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InboundTemplate"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "createdAt": 0,
+                      "id": 1,
+                      "items": [
+                        {
+                          "clientsFromInboundId": 116,
+                          "enable": true,
+                          "listen": "",
+                          "port": 2053,
+                          "protocol": "vless",
+                          "remark": "🇩🇪 Germany",
+                          "settings": "",
+                          "shareAddr": "ru.walk.example.com",
+                          "shareAddrStrategy": "custom",
+                          "sniffing": "",
+                          "streamSettings": "",
+                          "subSortIndex": 1
+                        }
+                      ],
+                      "name": "RU entry",
+                      "remark": "4 cascade countries + 443 twins",
+                      "updatedAt": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/templates/fromInbounds": {
+      "post": {
+        "tags": [
+          "Inbound templates"
+        ],
+        "summary": "Save the given inbounds (without clients) as a template.",
+        "operationId": "post_panel_api_templates_fromInbounds",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "RU entry",
+                "remark": "4 countries + 443 twins",
+                "inboundIds": [
+                  118,
+                  122,
+                  126,
+                  130
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/InboundTemplate"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 0,
+                    "id": 1,
+                    "items": [
+                      {
+                        "clientsFromInboundId": 116,
+                        "enable": true,
+                        "listen": "",
+                        "port": 2053,
+                        "protocol": "vless",
+                        "remark": "🇩🇪 Germany",
+                        "settings": "",
+                        "shareAddr": "ru.walk.example.com",
+                        "shareAddrStrategy": "custom",
+                        "sniffing": "",
+                        "streamSettings": "",
+                        "subSortIndex": 1
+                      }
+                    ],
+                    "name": "RU entry",
+                    "remark": "4 cascade countries + 443 twins",
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/templates/apply/{id}": {
+      "post": {
+        "tags": [
+          "Inbound templates"
+        ],
+        "summary": "Create the template’s inbounds on each panel and attach their clients; reports created, skipped and errors per panel.",
+        "operationId": "post_panel_api_templates_apply_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Template ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "nodeIds": [
+                  18,
+                  19
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InboundTemplateResult"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "attached": 15,
+                      "created": [
+                        "n18-in-2053-tcp"
+                      ],
+                      "errors": [],
+                      "nodeId": 18,
+                      "skipped": [
+                        "2083"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/templates/del/{id}": {
+      "post": {
+        "tags": [
+          "Inbound templates"
+        ],
+        "summary": "Delete a template; inbounds made from it stay.",
+        "operationId": "post_panel_api_templates_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Template ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response",

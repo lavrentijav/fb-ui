@@ -129,7 +129,8 @@
     "network": "Red",
     "filters": "Filtros",
     "certs": "Certificados",
-    "edge": "Edge (443)"
+    "edge": "Edge (443)",
+    "templates": "Inbound templates"
   },
   "pages": {
     "login": {
@@ -2640,6 +2641,29 @@
       "toasts": {
         "save": "Save edge",
         "delete": "Delete route"
+      }
+    },
+    "templates": {
+      "title": "Inbound templates",
+      "intro": "Save a set of inbounds (without clients) and stamp it onto other servers. The source server's domain becomes NODE_DOMAIN, so certificate paths and SNIs follow the target; each new inbound gets the clients its source inbound has at that moment. Inbounds already on the same address and port are skipped.",
+      "create": "Save inbounds as a template",
+      "empty": "No templates yet",
+      "name": "Name",
+      "remark": "Description",
+      "inbounds": "Inbounds",
+      "pickHint": "Pick them from one server, e.g. ru4's four entry countries and their 443 twins",
+      "actions": "Actions",
+      "apply": "Apply",
+      "applyTitle": "Apply {name}",
+      "targets": "Servers",
+      "targetsHint": "Safe to repeat: existing inbounds are skipped",
+      "result": "created {created}, skipped {skipped}, clients attached {attached}",
+      "thisPanel": "This panel",
+      "deleteConfirm": "Delete template {name}? Inbounds made from it stay.",
+      "toasts": {
+        "save": "Save template",
+        "apply": "Apply template",
+        "delete": "Delete template"
       }
     }
   },

@@ -946,6 +946,70 @@ export const EXAMPLES: Record<string, unknown> = {
     "wgMtu": 0,
     "wgPublicKey": ""
   },
+  "InboundTemplate": {
+    "createdAt": 0,
+    "id": 1,
+    "items": [
+      {
+        "clientsFromInboundId": 116,
+        "enable": true,
+        "listen": "",
+        "port": 2053,
+        "protocol": "vless",
+        "remark": "🇩🇪 Germany",
+        "settings": "",
+        "shareAddr": "ru.walk.example.com",
+        "shareAddrStrategy": "custom",
+        "sniffing": "",
+        "streamSettings": "",
+        "subSortIndex": 1
+      }
+    ],
+    "name": "RU entry",
+    "remark": "4 cascade countries + 443 twins",
+    "updatedAt": 0
+  },
+  "InboundTemplateApply": {
+    "nodeIds": [
+      18,
+      19
+    ]
+  },
+  "InboundTemplateFromInbounds": {
+    "inboundIds": [
+      116,
+      120,
+      124,
+      128
+    ],
+    "name": "RU entry",
+    "remark": "4 cascade countries"
+  },
+  "InboundTemplateItem": {
+    "clientsFromInboundId": 116,
+    "enable": true,
+    "listen": "",
+    "port": 2053,
+    "protocol": "vless",
+    "remark": "🇩🇪 Germany",
+    "settings": "",
+    "shareAddr": "ru.walk.example.com",
+    "shareAddrStrategy": "custom",
+    "sniffing": "",
+    "streamSettings": "",
+    "subSortIndex": 1
+  },
+  "InboundTemplateResult": {
+    "attached": 15,
+    "created": [
+      "n18-in-2053-tcp"
+    ],
+    "errors": [],
+    "nodeId": 18,
+    "skipped": [
+      "2083"
+    ]
+  },
   "InboundTrafficSummary": {
     "down": 2097152,
     "enable": true,
