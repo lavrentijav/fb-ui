@@ -2443,7 +2443,8 @@
         "deleteRule": "Delete rule",
         "deletedRule": "Rule deleted",
         "fillRequired": "A name is required",
-        "needLink": "Pick the cascade link this rule forwards to"
+        "needLink": "Pick the cascade link this rule forwards to",
+        "refreshList": "Refresh list"
       },
       "addRule": "Add rule",
       "editRule": "Edit rule",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "Leave empty to match every inbound on that panel.",
       "ruleActionHint": "Block drops matched traffic, Direct sends it out locally, Cascade forwards it over the chosen link.",
       "ruleLink": "Cascade link",
-      "ruleLinkHint": "The link matched traffic is forwarded over."
+      "ruleLinkHint": "The link matched traffic is forwarded over.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "Led by {name}",

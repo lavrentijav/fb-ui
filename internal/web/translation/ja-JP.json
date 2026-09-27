@@ -2443,7 +2443,8 @@
         "deleteRule": "ルールを削除",
         "deletedRule": "ルールを削除しました",
         "fillRequired": "名前は必須です",
-        "needLink": "このルールの転送先カスケードリンクを選んでください"
+        "needLink": "このルールの転送先カスケードリンクを選んでください",
+        "refreshList": "Refresh list"
       },
       "addRule": "ルールを追加",
       "editRule": "ルールを編集",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "空にすると、そのパネルのすべてのインバウンドが対象です。",
       "ruleActionHint": "ブロックは一致した通信を破棄し、ダイレクトはローカルから出し、カスケードは選んだリンクへ転送します。",
       "ruleLink": "カスケードリンク",
-      "ruleLinkHint": "一致した通信の転送先リンク。"
+      "ruleLinkHint": "一致した通信の転送先リンク。",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "{name} が主導",

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Form, Input, Modal, Select, Switch, message } from 'antd';
+import { Form, Input, InputNumber, Modal, Select, Switch, message } from 'antd';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import type { Msg } from '@/utils';
@@ -16,7 +16,16 @@ interface FilterListModalProps {
 }
 
 function defaultValues(): FilterListFormValues {
-  return { id: 0, name: '', remark: '', kind: 'domain', entriesText: '', enable: true };
+  return {
+    id: 0,
+    name: '',
+    remark: '',
+    kind: 'domain',
+    entriesText: '',
+    enable: true,
+    sourceUrl: '',
+    refreshHours: 24,
+  };
 }
 
 export default function FilterListModal({
@@ -48,6 +57,8 @@ export default function FilterListModal({
             kind: list.kind ?? 'domain',
             entriesText: (list.entries ?? []).join('\n'),
             enable: list.enable ?? true,
+            sourceUrl: list.sourceUrl ?? '',
+            refreshHours: list.refreshHours || 24,
           }
         : base,
     );
@@ -76,6 +87,8 @@ export default function FilterListModal({
           .map((entry) => entry.trim())
           .filter(Boolean),
         enable: result.data.enable,
+        sourceUrl: result.data.sourceUrl,
+        refreshHours: result.data.refreshHours,
       });
       if (msg?.success) onOpenChange(false);
     } finally {
@@ -127,6 +140,16 @@ export default function FilterListModal({
               extra={t('pages.filters.entriesHint')}
             >
               <Input.TextArea rows={10} placeholder={'geosite:category-ads-all\ndoubleclick.net'} />
+            </FormField>
+            <FormField
+              label={t('pages.filters.sourceUrl')}
+              name="sourceUrl"
+              extra={t('pages.filters.sourceUrlHint')}
+            >
+              <Input placeholder="https://antifilter.download/list/domains.lst" />
+            </FormField>
+            <FormField label={t('pages.filters.refreshHours')} name="refreshHours">
+              <InputNumber min={1} max={720} style={{ width: 160 }} />
             </FormField>
             <FormField label={t('enable')} name="enable" valueProp="checked">
               <Switch />

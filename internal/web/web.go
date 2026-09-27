@@ -327,6 +327,7 @@ const (
 	cadenceCertRenew     = "@every 12h"
 	// A node picks up a changed cascade or filter within half a minute.
 	cadenceManagedRouting = "@every 30s"
+	cadenceFilterLists    = "@every 30m"
 	cadenceCheckHash      = "@every 2m"
 	// cpu.Percent samples over a full minute (blocking), so a finer cadence just
 	// stacks overlapping samplers; subscribers rate-limit alerts to 1/min anyway.
@@ -391,6 +392,7 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 	_, _ = s.cron.AddJob(cadenceReapOrphans, job.NewReapSyncOrphansJob())
 	_, _ = s.cron.AddJob(cadenceCertRenew, job.NewCertRenewJob(s.panelRegistry))
 	_, _ = s.cron.AddJob(cadenceManagedRouting, job.NewManagedRoutingJob(s.panelRegistry))
+	_, _ = s.cron.AddJob(cadenceFilterLists, job.NewFilterListJob(s.panelRegistry))
 
 	// Warm permanent routing URLs immediately and refresh them outside the
 	// latency-sensitive subscription request path.

@@ -2443,7 +2443,8 @@
         "deleteRule": "Kuralı sil",
         "deletedRule": "Kural silindi",
         "fillRequired": "Ad zorunludur",
-        "needLink": "Bu kuralın ilettiği kaskad bağlantısını seçin"
+        "needLink": "Bu kuralın ilettiği kaskad bağlantısını seçin",
+        "refreshList": "Refresh list"
       },
       "addRule": "Kural ekle",
       "editRule": "Kuralı düzenle",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "Boş bırakılırsa o panelin tüm gelenleri eşleşir.",
       "ruleActionHint": "Engelle eşleşen trafiği düşürür, Doğrudan yerelden çıkarır, Kaskad seçilen bağlantıdan iletir.",
       "ruleLink": "Kaskad bağlantısı",
-      "ruleLinkHint": "Eşleşen trafiğin iletildiği bağlantı."
+      "ruleLinkHint": "Eşleşen trafiğin iletildiği bağlantı.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "Lider: {name}",

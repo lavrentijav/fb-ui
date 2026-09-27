@@ -27,6 +27,7 @@ func (a *FilterController) initRouter(g *gin.RouterGroup) {
 	g.POST("/lists/add", a.addList)
 	g.POST("/lists/update/:id", a.updateList)
 	g.POST("/lists/del/:id", a.delList)
+	g.POST("/lists/refresh/:id", a.refreshList)
 
 	g.GET("/rules", a.rules)
 	g.GET("/rules/get/:id", a.getRule)
@@ -70,6 +71,12 @@ func (a *FilterController) addList(c *gin.Context) {
 		return
 	}
 	a.xrayService.SetToNeedRestart()
+	if list.SourceUrl != "" {
+		// A failed first fetch is not a failed save; the list shows the error.
+		if fresh, err := a.filterService.RefreshList(list.Id); err == nil {
+			list = fresh
+		}
+	}
 	jsonMsgObj(c, I18nWeb(c, "pages.filters.toasts.addList"), list, nil)
 }
 
@@ -88,7 +95,21 @@ func (a *FilterController) updateList(c *gin.Context) {
 		return
 	}
 	a.xrayService.SetToNeedRestart()
+	if stored, err := a.filterService.ListById(id); err == nil && stored.SourceUrl != "" && stored.FetchedAt == 0 {
+		_, _ = a.filterService.RefreshList(id)
+	}
 	jsonMsg(c, I18nWeb(c, "pages.filters.toasts.updateList"), nil)
+}
+
+// refreshList fetches a list's source URL now instead of waiting for its interval.
+func (a *FilterController) refreshList(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	list, err := a.filterService.RefreshList(id)
+	jsonMsgObj(c, I18nWeb(c, "pages.filters.toasts.refreshList"), list, err)
 }
 
 func (a *FilterController) delList(c *gin.Context) {

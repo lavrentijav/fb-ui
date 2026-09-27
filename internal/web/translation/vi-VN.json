@@ -2443,7 +2443,8 @@
         "deleteRule": "Xóa quy tắc",
         "deletedRule": "Đã xóa quy tắc",
         "fillRequired": "Tên là bắt buộc",
-        "needLink": "Chọn liên kết tầng cho quy tắc này"
+        "needLink": "Chọn liên kết tầng cho quy tắc này",
+        "refreshList": "Refresh list"
       },
       "addRule": "Thêm quy tắc",
       "editRule": "Sửa quy tắc",
@@ -2451,7 +2452,12 @@
       "ruleScopeHint": "Để trống nghĩa là mọi inbound trên bảng đó.",
       "ruleActionHint": "Chặn loại bỏ lưu lượng, Trực tiếp cho ra cục bộ, Tầng chuyển tiếp qua liên kết đã chọn.",
       "ruleLink": "Liên kết tầng",
-      "ruleLinkHint": "Liên kết mà lưu lượng khớp được chuyển tiếp qua."
+      "ruleLinkHint": "Liên kết mà lưu lượng khớp được chuyển tiếp qua.",
+      "sourceUrl": "Source URL",
+      "sourceUrlHint": "Optional: follow a published list (plain lines, hosts files, adblock ||name^). Its entries are added to the ones above and refreshed on the interval below; a failed fetch keeps the last good copy.",
+      "refreshHours": "Refresh every (hours)",
+      "remoteCount": "+{count} from URL",
+      "refreshNow": "Refresh from URL now"
     },
     "cluster": {
       "leader": "Dẫn bởi {name}",

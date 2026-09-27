@@ -51,6 +51,11 @@ export function useFilters() {
     },
   });
 
+  const refreshListMut = useMutation({
+    mutationFn: (id: number) => HttpUtil.post(`/panel/api/filters/lists/refresh/${id}`),
+    onSettled: () => invalidate(),
+  });
+
   const removeListMut = useMutation({
     mutationFn: (id: number) => HttpUtil.post(`/panel/api/filters/lists/del/${id}`),
     onSuccess: (msg) => {
@@ -110,6 +115,7 @@ export function useFilters() {
     updateList: (id: number, payload: Partial<FilterList>) =>
       updateListMut.mutateAsync({ id, payload }),
     removeList: (id: number) => removeListMut.mutateAsync(id),
+    refreshList: (id: number) => refreshListMut.mutateAsync(id),
     createRule: (payload: Partial<FilterRule>) => createRuleMut.mutateAsync(payload),
     updateRule: (id: number, payload: Partial<FilterRule>) =>
       updateRuleMut.mutateAsync({ id, payload }),
