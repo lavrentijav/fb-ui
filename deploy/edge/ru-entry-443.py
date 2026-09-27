@@ -83,7 +83,8 @@ def main():
     a = ap.parse_args()
     p = Panel()
     host = a.me
-    inbounds = p.call("GET", "inbounds/list")
+    # A master also lists its nodes' inbounds; only this host's own count here.
+    inbounds = [i for i in p.call("GET", "inbounds/list") if not i.get("nodeId")]
     by_port = {i["port"]: i for i in inbounds}
     plan = []
     for ib in inbounds:
