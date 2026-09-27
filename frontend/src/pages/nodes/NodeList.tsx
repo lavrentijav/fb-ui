@@ -21,6 +21,7 @@ import {
   SwapOutlined,
   TeamOutlined,
   ThunderboltOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 
 import NodeHistoryPanel from './NodeHistoryPanel';
@@ -44,6 +45,7 @@ interface NodeListProps {
   onProbe: (node: NodeRecord) => void;
   onChangeRole: (node: NodeRecord) => void;
   onToggleEnable: (node: NodeRecord, next: boolean) => void;
+  onToggleMaintenance: (node: NodeRecord) => void;
   onUpdateNode: (node: NodeRecord) => void;
   onUpdateSelected: () => void;
 }
@@ -182,6 +184,7 @@ export default function NodeList({
   onProbe,
   onChangeRole,
   onToggleEnable,
+  onToggleMaintenance,
   onUpdateNode,
   onUpdateSelected,
 }: NodeListProps) {
@@ -286,6 +289,22 @@ export default function NodeList({
                   />
                 </Tooltip>
               )}
+              <Tooltip
+                title={t(
+                  record.maintenance
+                    ? 'pages.nodes.maintenance.end'
+                    : 'pages.nodes.maintenance.start',
+                )}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  style={{ fontSize: 16, color: record.maintenance ? '#fa8c16' : undefined }}
+                  icon={<ToolOutlined />}
+                  aria-label={t('pages.nodes.maintenance.start')}
+                  onClick={() => onToggleMaintenance(record)}
+                />
+              </Tooltip>
               <Tooltip title={t('pages.nodes.role.makeMaster')}>
                 <Button
                   type="text"
@@ -351,6 +370,13 @@ export default function NodeList({
               )}
               {record.name}
             </span>
+            {record.maintenance && (
+              <Tooltip title={t('pages.nodes.maintenance.tip')}>
+                <Tag color="orange" style={{ marginInlineStart: 6 }}>
+                  {t('pages.nodes.maintenance.tag', { active: record.drainActive ?? 0 })}
+                </Tag>
+              </Tooltip>
+            )}
             {record.remark && <span className="remark">{record.remark}</span>}
           </div>
         ),
@@ -543,6 +569,7 @@ export default function NodeList({
       relativeTime,
       latestVersion,
       onToggleEnable,
+      onToggleMaintenance,
       onProbe,
       onChangeRole,
       onEdit,
@@ -702,6 +729,20 @@ export default function NodeList({
                                     },
                                   ]
                                 : []),
+                              {
+                                key: 'maintenance',
+                                label: (
+                                  <>
+                                    <ToolOutlined />{' '}
+                                    {t(
+                                      record.maintenance
+                                        ? 'pages.nodes.maintenance.end'
+                                        : 'pages.nodes.maintenance.start',
+                                    )}
+                                  </>
+                                ),
+                                onClick: () => onToggleMaintenance(record),
+                              },
                               {
                                 key: 'role',
                                 label: (

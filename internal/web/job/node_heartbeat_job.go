@@ -99,6 +99,12 @@ func (j *NodeHeartbeatJob) probeOne(n *model.Node) *eventbus.Event {
 	if updErr := j.nodeService.UpdateHeartbeat(n.Id, patch); updErr != nil {
 		logger.Warning("node heartbeat: update node", n.Id, "failed:", updErr)
 	}
+	if patch.Drain != nil && patch.Drain.Enable != n.Maintenance {
+		// The node restarted with another state or missed the switch.
+		if perr := j.nodeService.PushMaintenance(n); perr != nil {
+			logger.Warning("node heartbeat: maintenance for", n.Name, perr)
+		}
+	}
 	// Learn the nodes this node manages so the panel can surface them as
 	// transitive sub-nodes (#4983). Fresh context — the probe budget above may
 	// be spent. Drop them when the node is unreachable.

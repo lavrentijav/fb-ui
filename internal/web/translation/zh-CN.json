@@ -1119,7 +1119,15 @@
       "pinnedCertPlaceholder": "base64 或 hex 的 SHA-256",
       "fetchPin": "获取",
       "pinFetched": "已获取节点当前证书",
-      "pinFetchFailed": "无法获取证书"
+      "pinFetchFailed": "无法获取证书",
+      "maintenance": {
+        "start": "Maintenance",
+        "end": "End maintenance",
+        "tip": "New connections are refused and idle ones are closed; the node is left out of subscriptions. Tunnels still open are counted here.",
+        "tag": "maintenance · {{active}} open",
+        "confirmTitle": "Put {{name}} into maintenance?",
+        "confirmBody": "The node stops taking new connections on its shared port, closes connections idle for two minutes and drops out of subscriptions. The panel stays reachable. Switch it back when the work is done."
+      }
     },
     "settings": {
       "defaultTag": "默认",

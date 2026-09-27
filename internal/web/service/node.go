@@ -21,6 +21,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/crypto/nodetoken"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/edge"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/json_util"
@@ -51,6 +52,8 @@ type HeartbeatPatch struct {
 	// Xray core health on the node.
 	XrayState string
 	XrayError string
+	// Drain is nil when the node's build does not report maintenance.
+	Drain *edge.DrainState
 }
 
 type NodeService struct{}
@@ -898,6 +901,40 @@ func (s *NodeService) SetEnable(id int, enable bool) error {
 	return nil
 }
 
+// SetMaintenance drains the node's edge (or ends the drain) and keeps its
+// inbounds out of subscriptions meanwhile; the switch is stored first so the
+// heartbeat re-sends it to a node that was unreachable.
+func (s *NodeService) SetMaintenance(id int, enable bool, idleSeconds int) error {
+	if idleSeconds < 0 || idleSeconds > 24*3600 {
+		return common.NewError("idle timeout must be between 0 and 86400 seconds")
+	}
+	n, err := s.GetById(id)
+	if err != nil || n == nil {
+		return fmt.Errorf("node not found")
+	}
+	if err := database.GetDB().Model(model.Node{}).Where("id = ?", id).
+		Updates(map[string]any{"maintenance": enable, "maintenance_idle": idleSeconds}).Error; err != nil {
+		return err
+	}
+	n.Maintenance, n.MaintenanceIdle = enable, idleSeconds
+	return s.PushMaintenance(n)
+}
+
+// PushMaintenance sends the stored switch to the node.
+func (s *NodeService) PushMaintenance(n *model.Node) error {
+	mgr := runtime.GetManager()
+	if mgr == nil {
+		return fmt.Errorf("runtime manager unavailable")
+	}
+	remote, err := mgr.RemoteFor(n)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return remote.SetMaintenance(ctx, n.Maintenance, n.MaintenanceIdle)
+}
+
 // GetWebCertFiles asks a node for its own web TLS certificate/key file paths,
 // used by "Set Cert from Panel" so a node-assigned inbound gets paths that
 // exist on the node rather than the central panel. See issue #4854.
@@ -995,6 +1032,11 @@ func (s *NodeService) UpdateHeartbeat(id int, p HeartbeatPatch) error {
 	}
 	// Only learn the GUID; never clear a known one if an old-build node (or a
 	// failed probe) reports none, so the stable identity survives blips.
+	if p.Drain != nil {
+		updates["drain_enabled"] = p.Drain.Enable
+		updates["drain_active"] = p.Drain.Active
+		updates["drain_since"] = p.Drain.Since
+	}
 	if p.Guid != "" {
 		updates["guid"] = p.Guid
 		s.warnOnDuplicateGuid(id, p.Guid)
@@ -1313,9 +1355,10 @@ func (s *NodeService) probe(ctx context.Context, n *model.Node, proxyURL string)
 				State    string `json:"state"`
 				ErrorMsg string `json:"errorMsg"`
 			} `json:"xray"`
-			PanelVersion string `json:"panelVersion"`
-			PanelGuid    string `json:"panelGuid"`
-			Uptime       uint64 `json:"uptime"`
+			PanelVersion string           `json:"panelVersion"`
+			PanelGuid    string           `json:"panelGuid"`
+			Uptime       uint64           `json:"uptime"`
+			Maintenance  *edge.DrainState `json:"maintenance"`
 			NetIO        struct {
 				Up   uint64 `json:"up"`
 				Down uint64 `json:"down"`
@@ -1340,6 +1383,7 @@ func (s *NodeService) probe(ctx context.Context, n *model.Node, proxyURL string)
 	patch.XrayError = o.Xray.ErrorMsg
 	patch.PanelVersion = o.PanelVersion
 	patch.Guid = o.PanelGuid
+	patch.Drain = o.Maintenance
 	patch.UptimeSecs = o.Uptime
 	patch.NetUp = o.NetIO.Up
 	patch.NetDown = o.NetIO.Down

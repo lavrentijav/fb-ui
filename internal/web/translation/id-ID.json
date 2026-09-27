@@ -1119,7 +1119,15 @@
       "pinnedCertPlaceholder": "SHA-256 base64 atau hex",
       "fetchPin": "Ambil",
       "pinFetched": "Berhasil mengambil sertifikat node saat ini",
-      "pinFetchFailed": "Tidak dapat mengambil sertifikat"
+      "pinFetchFailed": "Tidak dapat mengambil sertifikat",
+      "maintenance": {
+        "start": "Maintenance",
+        "end": "End maintenance",
+        "tip": "New connections are refused and idle ones are closed; the node is left out of subscriptions. Tunnels still open are counted here.",
+        "tag": "maintenance · {{active}} open",
+        "confirmTitle": "Put {{name}} into maintenance?",
+        "confirmBody": "The node stops taking new connections on its shared port, closes connections idle for two minutes and drops out of subscriptions. The panel stays reachable. Switch it back when the work is done."
+      }
     },
     "settings": {
       "defaultTag": "Bawaan",

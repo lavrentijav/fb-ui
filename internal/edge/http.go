@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -37,10 +38,13 @@ type compiledRoute struct {
 type HTTPRouter struct {
 	routes atomic.Pointer[[]compiledRoute]
 	Next   http.Handler
+	// Drain counts proxied backend connections and refuses new requests
+	// while on; the panel behind Next is never refused.
+	Drain *Drain
 }
 
-func NewHTTPRouter(next http.Handler) *HTTPRouter {
-	h := &HTTPRouter{Next: next}
+func NewHTTPRouter(next http.Handler, drain *Drain) *HTTPRouter {
+	h := &HTTPRouter{Next: next, Drain: drain}
 	h.routes.Store(&[]compiledRoute{})
 	return h
 }
@@ -49,7 +53,7 @@ func NewHTTPRouter(next http.Handler) *HTTPRouter {
 func (h *HTTPRouter) Update(routes []HTTPRoute) error {
 	out := make([]compiledRoute, 0, len(routes))
 	for _, rt := range routes {
-		c, err := compile(rt)
+		c, err := compile(rt, h.Drain)
 		if err != nil {
 			return err
 		}
@@ -59,7 +63,7 @@ func (h *HTTPRouter) Update(routes []HTTPRoute) error {
 	return nil
 }
 
-func compile(rt HTTPRoute) (compiledRoute, error) {
+func compile(rt HTTPRoute, drain *Drain) (compiledRoute, error) {
 	if !strings.HasPrefix(rt.PathPrefix, "/") {
 		return compiledRoute{}, fmt.Errorf("path %q must start with /", rt.PathPrefix)
 	}
@@ -75,6 +79,16 @@ func compile(rt HTTPRoute) (compiledRoute, error) {
 		// A local backend serves the public name's certificate, which does
 		// not match 127.0.0.1; the hop never leaves the machine.
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+	}
+	if drain != nil {
+		dial := tr.DialContext
+		tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			c, err := dial(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return drain.Track(c), nil
+		}
 	}
 	prefix := strings.TrimSuffix(rt.PathPrefix, "/")
 	proxy := &httputil.ReverseProxy{
@@ -146,6 +160,11 @@ func (h *HTTPRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if best == nil {
 		h.Next.ServeHTTP(w, r)
+		return
+	}
+	if h.Drain.Draining() {
+		w.Header().Set("Retry-After", "60")
+		http.Error(w, "this server is in maintenance", http.StatusServiceUnavailable)
 		return
 	}
 	// The panel's short server timeouts suit its API, not a tunnel that

@@ -21,6 +21,8 @@ func NewEdgeController(g *gin.RouterGroup) *EdgeController {
 	g.POST("/routes/del/:id", a.delRoute)
 	g.GET("/status", a.status)
 	g.POST("/check", a.check)
+	g.GET("/maintenance", a.maintenance)
+	g.POST("/maintenance", a.setMaintenance)
 	return a
 }
 
@@ -68,4 +70,18 @@ func (a *EdgeController) status(c *gin.Context) {
 func (a *EdgeController) check(c *gin.Context) {
 	res, err := a.edgeService.CheckTargets()
 	jsonObj(c, res, err)
+}
+
+func (a *EdgeController) maintenance(c *gin.Context) {
+	jsonObj(c, service.MaintenanceState(), nil)
+}
+
+func (a *EdgeController) setMaintenance(c *gin.Context) {
+	req := &service.MaintenanceRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.edge.toasts.save"), err)
+		return
+	}
+	st, err := service.SetMaintenance(*req)
+	jsonMsgObj(c, I18nWeb(c, "pages.edge.toasts.save"), st, err)
 }

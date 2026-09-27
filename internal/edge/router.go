@@ -45,6 +45,8 @@ type Router struct {
 	IdleTimeout  time.Duration
 	Logf         func(format string, args ...any)
 	Dial         func(ctx context.Context, network, addr string) (net.Conn, error)
+	// Drain, when set, counts spliced tunnels and refuses new ones while on.
+	Drain *Drain
 
 	wg sync.WaitGroup
 }
@@ -148,6 +150,10 @@ func (r *Router) handle(c net.Conn) {
 			_ = c.Close()
 		}
 	case ActionTCP:
+		if r.Drain.Draining() {
+			_ = c.Close()
+			return
+		}
 		r.splice(sc, rt, hello)
 	default:
 		_ = c.Close()
@@ -178,6 +184,7 @@ func (r *Router) splice(c *sniffedConn, rt Route, h *Hello) {
 		r.logf("edge: %s -> %s: %v", describe(h), rt.Target, err)
 		return
 	}
+	up = r.Drain.Track(up, c)
 	defer up.Close()
 	if rt.ProxyProtocol > 0 {
 		if _, err := up.Write(proxyHeader(rt.ProxyProtocol, c.RemoteAddr(), c.LocalAddr())); err != nil {

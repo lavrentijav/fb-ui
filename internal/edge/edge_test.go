@@ -254,7 +254,7 @@ func TestHTTPRouterRoutesByHostAndPath(t *testing.T) {
 	t.Cleanup(backend.Close)
 	panel := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "panel") })
 
-	h := NewHTTPRouter(panel)
+	h := NewHTTPRouter(panel, nil)
 	if err := h.Update([]HTTPRoute{
 		{Host: "", PathPrefix: "/ws", Target: backend.URL},
 		{Host: "site.example.com", PathPrefix: "/", Target: backend.URL},
@@ -327,7 +327,7 @@ func TestHTTPRouterOutlivesTheServerTimeouts(t *testing.T) {
 		}
 	}))
 	t.Cleanup(backend.Close)
-	h := NewHTTPRouter(http.NotFoundHandler())
+	h := NewHTTPRouter(http.NotFoundHandler(), nil)
 	if err := h.Update([]HTTPRoute{{PathPrefix: "/stream", Target: backend.URL}}); err != nil {
 		t.Fatal(err)
 	}

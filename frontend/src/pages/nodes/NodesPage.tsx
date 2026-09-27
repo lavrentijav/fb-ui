@@ -106,6 +106,7 @@ export default function NodesPage() {
     fetchInbounds,
     probe,
     setRole,
+    setMaintenance,
     updatePanels,
   } = useNodeMutations();
 
@@ -231,6 +232,23 @@ export default function NodesPage() {
       await setEnable(node.id, next);
     },
     [setEnable],
+  );
+
+  const onToggleMaintenance = useCallback(
+    (node: NodeRecord) => {
+      if (node.maintenance) {
+        void setMaintenance(node.id, false);
+        return;
+      }
+      modal.confirm({
+        title: t('pages.nodes.maintenance.confirmTitle', { name: node.name }),
+        content: t('pages.nodes.maintenance.confirmBody'),
+        okText: t('pages.nodes.maintenance.start'),
+        cancelText: t('cancel'),
+        onOk: () => setMaintenance(node.id, true),
+      });
+    },
+    [setMaintenance, modal, t],
   );
 
   const devRef = useRef(false);
@@ -406,6 +424,7 @@ export default function NodesPage() {
                         onProbe={onProbe}
                         onChangeRole={onChangeRole}
                         onToggleEnable={onToggleEnable}
+                        onToggleMaintenance={onToggleMaintenance}
                         onUpdateNode={onUpdateNode}
                         onUpdateSelected={onUpdateSelected}
                       />

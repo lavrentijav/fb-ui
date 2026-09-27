@@ -26,6 +26,10 @@ export const NodeRecordSchema = z
     disabledCount: z.number().optional(),
     depletedCount: z.number().optional(),
     lastHeartbeat: z.number().optional(),
+    maintenance: z.boolean().optional(),
+    maintenanceIdle: z.number().optional(),
+    drainEnabled: z.boolean().optional(),
+    drainActive: z.number().optional(),
     lastError: z.string().optional(),
     // Xray state captured from the remote node's own /panel/api/server/status.
     // Lets the nodes list show a distinct indicator when the panel API is reachable

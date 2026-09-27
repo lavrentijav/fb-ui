@@ -56,6 +56,7 @@ describe('NodeList re-render', () => {
       onDelete: noop,
       onProbe: noop,
       onToggleEnable: noop,
+      onToggleMaintenance: noop,
       onUpdateNode: noop,
       onUpdateSelected: noop,
     };

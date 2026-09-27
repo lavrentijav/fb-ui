@@ -845,6 +845,14 @@ type Node struct {
 	XrayState string `json:"xrayState" gorm:"column:xray_state"`
 	XrayError string `json:"xrayError" gorm:"column:xray_error"`
 
+	// Maintenance is the master's switch; Drain* is what the node's edge
+	// reported on the last heartbeat.
+	Maintenance     bool  `json:"maintenance" gorm:"default:false"`
+	MaintenanceIdle int   `json:"maintenanceIdle" gorm:"default:0" example:"120"`
+	DrainEnabled    bool  `json:"drainEnabled" gorm:"default:false"`
+	DrainActive     int   `json:"drainActive" gorm:"default:0" example:"4"`
+	DrainSince      int64 `json:"drainSince" gorm:"default:0"`
+
 	ConfigDirty   bool  `json:"configDirty" gorm:"default:false"`
 	ConfigDirtyAt int64 `json:"configDirtyAt"`
 

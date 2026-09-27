@@ -1119,7 +1119,15 @@
       "pinnedCertPlaceholder": "SHA-256 em base64 ou hex",
       "fetchPin": "Obter",
       "pinFetched": "Certificado atual do nó obtido",
-      "pinFetchFailed": "Não foi possível obter o certificado"
+      "pinFetchFailed": "Não foi possível obter o certificado",
+      "maintenance": {
+        "start": "Maintenance",
+        "end": "End maintenance",
+        "tip": "New connections are refused and idle ones are closed; the node is left out of subscriptions. Tunnels still open are counted here.",
+        "tag": "maintenance · {{active}} open",
+        "confirmTitle": "Put {{name}} into maintenance?",
+        "confirmBody": "The node stops taking new connections on its shared port, closes connections idle for two minutes and drops out of subscriptions. The panel stays reachable. Switch it back when the work is done."
+      }
     },
     "settings": {
       "defaultTag": "Padrão",

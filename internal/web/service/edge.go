@@ -294,7 +294,7 @@ func buildEdgeRuntime(settings *EdgeSettings, routes []*model.EdgeRoute) (*EdgeR
 	if err := out.Config.Validate([]string{"panel"}); err != nil {
 		return nil, common.NewError(err.Error())
 	}
-	if err := edge.NewHTTPRouter(nil).Update(out.HTTP); err != nil {
+	if err := edge.NewHTTPRouter(nil, nil).Update(out.HTTP); err != nil {
 		return nil, common.NewError(err.Error())
 	}
 	return out, nil
