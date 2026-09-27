@@ -32,11 +32,14 @@ type DnsProviderRequest struct {
 	ApiUrl     string `json:"apiUrl" form:"apiUrl" example:"ns1.example.com"`
 	ApiPort    int    `json:"apiPort" form:"apiPort" example:"5380"`
 	Credential string `json:"credential" form:"credential" example:"api-token"`
+	// Subdomains replaces the stored list when present; omitted keeps it.
+	Subdomains *[]string `json:"subdomains,omitempty" form:"-" example:"[\"walk.corp.example\"]"`
 }
 
 // DnsZone is one zone the panel can write, with the account that owns it.
 type DnsZone struct {
 	Zone         string `json:"zone" example:"corp.example"`
+	Subdomain    bool   `json:"subdomain" example:"false"`
 	ProviderId   int    `json:"providerId" example:"1"`
 	ProviderName string `json:"providerName" example:"technitium"`
 	ProviderType string `json:"providerType" example:"technitium"`
@@ -91,7 +94,7 @@ func (s *DnsProviderService) fromRequest(dst *model.DnsProvider, req *DnsProvide
 	dst.Zone = dnsprovider.NormalizeName(req.Zone)
 	dst.ApiUrl = strings.TrimRight(strings.TrimSpace(req.ApiUrl), "/")
 	dst.ApiPort = req.ApiPort
-	if cred := strings.TrimSpace(req.Credential); cred != "" {
+	if cred := strings.Trim(strings.TrimSpace(req.Credential), "\"'`"); cred != "" {
 		dst.Credential = cred
 	}
 	switch dst.Type {
@@ -124,6 +127,26 @@ func (s *DnsProviderService) fromRequest(dst *model.DnsProvider, req *DnsProvide
 	}
 	if dst.Credential == "" {
 		return common.NewError("an API token is required")
+	}
+	if req.Subdomains != nil {
+		dst.Subdomains = nil
+		for _, sub := range *req.Subdomains {
+			if sub = dnsprovider.NormalizeName(sub); sub != "" && !slices.Contains(dst.Subdomains, sub) {
+				dst.Subdomains = append(dst.Subdomains, sub)
+			}
+		}
+	}
+	return nil
+}
+
+// checkSubdomains runs once the zones are known: a subdomain must sit strictly
+// below one of them, or records for it would land in no zone this token writes.
+func checkSubdomains(row *model.DnsProvider) error {
+	for _, sub := range row.Subdomains {
+		zone := dnsprovider.ZoneFor(sub, row.ManagedZones())
+		if zone == "" || zone == sub {
+			return common.NewErrorf("%s is not below any zone of %s (%s)", sub, row.Name, strings.Join(row.ManagedZones(), ", "))
+		}
 	}
 	return nil
 }
@@ -202,6 +225,9 @@ func (s *DnsProviderService) Create(req *DnsProviderRequest) (*model.DnsProvider
 	if err := s.discoverNow(row); err != nil {
 		return nil, err
 	}
+	if err := checkSubdomains(row); err != nil {
+		return nil, err
+	}
 	if err := database.GetDB().Create(row).Error; err != nil {
 		return nil, err
 	}
@@ -218,6 +244,9 @@ func (s *DnsProviderService) Update(id int, req *DnsProviderRequest) error {
 		return err
 	}
 	if err := s.discoverNow(row); err != nil {
+		return err
+	}
+	if err := checkSubdomains(row); err != nil {
 		return err
 	}
 	return database.GetDB().Save(row).Error
@@ -261,8 +290,8 @@ func (s *DnsProviderService) Zones() ([]DnsZone, error) {
 	}
 	var out []DnsZone
 	for _, r := range rows {
-		for _, z := range r.ManagedZones() {
-			out = append(out, DnsZone{Zone: z, ProviderId: r.Id, ProviderName: r.Name, ProviderType: r.Type})
+		for _, z := range r.BaseDomains() {
+			out = append(out, DnsZone{Zone: z, Subdomain: !slices.Contains(r.ManagedZones(), z), ProviderId: r.Id, ProviderName: r.Name, ProviderType: r.Type})
 		}
 	}
 	slices.SortStableFunc(out, func(a, b DnsZone) int { return strings.Compare(a.Zone, b.Zone) })

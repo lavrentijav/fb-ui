@@ -2552,7 +2552,9 @@
       "forNodeHint": "Pick several nodes to share one domain (e.g. cascade entries behind one name): the certificate is ordered here over DNS-01 and pushed to each after every renewal; none of them needs acme.sh, port 80 or the DNS token.",
       "thisPanel": "This panel",
       "onNode": "node {name}",
-      "thisPanelOnly": "This panel only"
+      "thisPanelOnly": "This panel only",
+      "subdomains": "Subdomains",
+      "subdomainsHint": "Base domains below a zone, e.g. walk.example.com: nodes and certificates can then be named ru7.walk.example.com. Records still go into the zone."
     },
     "provision": {
       "button": "Add server via SSH",
@@ -2609,7 +2611,8 @@
       "step_harden": "Harden SSH",
       "toasts": {
         "start": "Start provisioning"
-      }
+      },
+      "subdomainOf": "subdomain · "
     },
     "edge": {
       "intro": "One public port for everything: TLS connections are routed by server name (SNI) without being decrypted — to this panel or to a local service such as an Xray inbound on 127.0.0.1; unknown names and clients without SNI take the default route. HTTP routes forward by host and path inside the panel's TLS (WebSocket, XHTTP, sites).",

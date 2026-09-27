@@ -562,6 +562,7 @@ export interface DnsProvider {
   hasCredential: boolean;
   id: number;
   name: string;
+  subdomains: string[];
   type: string;
   updatedAt: number;
   zone: string;
@@ -574,6 +575,7 @@ export interface DnsProviderRequest {
   apiUrl: string;
   credential: string;
   name: string;
+  subdomains?: string[] | null;
   type: string;
   zone: string;
 }
@@ -582,6 +584,7 @@ export interface DnsZone {
   providerId: number;
   providerName: string;
   providerType: string;
+  subdomain: boolean;
   zone: string;
 }
 

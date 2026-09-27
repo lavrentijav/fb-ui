@@ -614,6 +614,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "hasCredential": true,
     "id": 1,
     "name": "corp",
+    "subdomains": [
+      "walk.corp.example"
+    ],
     "type": "technitium",
     "updatedAt": 0,
     "zone": "",
@@ -628,6 +631,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "apiUrl": "ns1.example.com",
     "credential": "api-token",
     "name": "technitium",
+    "subdomains": [
+      "walk.corp.example"
+    ],
     "type": "technitium",
     "zone": ""
   },
@@ -635,6 +641,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "providerId": 1,
     "providerName": "technitium",
     "providerType": "technitium",
+    "subdomain": false,
     "zone": "corp.example"
   },
   "DrainState": {

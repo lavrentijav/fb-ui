@@ -2432,6 +2432,16 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "corp",
         "type": "string"
       },
+      "subdomains": {
+        "description": "Subdomains are base domains the operator added below a zone, such as\nwalk.example.com, offered next to the zones wherever a domain is picked.",
+        "example": [
+          "walk.corp.example"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "type": {
         "enum": [
           "cloudflare",
@@ -2470,6 +2480,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "hasCredential",
       "id",
       "name",
+      "subdomains",
       "type",
       "updatedAt",
       "zone",
@@ -2496,6 +2507,17 @@ export const SCHEMAS: Record<string, unknown> = {
       "name": {
         "example": "technitium",
         "type": "string"
+      },
+      "subdomains": {
+        "description": "Subdomains replaces the stored list when present; omitted keeps it.",
+        "example": [
+          "walk.corp.example"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "nullable": true,
+        "type": "array"
       },
       "type": {
         "example": "technitium",
@@ -2530,6 +2552,10 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "technitium",
         "type": "string"
       },
+      "subdomain": {
+        "example": false,
+        "type": "boolean"
+      },
       "zone": {
         "example": "corp.example",
         "type": "string"
@@ -2539,6 +2565,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "providerId",
       "providerName",
       "providerType",
+      "subdomain",
       "zone"
     ],
     "type": "object"

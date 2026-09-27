@@ -596,6 +596,7 @@ export const DnsProviderSchema = z.object({
   hasCredential: z.boolean(),
   id: z.number().int(),
   name: z.string(),
+  subdomains: z.array(z.string()),
   type: z.enum(['cloudflare', 'technitium']),
   updatedAt: z.number().int(),
   zone: z.string(),
@@ -609,6 +610,7 @@ export const DnsProviderRequestSchema = z.object({
   apiUrl: z.string(),
   credential: z.string(),
   name: z.string(),
+  subdomains: z.array(z.string()).nullable().optional(),
   type: z.string(),
   zone: z.string(),
 });
@@ -618,6 +620,7 @@ export const DnsZoneSchema = z.object({
   providerId: z.number().int(),
   providerName: z.string(),
   providerType: z.string(),
+  subdomain: z.boolean(),
   zone: z.string(),
 });
 export type DnsZone = z.infer<typeof DnsZoneSchema>;

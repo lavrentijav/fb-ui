@@ -2458,6 +2458,16 @@
             "example": "corp",
             "type": "string"
           },
+          "subdomains": {
+            "description": "Subdomains are base domains the operator added below a zone, such as\nwalk.example.com, offered next to the zones wherever a domain is picked.",
+            "example": [
+              "walk.corp.example"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "type": {
             "enum": [
               "cloudflare",
@@ -2496,6 +2506,7 @@
           "hasCredential",
           "id",
           "name",
+          "subdomains",
           "type",
           "updatedAt",
           "zone",
@@ -2522,6 +2533,17 @@
           "name": {
             "example": "technitium",
             "type": "string"
+          },
+          "subdomains": {
+            "description": "Subdomains replaces the stored list when present; omitted keeps it.",
+            "example": [
+              "walk.corp.example"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "type": {
             "example": "technitium",
@@ -2556,6 +2578,10 @@
             "example": "technitium",
             "type": "string"
           },
+          "subdomain": {
+            "example": false,
+            "type": "boolean"
+          },
           "zone": {
             "example": "corp.example",
             "type": "string"
@@ -2565,6 +2591,7 @@
           "providerId",
           "providerName",
           "providerType",
+          "subdomain",
           "zone"
         ],
         "type": "object"
@@ -15524,6 +15551,9 @@
                       "hasCredential": true,
                       "id": 1,
                       "name": "corp",
+                      "subdomains": [
+                        "walk.corp.example"
+                      ],
                       "type": "technitium",
                       "updatedAt": 0,
                       "zone": "",
@@ -15587,6 +15617,9 @@
                     "hasCredential": true,
                     "id": 1,
                     "name": "corp",
+                    "subdomains": [
+                      "walk.corp.example"
+                    ],
                     "type": "technitium",
                     "updatedAt": 0,
                     "zone": "",
@@ -15656,6 +15689,9 @@
                     "hasCredential": true,
                     "id": 1,
                     "name": "corp",
+                    "subdomains": [
+                      "walk.corp.example"
+                    ],
                     "type": "technitium",
                     "updatedAt": 0,
                     "zone": "",
@@ -15856,6 +15892,7 @@
                       "providerId": 1,
                       "providerName": "technitium",
                       "providerType": "technitium",
+                      "subdomain": false,
                       "zone": "corp.example"
                     }
                   ]

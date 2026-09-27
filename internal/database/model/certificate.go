@@ -1,5 +1,7 @@
 package model
 
+import "slices"
+
 // DNS provider types; they match dnsprovider.Type* so the service can hand the
 // row straight to the provider factory.
 const (
@@ -18,7 +20,10 @@ type DnsProvider struct {
 	ApiUrl  string `json:"apiUrl" form:"apiUrl" gorm:"column:api_url" example:"ns1.example.com"`
 	ApiPort int    `json:"apiPort" form:"apiPort" gorm:"column:api_port" example:"5380"`
 
-	Zones         []string `json:"zones" gorm:"serializer:json" example:"[\"corp.example\",\"home.example\"]"`
+	Zones []string `json:"zones" gorm:"serializer:json" example:"[\"corp.example\",\"home.example\"]"`
+	// Subdomains are base domains the operator added below a zone, such as
+	// walk.example.com, offered next to the zones wherever a domain is picked.
+	Subdomains    []string `json:"subdomains" gorm:"serializer:json" example:"[\"walk.corp.example\"]"`
 	ZonesSyncedAt int64    `json:"zonesSyncedAt" gorm:"column:zones_synced_at" example:"1700000000"`
 
 	// Credential is write-only over the API, like a node's ApiToken.
@@ -37,6 +42,18 @@ func (p *DnsProvider) ManagedZones() []string {
 		return []string{p.Zone}
 	}
 	return p.Zones
+}
+
+// BaseDomains is every domain a node or certificate name can be put under:
+// the managed zones and the subdomains added below them.
+func (p *DnsProvider) BaseDomains() []string {
+	out := append([]string{}, p.ManagedZones()...)
+	for _, sub := range p.Subdomains {
+		if !slices.Contains(out, sub) {
+			out = append(out, sub)
+		}
+	}
+	return out
 }
 
 // ACME challenge kinds a Certificate can be issued with. "imported" marks a
