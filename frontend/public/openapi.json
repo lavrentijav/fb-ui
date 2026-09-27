@@ -2596,6 +2596,73 @@
         ],
         "type": "object"
       },
+      "DomainMigrateAction": {
+        "description": "DomainMigrateAction is one change the migration makes, planned or done.",
+        "properties": {
+          "detail": {
+            "example": "A 203.0.113.7",
+            "type": "string"
+          },
+          "done": {
+            "example": false,
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          },
+          "kind": {
+            "example": "dns",
+            "type": "string"
+          },
+          "target": {
+            "example": "ru7.walk.example.com",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "done",
+          "error",
+          "kind",
+          "target"
+        ],
+        "type": "object"
+      },
+      "DomainMigrateRequest": {
+        "description": "DomainMigrateRequest moves (or copies) every name under one base domain to\nanother: ru7.walk.old.com becomes ru7.walk.new.com, and so do pools.",
+        "properties": {
+          "from": {
+            "example": "walk.boykisser.online",
+            "type": "string"
+          },
+          "mode": {
+            "example": "add",
+            "type": "string"
+          },
+          "nodeIds": {
+            "description": "NodeIds limits the per-node work (edge routes, addresses, inbounds);\nempty means every node. 0 is this panel.",
+            "example": [
+              3,
+              4
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "to": {
+            "example": "walk.example.com",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "mode",
+          "nodeIds",
+          "to"
+        ],
+        "type": "object"
+      },
       "DrainState": {
         "description": "DrainState is what a master shows for the node.",
         "properties": {
@@ -15207,6 +15274,132 @@
                       "ok": true,
                       "routeId": 1,
                       "target": "127.0.0.1:8443"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/domains/plan": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "List what moving (switch) or copying (add) every name under one base domain to another would change: DNS records with the same addresses, certificates extended and reissued, edge routes copied on each panel, and in switch mode host groups, inbound SNI/Host, node addresses and subscription URIs. Changes nothing.",
+        "operationId": "post_panel_api_domains_plan",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "from": "walk.boykisser.online",
+                "to": "walk.example.com",
+                "mode": "add",
+                "nodeIds": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DomainMigrateAction"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "detail": "A 203.0.113.7",
+                      "done": false,
+                      "error": "",
+                      "kind": "dns",
+                      "target": "ru7.walk.example.com"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/domains/apply": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Make the changes /domains/plan lists, in order: records first (waiting until they are visible), then certificates and edge routes, then the switches that depend on them. Old names are kept in DNS and on certificates. Each action reports done or its error.",
+        "operationId": "post_panel_api_domains_apply",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "from": "walk.boykisser.online",
+                "to": "walk.example.com",
+                "mode": "switch",
+                "nodeIds": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DomainMigrateAction"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "detail": "A 203.0.113.7",
+                      "done": false,
+                      "error": "",
+                      "kind": "dns",
+                      "target": "ru7.walk.example.com"
                     }
                   ]
                 }

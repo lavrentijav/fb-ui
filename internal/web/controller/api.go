@@ -122,6 +122,8 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/certs/install":               {http.MethodPost: {}},
 	"/routing/managed":             {http.MethodPost: {}},
 	"/edge/maintenance":            {http.MethodPost: {}},
+	"/edge/routes":                 {http.MethodGet: {}},
+	"/edge/routes/save":            {http.MethodPost: {}},
 }
 
 // enforceTokenScope applies explicit allowlists to monitor and node-sync tokens.
@@ -226,6 +228,7 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 
 	// Edge API — one public port shared by the panel, inbounds and sites
 	NewEdgeController(api.Group("/edge"))
+	NewDomainController(api.Group("/domains"))
 
 	// Provisioning API — bare server over SSH to a registered node
 	NewProvisionController(api.Group("/provision"))

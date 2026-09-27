@@ -130,6 +130,8 @@ func run(root, outDir string) error {
 				"ManagedRouting",
 				"EdgeStatus",
 				"MaintenanceRequest",
+				"DomainMigrateRequest",
+				"DomainMigrateAction",
 				"EdgeTargetCheck",
 				"NodeProvisionRequest",
 				"ProvisionJob",

@@ -644,6 +644,22 @@ export const EXAMPLES: Record<string, unknown> = {
     "subdomain": false,
     "zone": "fire-core.ru"
   },
+  "DomainMigrateAction": {
+    "detail": "A 203.0.113.7",
+    "done": false,
+    "error": "",
+    "kind": "dns",
+    "target": "ru7.walk.example.com"
+  },
+  "DomainMigrateRequest": {
+    "from": "walk.boykisser.online",
+    "mode": "add",
+    "nodeIds": [
+      3,
+      4
+    ],
+    "to": "walk.example.com"
+  },
   "DrainState": {
     "active": 12,
     "enable": true,

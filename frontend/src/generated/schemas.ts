@@ -2570,6 +2570,73 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "DomainMigrateAction": {
+    "description": "DomainMigrateAction is one change the migration makes, planned or done.",
+    "properties": {
+      "detail": {
+        "example": "A 203.0.113.7",
+        "type": "string"
+      },
+      "done": {
+        "example": false,
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string"
+      },
+      "kind": {
+        "example": "dns",
+        "type": "string"
+      },
+      "target": {
+        "example": "ru7.walk.example.com",
+        "type": "string"
+      }
+    },
+    "required": [
+      "detail",
+      "done",
+      "error",
+      "kind",
+      "target"
+    ],
+    "type": "object"
+  },
+  "DomainMigrateRequest": {
+    "description": "DomainMigrateRequest moves (or copies) every name under one base domain to\nanother: ru7.walk.old.com becomes ru7.walk.new.com, and so do pools.",
+    "properties": {
+      "from": {
+        "example": "walk.boykisser.online",
+        "type": "string"
+      },
+      "mode": {
+        "example": "add",
+        "type": "string"
+      },
+      "nodeIds": {
+        "description": "NodeIds limits the per-node work (edge routes, addresses, inbounds);\nempty means every node. 0 is this panel.",
+        "example": [
+          3,
+          4
+        ],
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "to": {
+        "example": "walk.example.com",
+        "type": "string"
+      }
+    },
+    "required": [
+      "from",
+      "mode",
+      "nodeIds",
+      "to"
+    ],
+    "type": "object"
+  },
   "DrainState": {
     "description": "DrainState is what a master shows for the node.",
     "properties": {
