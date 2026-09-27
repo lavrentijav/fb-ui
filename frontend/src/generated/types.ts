@@ -1077,6 +1077,8 @@ export interface NodeView {
   createdAt: number;
   depletedCount: number;
   disabledCount: number;
+  drainActive: number;
+  drainEnabled: boolean;
   enable: boolean;
   guid: string;
   hasApiToken: boolean;
@@ -1087,6 +1089,8 @@ export interface NodeView {
   lastError: string;
   lastHeartbeat: number;
   latencyMs: number;
+  maintenance: boolean;
+  maintenanceIdle: number;
   memPct: number;
   name: string;
   netDown: number;

@@ -39,6 +39,10 @@ type NodeView struct {
 	LastError           string   `json:"lastError" example:""`
 	XrayState           string   `json:"xrayState" example:"running"`
 	XrayError           string   `json:"xrayError" example:""`
+	Maintenance         bool     `json:"maintenance" example:"false"`
+	MaintenanceIdle     int      `json:"maintenanceIdle" example:"120"`
+	DrainEnabled        bool     `json:"drainEnabled" example:"false"`
+	DrainActive         int      `json:"drainActive" example:"4"`
 	ConfigDirty         bool     `json:"configDirty" example:"false"`
 	ConfigDirtyAt       int64    `json:"configDirtyAt" example:"0"`
 	InboundCount        int      `json:"inboundCount" example:"3"`
@@ -87,6 +91,10 @@ func toNodeView(n *model.Node) *NodeView {
 		LastError:           n.LastError,
 		XrayState:           n.XrayState,
 		XrayError:           n.XrayError,
+		Maintenance:         n.Maintenance,
+		MaintenanceIdle:     n.MaintenanceIdle,
+		DrainEnabled:        n.DrainEnabled,
+		DrainActive:         n.DrainActive,
 		ConfigDirty:         n.ConfigDirty,
 		ConfigDirtyAt:       n.ConfigDirtyAt,
 		InboundCount:        n.InboundCount,

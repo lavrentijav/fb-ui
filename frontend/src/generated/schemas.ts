@@ -4807,6 +4807,14 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": 2,
         "type": "integer"
       },
+      "drainActive": {
+        "example": 4,
+        "type": "integer"
+      },
+      "drainEnabled": {
+        "example": false,
+        "type": "boolean"
+      },
       "enable": {
         "example": true,
         "type": "boolean"
@@ -4850,6 +4858,14 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "latencyMs": {
         "example": 42,
+        "type": "integer"
+      },
+      "maintenance": {
+        "example": false,
+        "type": "boolean"
+      },
+      "maintenanceIdle": {
+        "example": 120,
         "type": "integer"
       },
       "memPct": {
@@ -4946,6 +4962,8 @@ export const SCHEMAS: Record<string, unknown> = {
       "createdAt",
       "depletedCount",
       "disabledCount",
+      "drainActive",
+      "drainEnabled",
       "enable",
       "guid",
       "hasApiToken",
@@ -4956,6 +4974,8 @@ export const SCHEMAS: Record<string, unknown> = {
       "lastError",
       "lastHeartbeat",
       "latencyMs",
+      "maintenance",
+      "maintenanceIdle",
       "memPct",
       "name",
       "netDown",

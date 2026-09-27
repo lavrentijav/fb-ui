@@ -4833,6 +4833,14 @@
             "example": 2,
             "type": "integer"
           },
+          "drainActive": {
+            "example": 4,
+            "type": "integer"
+          },
+          "drainEnabled": {
+            "example": false,
+            "type": "boolean"
+          },
           "enable": {
             "example": true,
             "type": "boolean"
@@ -4876,6 +4884,14 @@
           },
           "latencyMs": {
             "example": 42,
+            "type": "integer"
+          },
+          "maintenance": {
+            "example": false,
+            "type": "boolean"
+          },
+          "maintenanceIdle": {
+            "example": 120,
             "type": "integer"
           },
           "memPct": {
@@ -4972,6 +4988,8 @@
           "createdAt",
           "depletedCount",
           "disabledCount",
+          "drainActive",
+          "drainEnabled",
           "enable",
           "guid",
           "hasApiToken",
@@ -4982,6 +5000,8 @@
           "lastError",
           "lastHeartbeat",
           "latencyMs",
+          "maintenance",
+          "maintenanceIdle",
           "memPct",
           "name",
           "netDown",
@@ -11969,6 +11989,8 @@
                       "createdAt": 1700000000,
                       "depletedCount": 1,
                       "disabledCount": 2,
+                      "drainActive": 4,
+                      "drainEnabled": false,
                       "enable": true,
                       "guid": "node-guid",
                       "hasApiToken": true,
@@ -11981,6 +12003,8 @@
                       "lastError": "",
                       "lastHeartbeat": 1700000000,
                       "latencyMs": 42,
+                      "maintenance": false,
+                      "maintenanceIdle": 120,
                       "memPct": 45.2,
                       "name": "edge-1",
                       "netDown": 1048576,
@@ -12170,6 +12194,8 @@
                     "createdAt": 1700000000,
                     "depletedCount": 1,
                     "disabledCount": 2,
+                    "drainActive": 4,
+                    "drainEnabled": false,
                     "enable": true,
                     "guid": "node-guid",
                     "hasApiToken": true,
@@ -12182,6 +12208,8 @@
                     "lastError": "",
                     "lastHeartbeat": 1700000000,
                     "latencyMs": 42,
+                    "maintenance": false,
+                    "maintenanceIdle": 120,
                     "memPct": 45.2,
                     "name": "edge-1",
                     "netDown": 1048576,
@@ -12320,6 +12348,8 @@
                     "createdAt": 1700000000,
                     "depletedCount": 1,
                     "disabledCount": 2,
+                    "drainActive": 4,
+                    "drainEnabled": false,
                     "enable": true,
                     "guid": "node-guid",
                     "hasApiToken": true,
@@ -12332,6 +12362,8 @@
                     "lastError": "",
                     "lastHeartbeat": 1700000000,
                     "latencyMs": 42,
+                    "maintenance": false,
+                    "maintenanceIdle": 120,
                     "memPct": 45.2,
                     "name": "edge-1",
                     "netDown": 1048576,
@@ -21171,6 +21203,8 @@
                   "createdAt": 1700000000,
                   "depletedCount": 1,
                   "disabledCount": 2,
+                  "drainActive": 4,
+                  "drainEnabled": false,
                   "enable": true,
                   "guid": "node-guid",
                   "hasApiToken": true,
@@ -21183,6 +21217,8 @@
                   "lastError": "",
                   "lastHeartbeat": 1700000000,
                   "latencyMs": 42,
+                  "maintenance": false,
+                  "maintenanceIdle": 120,
                   "memPct": 45.2,
                   "name": "edge-1",
                   "netDown": 1048576,
