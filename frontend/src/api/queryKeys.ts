@@ -7,6 +7,9 @@ export const keys = {
     root: () => ['nodes'] as const,
     list: () => ['nodes', 'list'] as const,
   },
+  templates: {
+    root: () => ['templates'] as const,
+  },
   edge: {
     root: () => ['edge'] as const,
     settings: () => ['edge', 'settings'] as const,

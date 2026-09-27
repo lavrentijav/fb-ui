@@ -1965,6 +1965,45 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'templates',
+    title: 'Inbound templates',
+    description:
+      'A template is a set of inbounds without their clients, such as one RU entry: an inbound per exit country plus its 443 twin. Taking one from existing inbounds turns the source node\u2019s own address into {{NODE_DOMAIN}}, so certificate paths and SNIs follow the node a copy lands on. Applying it to panels (0 is this one) creates the missing inbounds through the normal path — remote nodes get them over the runtime — and attaches the clients each source inbound has at that moment. An inbound already on the same listen address and port is skipped, so applying twice is safe. All endpoints under /panel/api/templates.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/templates/list',
+        summary: 'Every template.',
+        responseSchema: 'InboundTemplate',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/templates/fromInbounds',
+        summary: 'Save the given inbounds (without clients) as a template.',
+        body: '{\n  "name": "RU entry",\n  "remark": "4 countries + 443 twins",\n  "inboundIds": [118, 122, 126, 130]\n}',
+        responseSchema: 'InboundTemplate',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/templates/apply/:id',
+        summary:
+          'Create the template\u2019s inbounds on each panel and attach their clients; reports created, skipped and errors per panel.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Template ID.' }],
+        body: '{\n  "nodeIds": [18, 19]\n}',
+        responseSchema: 'InboundTemplateResult',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/templates/del/:id',
+        summary: 'Delete a template; inbounds made from it stay.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Template ID.' }],
+      },
+    ],
+  },
+
+  {
     id: 'edge',
     title: 'Edge (shared port)',
     description:

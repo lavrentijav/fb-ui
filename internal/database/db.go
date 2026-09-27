@@ -93,6 +93,7 @@ func allModels() []any {
 		&model.AcmeAccount{},
 		&model.CertificateDelivery{},
 		&model.EdgeRoute{},
+		&model.InboundTemplate{},
 		&model.SubBalancer{},
 	}
 }

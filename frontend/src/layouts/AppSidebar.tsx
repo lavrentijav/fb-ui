@@ -33,6 +33,7 @@ import {
   SafetyOutlined,
   SafetyCertificateOutlined,
   GatewayOutlined,
+  CopyOutlined,
   SearchOutlined,
   SettingOutlined,
   SunOutlined,
@@ -75,6 +76,7 @@ type IconName =
   | 'hosts'
   | 'certs'
   | 'edge'
+  | 'templates'
   | 'logout'
   | 'apidocs'
   | 'outbound'
@@ -93,6 +95,7 @@ const iconByName: Record<IconName, ComponentType> = {
   hosts: GlobalOutlined,
   certs: SafetyCertificateOutlined,
   edge: GatewayOutlined,
+  templates: CopyOutlined,
   logout: LogoutOutlined,
   apidocs: ApiOutlined,
   outbound: ExportOutlined,
@@ -243,6 +246,7 @@ export default function AppSidebar() {
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
       { key: '/certs', icon: 'certs', title: t('menu.certs') },
       { key: '/edge', icon: 'edge', title: t('menu.edge') },
+      { key: '/templates', icon: 'templates', title: t('menu.templates') },
       { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing', title: t('menu.routing') },
       { key: '/settings', icon: 'setting', title: t('menu.settings') },

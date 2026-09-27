@@ -3744,6 +3744,207 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "InboundTemplate": {
+    "description": "InboundTemplate is a reusable set of inbounds, such as \"RU entry: one\nWS+TLS inbound per exit country\". Applying it to a node creates the missing\ninbounds there and attaches the clients their source inbounds had.",
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/InboundTemplateItem"
+        },
+        "type": "array"
+      },
+      "name": {
+        "example": "RU entry",
+        "type": "string"
+      },
+      "remark": {
+        "example": "4 cascade countries + 443 twins",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "id",
+      "items",
+      "name",
+      "remark",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "InboundTemplateApply": {
+    "description": "InboundTemplateApply names the panels to stamp a template onto; 0 is this one.",
+    "properties": {
+      "nodeIds": {
+        "example": [
+          18,
+          19
+        ],
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "nodeIds"
+    ],
+    "type": "object"
+  },
+  "InboundTemplateFromInbounds": {
+    "description": "InboundTemplateFromInbounds is the \"save these inbounds as a template\" payload.",
+    "properties": {
+      "inboundIds": {
+        "example": [
+          116,
+          120,
+          124,
+          128
+        ],
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "name": {
+        "example": "RU entry",
+        "type": "string"
+      },
+      "remark": {
+        "example": "4 cascade countries",
+        "type": "string"
+      }
+    },
+    "required": [
+      "inboundIds",
+      "name",
+      "remark"
+    ],
+    "type": "object"
+  },
+  "InboundTemplateItem": {
+    "description": "InboundTemplateItem is one inbound without its clients. {{NODE_DOMAIN}} and\n{{NODE_NAME}} in its text fields become the target node's address and name.",
+    "properties": {
+      "clientsFromInboundId": {
+        "description": "ClientsFromInboundId: at apply time the new inbound gets the clients\nthis inbound has then, so later sign-ups are not frozen into the template.",
+        "example": 116,
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "listen": {
+        "type": "string"
+      },
+      "port": {
+        "example": 2053,
+        "type": "integer"
+      },
+      "protocol": {
+        "example": "vless",
+        "type": "string"
+      },
+      "remark": {
+        "example": "🇩🇪 Germany",
+        "type": "string"
+      },
+      "settings": {
+        "type": "string"
+      },
+      "shareAddr": {
+        "example": "ru.walk.example.com",
+        "type": "string"
+      },
+      "shareAddrStrategy": {
+        "example": "custom",
+        "type": "string"
+      },
+      "sniffing": {
+        "type": "string"
+      },
+      "streamSettings": {
+        "type": "string"
+      },
+      "subSortIndex": {
+        "example": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "clientsFromInboundId",
+      "enable",
+      "listen",
+      "port",
+      "protocol",
+      "remark",
+      "settings",
+      "shareAddr",
+      "shareAddrStrategy",
+      "sniffing",
+      "streamSettings",
+      "subSortIndex"
+    ],
+    "type": "object"
+  },
+  "InboundTemplateResult": {
+    "description": "InboundTemplateResult is what happened on one panel.",
+    "properties": {
+      "attached": {
+        "example": 15,
+        "type": "integer"
+      },
+      "created": {
+        "example": [
+          "n18-in-2053-tcp"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "errors": {
+        "example": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "nodeId": {
+        "example": 18,
+        "type": "integer"
+      },
+      "skipped": {
+        "example": [
+          "2083"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "attached",
+      "created",
+      "errors",
+      "nodeId",
+      "skipped"
+    ],
+    "type": "object"
+  },
   "InboundTrafficSummary": {
     "properties": {
       "down": {
