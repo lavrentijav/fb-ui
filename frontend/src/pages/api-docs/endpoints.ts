@@ -2088,6 +2088,24 @@ export const sections: readonly Section[] = [
         responseSchemaArray: true,
       },
       {
+        method: 'POST',
+        path: '/panel/api/domains/plan',
+        summary:
+          'List what moving (switch) or copying (add) every name under one base domain to another would change: DNS records with the same addresses, certificates extended and reissued, edge routes copied on each panel, and in switch mode host groups, inbound SNI/Host, node addresses and subscription URIs. Changes nothing.',
+        body: '{\n  "from": "walk.home.example",\n  "to": "walk.example.com",\n  "mode": "add",\n  "nodeIds": []\n}',
+        responseSchema: 'DomainMigrateAction',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/domains/apply',
+        summary:
+          'Make the changes /domains/plan lists, in order: records first (waiting until they are visible), then certificates and edge routes, then the switches that depend on them. Old names are kept in DNS and on certificates. Each action reports done or its error.',
+        body: '{\n  "from": "walk.home.example",\n  "to": "walk.example.com",\n  "mode": "switch",\n  "nodeIds": []\n}',
+        responseSchema: 'DomainMigrateAction',
+        responseSchemaArray: true,
+      },
+      {
         method: 'GET',
         path: '/panel/api/edge/maintenance',
         summary:

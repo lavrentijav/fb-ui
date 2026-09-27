@@ -691,6 +691,22 @@ func (r *Remote) ApplyManagedRouting(ctx context.Context, payload any) error {
 	return err
 }
 
+// EdgeRoutes lists the node's shared-port routes.
+func (r *Remote) EdgeRoutes(ctx context.Context) ([]model.EdgeRoute, error) {
+	env, err := r.do(ctx, http.MethodGet, "panel/api/edge/routes", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out []model.EdgeRoute
+	return out, json.Unmarshal(env.Obj, &out)
+}
+
+// SaveEdgeRoute adds or updates one of the node's shared-port routes.
+func (r *Remote) SaveEdgeRoute(ctx context.Context, route *model.EdgeRoute) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/edge/routes/save", route)
+	return err
+}
+
 // SetMaintenance switches the node's edge into or out of drain.
 func (r *Remote) SetMaintenance(ctx context.Context, enable bool, idleSeconds int) error {
 	_, err := r.do(ctx, http.MethodPost, "panel/api/edge/maintenance",

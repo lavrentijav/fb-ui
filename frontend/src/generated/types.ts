@@ -588,6 +588,21 @@ export interface DnsZone {
   zone: string;
 }
 
+export interface DomainMigrateAction {
+  detail: string;
+  done: boolean;
+  error: string;
+  kind: string;
+  target: string;
+}
+
+export interface DomainMigrateRequest {
+  from: string;
+  mode: string;
+  nodeIds: number[];
+  to: string;
+}
+
 export interface DrainState {
   active: number;
   enable: boolean;

@@ -625,6 +625,23 @@ export const DnsZoneSchema = z.object({
 });
 export type DnsZone = z.infer<typeof DnsZoneSchema>;
 
+export const DomainMigrateActionSchema = z.object({
+  detail: z.string(),
+  done: z.boolean(),
+  error: z.string(),
+  kind: z.string(),
+  target: z.string(),
+});
+export type DomainMigrateAction = z.infer<typeof DomainMigrateActionSchema>;
+
+export const DomainMigrateRequestSchema = z.object({
+  from: z.string(),
+  mode: z.string(),
+  nodeIds: z.array(z.number().int()),
+  to: z.string(),
+});
+export type DomainMigrateRequest = z.infer<typeof DomainMigrateRequestSchema>;
+
 export const DrainStateSchema = z.object({
   active: z.number().int(),
   enable: z.boolean(),
