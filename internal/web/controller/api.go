@@ -120,6 +120,7 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/clients/clientIpsByGuid":     {http.MethodPost: {}},
 	"/hosts/list":                  {http.MethodGet: {}},
 	"/certs/install":               {http.MethodPost: {}},
+	"/routing/managed":             {http.MethodPost: {}},
 }
 
 // enforceTokenScope applies explicit allowlists to monitor and node-sync tokens.
@@ -218,6 +219,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 
 	// Inbound templates — save a set of inbounds, stamp it onto nodes
 	NewInboundTemplateController(api.Group("/templates"))
+
+	// Managed routing — the share of cluster routing a master owns for this node
+	NewManagedRoutingController(api.Group("/routing"))
 
 	// Edge API — one public port shared by the panel, inbounds and sites
 	NewEdgeController(api.Group("/edge"))

@@ -681,10 +681,15 @@ export const EXAMPLES: Record<string, unknown> = {
     "entries": [
       ""
     ],
+    "fetchError": "",
+    "fetchedAt": 1700000000,
     "id": 1,
     "kind": "domain",
     "name": "ads",
+    "refreshHours": 24,
     "remark": "",
+    "remoteCount": 8412,
+    "sourceUrl": "https://antifilter.download/list/allyouneed.lst",
     "updatedAt": 0
   },
   "FilterRule": {
@@ -1033,6 +1038,15 @@ export const EXAMPLES: Record<string, unknown> = {
   "MLKEM768Response": {
     "client": "mlkem768-client",
     "seed": "mlkem768-seed"
+  },
+  "ManagedRouting": {
+    "outbounds": [
+      null
+    ],
+    "rules": [
+      null
+    ],
+    "version": "3f2a…"
   },
   "Msg": {
     "msg": "",

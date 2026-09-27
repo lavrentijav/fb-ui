@@ -685,6 +685,12 @@ func (r *Remote) InstallCert(ctx context.Context, domain, certPEM, keyPEM string
 	return err
 }
 
+// ApplyManagedRouting hands the node the routing share its master owns for it.
+func (r *Remote) ApplyManagedRouting(ctx context.Context, payload any) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/routing/managed", payload)
+	return err
+}
+
 // GetDescendants fetches the node's read-only summaries of the nodes IT
 // manages, so this panel can surface them as transitive sub-nodes in a chained
 // topology (#4983). Best-effort: an old-build node without the endpoint returns

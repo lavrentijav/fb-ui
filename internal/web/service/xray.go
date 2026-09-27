@@ -460,6 +460,8 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	// Filter layers this panel owns become routing rules of this config. Which
 	// ones made it is remembered here and written back once the config is live.
 	s.materializedRules, s.materializedLinks = s.injectFilterChain(xrayConfig, localInboundTags)
+	// Routing a master owns for this panel as its node rides on top.
+	injectManagedRouting(xrayConfig)
 
 	return xrayConfig, nil
 }
@@ -487,8 +489,8 @@ func (s *XrayService) injectFilterChain(cfg *xray.Config, localInboundTags []str
 		return nil, nil
 	}
 	// The outbounds have to exist before the routing pass looks for their tags.
-	injectCascadeOutbounds(cfg, links)
-	return injectClusterRouting(cfg, rules, lists, links, localInboundTags)
+	injectCascadeOutbounds(cfg, links, SelfPanelId)
+	return injectClusterRouting(cfg, rules, lists, links, localInboundTags, SelfPanelId)
 }
 
 // PanelEgressInboundTag is the tag of the loopback SOCKS inbound injected into

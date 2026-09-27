@@ -632,10 +632,15 @@ export interface FilterList {
   createdAt: number;
   enable: boolean;
   entries: string[];
+  fetchError: string;
+  fetchedAt: number;
   id: number;
   kind: string;
   name: string;
+  refreshHours: number;
   remark: string;
+  remoteCount: number;
+  sourceUrl: string;
   updatedAt: number;
 }
 
@@ -918,6 +923,12 @@ export interface MLDSA65Response {
 export interface MLKEM768Response {
   client: string;
   seed: string;
+}
+
+export interface ManagedRouting {
+  outbounds: unknown[];
+  rules: unknown[];
+  version: string;
 }
 
 export interface Msg {

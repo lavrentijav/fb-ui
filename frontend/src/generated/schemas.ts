@@ -2734,6 +2734,14 @@ export const SCHEMAS: Record<string, unknown> = {
         },
         "type": "array"
       },
+      "fetchError": {
+        "type": "string"
+      },
+      "fetchedAt": {
+        "example": 1700000000,
+        "format": "int64",
+        "type": "integer"
+      },
       "id": {
         "example": 1,
         "type": "integer"
@@ -2750,7 +2758,20 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "ads",
         "type": "string"
       },
+      "refreshHours": {
+        "example": 24,
+        "type": "integer"
+      },
       "remark": {
+        "type": "string"
+      },
+      "remoteCount": {
+        "example": 8412,
+        "type": "integer"
+      },
+      "sourceUrl": {
+        "description": "SourceUrl makes the list follow a published one (antifilter, v2fly,\nadblock, hosts files); what it yields is kept apart from Entries, which\nstay the operator's own additions.",
+        "example": "https://antifilter.download/list/allyouneed.lst",
         "type": "string"
       },
       "updatedAt": {
@@ -2762,10 +2783,15 @@ export const SCHEMAS: Record<string, unknown> = {
       "createdAt",
       "enable",
       "entries",
+      "fetchError",
+      "fetchedAt",
       "id",
       "kind",
       "name",
+      "refreshHours",
       "remark",
+      "remoteCount",
+      "sourceUrl",
       "updatedAt"
     ],
     "type": "object"
@@ -4054,6 +4080,29 @@ export const SCHEMAS: Record<string, unknown> = {
     "required": [
       "client",
       "seed"
+    ],
+    "type": "object"
+  },
+  "ManagedRouting": {
+    "description": "ManagedRouting is the share of the cluster routing a master owns for one\nnode: the cascade outbounds that node dials and the filter and cascade rules\nfor its inbounds. The node splices it into the config it generates.",
+    "properties": {
+      "outbounds": {
+        "items": {},
+        "type": "array"
+      },
+      "rules": {
+        "items": {},
+        "type": "array"
+      },
+      "version": {
+        "example": "3f2a…",
+        "type": "string"
+      }
+    },
+    "required": [
+      "outbounds",
+      "rules",
+      "version"
     ],
     "type": "object"
   },

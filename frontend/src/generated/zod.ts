@@ -674,10 +674,15 @@ export const FilterListSchema = z.object({
   createdAt: z.number().int(),
   enable: z.boolean(),
   entries: z.array(z.string()),
+  fetchError: z.string(),
+  fetchedAt: z.number().int(),
   id: z.number().int(),
   kind: z.enum(['domain', 'ip']),
   name: z.string(),
+  refreshHours: z.number().int(),
   remark: z.string(),
+  remoteCount: z.number().int(),
+  sourceUrl: z.string(),
   updatedAt: z.number().int(),
 });
 export type FilterList = z.infer<typeof FilterListSchema>;
@@ -987,6 +992,13 @@ export const MLKEM768ResponseSchema = z.object({
   seed: z.string(),
 });
 export type MLKEM768Response = z.infer<typeof MLKEM768ResponseSchema>;
+
+export const ManagedRoutingSchema = z.object({
+  outbounds: z.array(z.unknown()),
+  rules: z.array(z.unknown()),
+  version: z.string(),
+});
+export type ManagedRouting = z.infer<typeof ManagedRoutingSchema>;
 
 export const MsgSchema = z.object({
   msg: z.string(),

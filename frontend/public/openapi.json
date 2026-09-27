@@ -2760,6 +2760,14 @@
             },
             "type": "array"
           },
+          "fetchError": {
+            "type": "string"
+          },
+          "fetchedAt": {
+            "example": 1700000000,
+            "format": "int64",
+            "type": "integer"
+          },
           "id": {
             "example": 1,
             "type": "integer"
@@ -2776,7 +2784,20 @@
             "example": "ads",
             "type": "string"
           },
+          "refreshHours": {
+            "example": 24,
+            "type": "integer"
+          },
           "remark": {
+            "type": "string"
+          },
+          "remoteCount": {
+            "example": 8412,
+            "type": "integer"
+          },
+          "sourceUrl": {
+            "description": "SourceUrl makes the list follow a published one (antifilter, v2fly,\nadblock, hosts files); what it yields is kept apart from Entries, which\nstay the operator's own additions.",
+            "example": "https://antifilter.download/list/allyouneed.lst",
             "type": "string"
           },
           "updatedAt": {
@@ -2788,10 +2809,15 @@
           "createdAt",
           "enable",
           "entries",
+          "fetchError",
+          "fetchedAt",
           "id",
           "kind",
           "name",
+          "refreshHours",
           "remark",
+          "remoteCount",
+          "sourceUrl",
           "updatedAt"
         ],
         "type": "object"
@@ -4080,6 +4106,29 @@
         "required": [
           "client",
           "seed"
+        ],
+        "type": "object"
+      },
+      "ManagedRouting": {
+        "description": "ManagedRouting is the share of the cluster routing a master owns for one\nnode: the cascade outbounds that node dials and the filter and cascade rules\nfor its inbounds. The node splices it into the config it generates.",
+        "properties": {
+          "outbounds": {
+            "items": {},
+            "type": "array"
+          },
+          "rules": {
+            "items": {},
+            "type": "array"
+          },
+          "version": {
+            "example": "3f2a…",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outbounds",
+          "rules",
+          "version"
         ],
         "type": "object"
       },
@@ -5868,6 +5917,10 @@
     {
       "name": "Certificates",
       "description": "TLS certificates the panel issues through ACME (Let’s Encrypt by default) and renews on its own, plus certificates found on disk that it only watches for expiry. dns01 is the default challenge because http01 needs port 80, which a real fallback site usually holds. Files are written to /root/cert/<domain>/fullchain.pem and privkey.pem. All endpoints under /panel/api/certs."
+    },
+    {
+      "name": "Managed routing (node side)",
+      "description": "Filter layers and cascades a master defines for one of its nodes are rendered on the master into that node’s share — the cascade outbounds it dials and the routing rules for its inbounds — and pushed here every 30 seconds when it changes. The node splices the share into the config it generates: outbounds by tag (its own win) and rules ahead of its template’s, dropping a rule whose target it does not have. All endpoints under /panel/api/routing."
     },
     {
       "name": "Inbound templates",
@@ -14266,6 +14319,93 @@
         }
       }
     },
+    "/panel/api/routing/managed": {
+      "get": {
+        "tags": [
+          "Managed routing (node side)"
+        ],
+        "summary": "The share this panel currently holds (empty when it has no master).",
+        "operationId": "get_panel_api_routing_managed",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/ManagedRouting"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "outbounds": [
+                      null
+                    ],
+                    "rules": [
+                      null
+                    ],
+                    "version": "3f2a…"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Managed routing (node side)"
+        ],
+        "summary": "Store a share from the master; Xray regenerates only when the version changed. Allowed for node-sync tokens.",
+        "operationId": "post_panel_api_routing_managed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "version": "3f2a…",
+                "outbounds": [],
+                "rules": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/templates/list": {
       "get": {
         "tags": [
@@ -15538,10 +15678,15 @@
                       "entries": [
                         ""
                       ],
+                      "fetchError": "",
+                      "fetchedAt": 1700000000,
                       "id": 1,
                       "kind": "domain",
                       "name": "ads",
+                      "refreshHours": 24,
                       "remark": "",
+                      "remoteCount": 8412,
+                      "sourceUrl": "https://antifilter.download/list/allyouneed.lst",
                       "updatedAt": 0
                     }
                   ]
@@ -15597,10 +15742,15 @@
                     "entries": [
                       ""
                     ],
+                    "fetchError": "",
+                    "fetchedAt": 1700000000,
                     "id": 1,
                     "kind": "domain",
                     "name": "ads",
+                    "refreshHours": 24,
                     "remark": "",
+                    "remoteCount": 8412,
+                    "sourceUrl": "https://antifilter.download/list/allyouneed.lst",
                     "updatedAt": 0
                   }
                 }
@@ -15664,10 +15814,15 @@
                     "entries": [
                       ""
                     ],
+                    "fetchError": "",
+                    "fetchedAt": 1700000000,
                     "id": 1,
                     "kind": "domain",
                     "name": "ads",
+                    "refreshHours": 24,
                     "remark": "",
+                    "remoteCount": 8412,
+                    "sourceUrl": "https://antifilter.download/list/allyouneed.lst",
                     "updatedAt": 0
                   }
                 }
