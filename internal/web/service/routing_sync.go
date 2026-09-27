@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -245,6 +246,10 @@ func SyncManagedRouting() {
 		routingPushedMu.Lock()
 		if err != nil {
 			routingFailedAt[n.Id] = time.Now()
+			if strings.Contains(err.Error(), "HTTP 404") {
+				// A node on an older build lacks the endpoint; ask again in an hour.
+				routingFailedAt[n.Id] = time.Now().Add(time.Hour - routingRetryAfter)
+			}
 		} else {
 			routingPushed[n.Id] = mr.Version
 			delete(routingFailedAt, n.Id)
