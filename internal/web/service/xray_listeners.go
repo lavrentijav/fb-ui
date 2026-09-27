@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/database"
+	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 )
 
@@ -58,23 +60,37 @@ func listenerProbeAddr(ib xray.InboundConfig) string {
 	return net.JoinHostPort(listen, strconv.Itoa(ib.Port))
 }
 
-// LostListeners names the inbounds of the running config whose TCP port
-// refuses connections: the core can drop a listener and still report running.
+// LostListeners names the inbounds whose TCP port refuses connections: the
+// core can drop a listener and still report running. Runtime API edits never
+// reach the process config, so the stored local inbounds are checked too.
 func (s *XrayService) LostListeners() []string {
 	process := currentXrayProcess()
 	if process == nil || !process.IsRunning() || process.GetConfig() == nil {
 		return nil
 	}
-	return lostListeners(process.GetConfig().InboundConfigs)
+	return lostListeners(listenersToCheck(process.GetConfig().InboundConfigs))
+}
+
+func listenersToCheck(running []xray.InboundConfig) []xray.InboundConfig {
+	inbounds := slices.Clone(running)
+	var stored []*model.Inbound
+	if err := database.GetDB().Where("enable = ? AND node_id IS NULL", true).Find(&stored).Error; err == nil {
+		for _, ib := range stored {
+			inbounds = append(inbounds, *ib.GenXrayInboundConfig())
+		}
+	}
+	return inbounds
 }
 
 func lostListeners(inbounds []xray.InboundConfig) []string {
 	var lost []string
+	seen := map[string]bool{}
 	for _, ib := range inbounds {
 		addr := listenerProbeAddr(ib)
-		if addr == "" {
+		if addr == "" || seen[addr] {
 			continue
 		}
+		seen[addr] = true
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		c, err := (&net.Dialer{}).DialContext(ctx, "tcp", addr)
 		cancel()
