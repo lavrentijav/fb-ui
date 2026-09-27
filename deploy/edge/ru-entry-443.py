@@ -78,6 +78,7 @@ def main():
     ap.add_argument("--shared", required=True, help="shared entry domain, e.g. ru.walk.home.example")
     ap.add_argument("--self", dest="me", required=True, help="this host's own name, e.g. ru4.walk.home.example")
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--edge-off", action="store_true", help="prepare everything but leave 443 to whoever holds it now")
     ap.add_argument("--decoy", default="www.microsoft.com:443", help="Reality target strangers are handed to")
     a = ap.parse_args()
     p = Panel()
@@ -163,7 +164,7 @@ def main():
         if (r["kind"], r["match"], r.get("pathPrefix", "")) not in have:
             p.call("POST", "edge/routes/save", r)
             print(f"edge route {r['name']}")
-    p.call("POST", "edge/settings", {"enable": True, "listen": ":443", "defaultAction": "tcp",
+    p.call("POST", "edge/settings", {"enable": not a.edge_off, "listen": ":443", "defaultAction": "tcp",
                                       "defaultTarget": f"127.0.0.1:{DECOY_PORT}", "defaultProxyProtocol": 2})
     print("edge:", json.dumps(p.call("GET", "edge/status")))
     print("targets:", json.dumps(p.call("POST", "edge/check")))
