@@ -1037,6 +1037,7 @@ export interface NodeProvisionRequest {
   disablePasswordAuth: boolean;
   dnsProviderId: number;
   domain: string;
+  extraZones: string[];
   force: boolean;
   host: string;
   hostKeySha256: string;

@@ -4641,6 +4641,16 @@
             "example": "msk2.corp.example",
             "type": "string"
           },
+          "extraZones": {
+            "description": "ExtraZones names the node in more base domains too: <name>.<zone> for\neach gets its record and a place on the node's certificate.",
+            "example": [
+              "walk.example.com"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "force": {
             "example": false,
             "type": "boolean"
@@ -4701,6 +4711,7 @@
           "disablePasswordAuth",
           "dnsProviderId",
           "domain",
+          "extraZones",
           "force",
           "host",
           "hostKeySha256",

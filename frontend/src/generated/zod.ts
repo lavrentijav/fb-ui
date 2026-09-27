@@ -1112,6 +1112,7 @@ export const NodeProvisionRequestSchema = z.object({
   disablePasswordAuth: z.boolean(),
   dnsProviderId: z.number().int(),
   domain: z.string(),
+  extraZones: z.array(z.string()),
   force: z.boolean(),
   host: z.string(),
   hostKeySha256: z.string(),

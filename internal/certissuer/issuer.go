@@ -44,6 +44,9 @@ type Request struct {
 	DNS      dnsprovider.Provider
 	Zone     string
 	HTTPAddr string
+	// DNSFor, when set, picks the account and zone per name, so one
+	// certificate can span zones held by different DNS accounts.
+	DNSFor func(name string) (dnsprovider.Provider, string, error)
 
 	// Propagated blocks until every TXT value is visible; nil means the
 	// authoritative-nameserver check. Tests swap it out.
@@ -114,12 +117,12 @@ func (r *Request) validate() error {
 	}
 	switch r.Challenge {
 	case DNS01:
-		if r.DNS == nil || r.Zone == "" {
+		if r.DNSFor == nil && (r.DNS == nil || r.Zone == "") {
 			return errors.New("certissuer: dns01 needs a DNS provider")
 		}
 		for _, d := range r.Domains {
-			if !dnsprovider.InZone(strings.TrimPrefix(d, "*."), r.Zone) {
-				return fmt.Errorf("certissuer: %s is not in zone %s", d, r.Zone)
+			if _, _, err := r.dnsFor(strings.TrimPrefix(d, "*.")); err != nil {
+				return err
 			}
 		}
 	case HTTP01:
@@ -221,6 +224,16 @@ func fetchFinalized(ctx context.Context, client *acme.Client, orderURI string, f
 		return nil, finalizeErr
 	}
 	return client.FetchCert(ctx, o.CertURL, true)
+}
+
+func (r *Request) dnsFor(name string) (dnsprovider.Provider, string, error) {
+	if r.DNSFor != nil {
+		return r.DNSFor(name)
+	}
+	if !dnsprovider.InZone(name, r.Zone) {
+		return nil, "", fmt.Errorf("certissuer: %s is not in zone %s", name, r.Zone)
+	}
+	return r.DNS, r.Zone, nil
 }
 
 type pendingChallenge struct {

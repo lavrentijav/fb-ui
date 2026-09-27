@@ -50,6 +50,7 @@ function defaults(): NodeProvisionRequest {
     zone: '',
     dnsProviderId: 0,
     skipDns: false,
+    extraZones: [],
     nodeAcme: false,
     acmeEmail: '',
     panelPort: 0,
@@ -80,11 +81,13 @@ export default function ProvisionModal({ open, onOpenChange }: ProvisionModalPro
   const { zones } = useDnsZones();
   const logRef = useRef<HTMLPreElement>(null);
 
-  const [name, zone, domain] = useWatch({
+  const [name, zone, domain, extraZones] = useWatch({
     control: methods.control,
-    name: ['name', 'zone', 'domain'],
+    name: ['name', 'zone', 'domain', 'extraZones'],
   });
-  const fqdn = domain.trim() || (zone && name.trim() ? `${name.trim().toLowerCase()}.${zone}` : '');
+  const label = name.trim().toLowerCase();
+  const fqdn = domain.trim() || (zone && label ? `${label}.${zone}` : '');
+  const extraNames = fqdn && label ? (extraZones ?? []).map((z) => `${label}.${z}`) : [];
 
   const [wasOpen, setWasOpen] = useState(false);
   if (open !== wasOpen) {
@@ -238,9 +241,29 @@ export default function ProvisionModal({ open, onOpenChange }: ProvisionModalPro
                     <Typography.Text code copyable={!!fqdn}>
                       {fqdn || t('pages.provision.ipOnly')}
                     </Typography.Text>
+                    {extraNames.map((n) => (
+                      <div key={n}>
+                        <Typography.Text code copyable>
+                          {n}
+                        </Typography.Text>
+                      </div>
+                    ))}
                   </Form.Item>
                 </Col>
               </Row>
+              {fqdn && (
+                <FormField
+                  label={t('pages.provision.extraZones')}
+                  name="extraZones"
+                  extra={t('pages.provision.extraZonesHint')}
+                >
+                  <Select
+                    mode="multiple"
+                    showSearch
+                    options={zoneOptions.filter((o) => o.value && o.value !== zone)}
+                  />
+                </FormField>
+              )}
 
               <Collapse
                 size="small"

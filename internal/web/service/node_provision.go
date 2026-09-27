@@ -45,6 +45,10 @@ type NodeProvisionRequest struct {
 	Zone          string `json:"zone" form:"zone" example:"corp.example"`
 	DnsProviderId int    `json:"dnsProviderId" form:"dnsProviderId" example:"0"`
 	SkipDns       bool   `json:"skipDns" form:"skipDns" example:"false"`
+	// ExtraZones names the node in more base domains too: <name>.<zone> for
+	// each gets its record and a place on the node's certificate.
+	ExtraZones   []string `json:"extraZones" form:"extraZones" example:"[\"walk.example.com\"]"`
+	extraDomains []string `json:"-"`
 	// NodeAcme leaves the certificate to acme.sh on the node (HTTP-01 on :80)
 	// instead of ordering it here over DNS-01 and renewing it centrally.
 	NodeAcme  bool   `json:"nodeAcme" form:"nodeAcme" example:"false"`
@@ -300,8 +304,27 @@ func (s *NodeProvisionService) resolveDomain(req *NodeProvisionRequest) (*model.
 		}
 		req.Domain = label + "." + zone
 	}
+	req.extraDomains = nil
+	for _, z := range req.ExtraZones {
+		z = dnsprovider.NormalizeName(z)
+		if z == "" {
+			continue
+		}
+		label := strings.ToLower(req.Name)
+		if req.Domain == "" || !nodeLabelRe(label) {
+			return nil, common.NewError("extra domains need a primary domain and a name that is a DNS label")
+		}
+		if d := label + "." + z; d != req.Domain && !slices.Contains(req.extraDomains, d) {
+			req.extraDomains = append(req.extraDomains, d)
+		}
+	}
 	if req.Domain == "" || req.SkipDns {
 		return nil, nil
+	}
+	for _, d := range req.extraDomains {
+		if _, _, err := s.dns.ForName(d); err != nil {
+			return nil, common.NewErrorf("no DNS provider manages %s", d)
+		}
 	}
 	if req.DnsProviderId > 0 {
 		prov, err := s.dns.load(req.DnsProviderId)
@@ -619,18 +642,29 @@ func (s *NodeProvisionService) stepDNS(ctx context.Context, run *provisionRun, r
 	if addr.Unmap().Is6() {
 		rtype = "AAAA"
 	}
-	client, zone, err := s.dns.ClientFor(prov.Id, req.Domain)
-	if err != nil {
-		return err
+	for i, domain := range append([]string{req.Domain}, req.extraDomains...) {
+		provId := prov.Id
+		if i > 0 {
+			owner, _, err := s.dns.ForName(domain)
+			if err != nil {
+				return err
+			}
+			provId = owner.Id
+		}
+		client, zone, err := s.dns.ClientFor(provId, domain)
+		if err != nil {
+			return err
+		}
+		if err := client.SetRecords(ctx, domain, rtype, []string{addr.Unmap().String()}, 300); err != nil {
+			return err
+		}
+		run.logf("%s %s -> %s written to %s", domain, rtype, addr.Unmap(), zone)
+		if err := dnsWaitVisible(ctx, zone, domain, rtype, []string{addr.Unmap().String()}, 3*time.Minute); err != nil {
+			run.logf("warning: %v; continuing, the CA may still see it", err)
+		}
 	}
-	if err := client.SetRecords(ctx, req.Domain, rtype, []string{addr.Unmap().String()}, 300); err != nil {
-		return err
-	}
-	run.logf("%s %s -> %s written to %s", req.Domain, rtype, addr.Unmap(), zone)
-	if err := dnsWaitVisible(ctx, zone, req.Domain, rtype, []string{addr.Unmap().String()}, 3*time.Minute); err != nil {
-		run.logf("warning: %v; continuing, the CA may still see it", err)
-	}
-	run.step(stepDNS, "done", fmt.Sprintf("%s %s %s", req.Domain, rtype, addr.Unmap()))
+	names := strings.Join(append([]string{req.Domain}, req.extraDomains...), ", ")
+	run.step(stepDNS, "done", fmt.Sprintf("%s %s %s", names, rtype, addr.Unmap()))
 	return nil
 }
 
@@ -656,7 +690,7 @@ func (s *NodeProvisionService) stepCert(ctx context.Context, run *provisionRun, 
 		return nil, nil
 	}
 	run.step(stepCert, "running", "")
-	cert, err := s.certs.ensureNodeCert(req.Domain, prov.Id)
+	cert, err := s.certs.ensureNodeCert(append([]string{req.Domain}, req.extraDomains...), prov.Id)
 	if err != nil {
 		return nil, err
 	}

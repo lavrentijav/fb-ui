@@ -1158,6 +1158,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "disablePasswordAuth": false,
     "dnsProviderId": 0,
     "domain": "msk2.corp.example",
+    "extraZones": [
+      "walk.example.com"
+    ],
     "force": false,
     "host": "203.0.113.10",
     "hostKeySha256": "",

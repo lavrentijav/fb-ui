@@ -137,7 +137,7 @@ func TestCertificateCreatePicksOwningZone(t *testing.T) {
 		req  CertificateRequest
 		want string
 	}{
-		{"domain outside the chosen zone", CertificateRequest{Domains: []string{"a.ru.example.com", "b.example.com"}}, "b.example.com is outside zone ru.example.com"},
+		{"second name no account holds", CertificateRequest{Domains: []string{"a.ru.example.com", "b.other.org"}}, "b.other.org is in no zone"},
 		{"no zone at all", CertificateRequest{Domains: []string{"x.other.org"}}, "add a DNS provider for x.other.org first"},
 		{"wildcard over http01", CertificateRequest{Domains: []string{"*.example.com"}, Challenge: "http01"}, "wildcard *.example.com needs dns01"},
 		{"same files twice", CertificateRequest{Domains: []string{"msk1.ru.example.com"}}, "already writes"},
@@ -172,8 +172,12 @@ func TestCertificateIssueInstallsFilesAndRecordsFailure(t *testing.T) {
 	if st, err := os.Stat(got.KeyFile); err != nil || st.Mode().Perm() != 0o600 {
 		t.Fatalf("key file: %v mode %v, want 0600", err, st)
 	}
-	if req := ca.requests[0]; req.Challenge != certissuer.DNS01 || req.Zone != "example.com" || req.DNS == nil {
-		t.Fatalf("issuer got challenge=%q zone=%q dns=%v", req.Challenge, req.Zone, req.DNS)
+	req := ca.requests[0]
+	if req.Challenge != certissuer.DNS01 || req.DNSFor == nil {
+		t.Fatalf("issuer got challenge=%q without a DNS resolver", req.Challenge)
+	}
+	if p, zone, err := req.DNSFor("node.example.com"); err != nil || p == nil || zone != "example.com" {
+		t.Fatalf("DNSFor(node.example.com) = %v %q %v", p, zone, err)
 	}
 
 	ca.fail = errors.New("rateLimited: too many certificates")
