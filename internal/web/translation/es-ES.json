@@ -2493,7 +2493,7 @@
       "challenge": "Challenge",
       "challengeHint": "DNS-01 works behind a fallback site and for wildcards; HTTP-01 needs port 80 free.",
       "credential": "API token",
-      "credentialHintCloudflare": "Cloudflare API token with Zone → DNS → Edit on this zone.",
+      "credentialHintCloudflare": "Cloudflare API token with Zone → Zone → Read and Zone → DNS → Edit. A Global API Key works too, entered as email:key.",
       "credentialHintTechnitium": "API token from Technitium: Administration → Sessions → Create Token.",
       "credentialKeep": "Leave empty to keep the stored token",
       "credentialMissing": "missing",
