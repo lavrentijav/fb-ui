@@ -30,7 +30,15 @@ interface DnsProviderModalProps {
 }
 
 function defaults(): DnsProviderFormValues {
-  return { name: '', type: 'technitium', zone: '', apiUrl: '', apiPort: 5380, credential: '' };
+  return {
+    name: '',
+    type: 'technitium',
+    zone: '',
+    apiUrl: '',
+    apiPort: 5380,
+    credential: '',
+    subdomains: [],
+  };
 }
 
 export default function DnsProviderModal({
@@ -63,6 +71,7 @@ export default function DnsProviderModal({
             apiUrl: provider.apiUrl,
             apiPort: provider.apiPort,
             credential: '',
+            subdomains: provider.subdomains ?? [],
           }
         : defaults(),
     );
@@ -190,6 +199,19 @@ export default function DnsProviderModal({
                 </FormField>
               </Col>
             </Row>
+            <FormField
+              label={t('pages.certs.subdomains')}
+              name="subdomains"
+              extra={t('pages.certs.subdomainsHint')}
+            >
+              <Select
+                mode="tags"
+                tokenSeparators={[',', ' ']}
+                placeholder="walk.example.com"
+                open={false}
+                suffixIcon={null}
+              />
+            </FormField>
             {found !== null && (
               <Alert
                 type={found.length > 0 ? 'info' : 'warning'}

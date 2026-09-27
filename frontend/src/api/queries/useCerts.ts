@@ -62,6 +62,8 @@ async function fetchAccount(): Promise<AcmeAccountView | null> {
   return parseMsg(msg, AcmeAccountViewSchema, 'certs/account').obj ?? null;
 }
 
+const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } };
+
 function post(url: string, data?: unknown) {
   return HttpUtil.post(url, data);
 }
@@ -100,9 +102,11 @@ export function useCerts() {
   const saveAccount = useCertMutation((p: AcmeAccountRequest) =>
     post('/panel/api/certs/account', p),
   );
-  const createDns = useCertMutation((p: DnsProviderRequest) => post('/panel/api/dns/add', p));
+  const createDns = useCertMutation((p: DnsProviderRequest) =>
+    HttpUtil.post('/panel/api/dns/add', p, JSON_HEADERS),
+  );
   const updateDns = useCertMutation(({ id, p }: { id: number; p: DnsProviderRequest }) =>
-    post(`/panel/api/dns/update/${id}`, p),
+    HttpUtil.post(`/panel/api/dns/update/${id}`, p, JSON_HEADERS),
   );
   const removeDns = useCertMutation((id: number) => post(`/panel/api/dns/del/${id}`));
   const syncDns = useCertMutation((id: number) => post(`/panel/api/dns/sync/${id}`));
@@ -130,6 +134,7 @@ export function useCerts() {
     updateDns: (id: number, p: DnsProviderRequest) => updateDns.mutateAsync({ id, p }),
     removeDns: (id: number) => removeDns.mutateAsync(id),
     syncDns: (id: number) => syncDns.mutateAsync(id),
-    testDns: (id: number, p: DnsProviderRequest) => post('/panel/api/dns/test', { id, ...p }),
+    testDns: (id: number, p: DnsProviderRequest) =>
+      HttpUtil.post('/panel/api/dns/test', { id, ...p }, JSON_HEADERS),
   };
 }

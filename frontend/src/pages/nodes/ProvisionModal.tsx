@@ -103,7 +103,10 @@ export default function ProvisionModal({ open, onOpenChange }: ProvisionModalPro
   const zoneOptions = useMemo(
     () => [
       { value: '', label: t('pages.provision.noDomain') },
-      ...zones.map((z) => ({ value: z.zone, label: `${z.zone} · ${z.providerName}` })),
+      ...zones.map((z) => ({
+        value: z.zone,
+        label: `${z.zone} · ${z.subdomain ? t('pages.provision.subdomainOf') : ''}${z.providerName}`,
+      })),
     ],
     [zones, t],
   );

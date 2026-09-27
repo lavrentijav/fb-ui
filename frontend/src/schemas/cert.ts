@@ -19,6 +19,7 @@ export const DnsProviderFormSchema = z
     apiUrl: z.string().trim(),
     apiPort: z.number().int().min(0).max(65535),
     credential: z.string(),
+    subdomains: z.array(z.string().trim()),
   })
   .superRefine((val, ctx) => {
     if (val.type === 'technitium' && !/^(https?:\/\/)?[^\s/]+/.test(val.apiUrl)) {
