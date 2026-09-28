@@ -40,6 +40,12 @@ func (f *fakeCloudflare) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch {
+	case r.Method == http.MethodGet && r.URL.Path == "/zones" && r.URL.Query().Get("name") == "":
+		reply([]map[string]string{
+			{"id": "z1", "name": "example.com", "status": "active"},
+			{"id": "z2", "name": "boy-kisser.ru", "status": "pending"},
+			{"id": "z3", "name": "old.org", "status": "deactivated"},
+		})
 	case r.Method == http.MethodGet && r.URL.Path == "/zones":
 		reply([]map[string]string{{"id": "z1", "name": r.URL.Query().Get("name")}})
 	case r.Method == http.MethodGet && r.URL.Path == "/zones/z1/dns_records":
@@ -273,5 +279,16 @@ func TestCloudflareGlobalAPIKey(t *testing.T) {
 	err := bare.SetRecords(ctx, "a.example.com", "A", []string{"192.0.2.1"}, 60)
 	if err == nil || !strings.Contains(err.Error(), "enter it as email:key") {
 		t.Fatalf("bare global key: %v", err)
+	}
+}
+
+// boy-kisser.ru sat in the Cloudflare account as pending while Technitium
+// served it; listing it sent DNS-01 tokens where no resolver looks.
+func TestCloudflareListsOnlyActiveZones(t *testing.T) {
+	srv := httptest.NewServer(&fakeCloudflare{records: map[string]cfRecord{}})
+	defer srv.Close()
+	zones, err := newCloudflare("", "tok", srv.URL).listZones(context.Background())
+	if err != nil || !slices.Equal(zones, []string{"example.com"}) {
+		t.Fatalf("zones = %v, %v", zones, err)
 	}
 }
