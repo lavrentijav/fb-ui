@@ -16,10 +16,12 @@ func TestDomainRewriterRenamesWholeNamesOnly(t *testing.T) {
 	rw := newDomainRewriter("walk.old.com", "walk.new.net")
 	in := `{"serverName":"ru2.walk.old.com","host":"RU.Walk.Old.Com","apex":"walk.old.com",` +
 		`"certificateFile":"/root/cert/ru2.walk.old.com/fullchain.pem","other":"fire-walk.old.com",` +
-		`"longer":"walk.old.com.evil.net","end":"a.walk.old.com."}`
+		`"longer":"walk.old.com.evil.net","end":"a.walk.old.com.",` +
+		`"sub":"https://ru.walk.old.com/sub/","port":"https://walk.old.com:2087/x"}`
 	want := `{"serverName":"ru2.walk.new.net","host":"ru.walk.new.net","apex":"walk.new.net",` +
 		`"certificateFile":"/root/cert/ru2.walk.old.com/fullchain.pem","other":"fire-walk.old.com",` +
-		`"longer":"walk.old.com.evil.net","end":"a.walk.new.net."}`
+		`"longer":"walk.old.com.evil.net","end":"a.walk.new.net.",` +
+		`"sub":"https://ru.walk.new.net/sub/","port":"https://walk.new.net:2087/x"}`
 	if got := rw.rewrite(in); got != want {
 		t.Fatalf("rewrite:\n got  %s\n want %s", got, want)
 	}
