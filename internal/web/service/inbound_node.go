@@ -445,6 +445,47 @@ func adoptedWireInbound(c, snapIb *model.Inbound, adoptedSettings string) *model
 // clientEmailsOwnedElsewhere returns the emails attached only to inbounds of
 // other nodes: email is unique, so adopting one would overwrite a client this
 // node does not serve. Attached nowhere means soft-orphaned, hence adoptable.
+// dropSameIdentityClaims keeps a client another node also serves when the node
+// reports the very credential this panel stores for that email: it is one
+// client on two nodes (a master taking over nodes), not a name clash.
+func dropSameIdentityClaims(tx *gorm.DB, foreign map[string]struct{}, reported []model.Client) error {
+	if len(foreign) == 0 {
+		return nil
+	}
+	emails := make([]string, 0, len(foreign))
+	for e := range foreign {
+		emails = append(emails, e)
+	}
+	var rows []model.ClientRecord
+	if err := tx.Select("email", "uuid", "password", "auth").Where("email IN ?", emails).Find(&rows).Error; err != nil {
+		return err
+	}
+	stored := make(map[string]model.ClientRecord, len(rows))
+	for _, r := range rows {
+		stored[r.Email] = r
+	}
+	for _, c := range reported {
+		r, ok := stored[c.Email]
+		if !ok {
+			continue
+		}
+		switch {
+		case c.ID != "":
+			ok = c.ID == r.UUID
+		case c.Password != "":
+			ok = c.Password == r.Password
+		case c.Auth != "":
+			ok = c.Auth == r.Auth
+		default:
+			ok = false
+		}
+		if ok {
+			delete(foreign, c.Email)
+		}
+	}
+	return nil
+}
+
 func clientEmailsOwnedElsewhere(tx *gorm.DB, nodeID int, emails []string) (map[string]struct{}, error) {
 	attachedEmails := func(nodeScoped bool) ([]string, error) {
 		q := tx.Table("clients").
@@ -1257,6 +1298,9 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 		if len(localEmails) > 0 {
 			foreign, err := clientEmailsOwnedElsewhere(tx, nodeID, localEmails)
 			if err != nil {
+				return false, err
+			}
+			if err := dropSameIdentityClaims(tx, foreign, filtered); err != nil {
 				return false, err
 			}
 			if len(foreign) > 0 {
