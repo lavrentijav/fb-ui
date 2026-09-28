@@ -469,13 +469,14 @@ func dropSameIdentityClaims(tx *gorm.DB, foreign map[string]struct{}, reported [
 		if !ok {
 			continue
 		}
+		// A credential this panel never stored for the email cannot clash.
 		switch {
 		case c.ID != "":
-			ok = c.ID == r.UUID
+			ok = r.UUID == "" || c.ID == r.UUID
 		case c.Password != "":
-			ok = c.Password == r.Password
+			ok = r.Password == "" || c.Password == r.Password
 		case c.Auth != "":
-			ok = c.Auth == r.Auth
+			ok = r.Auth == "" || c.Auth == r.Auth
 		default:
 			ok = false
 		}

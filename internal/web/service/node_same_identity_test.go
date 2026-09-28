@@ -22,7 +22,7 @@ func TestSetRemoteTraffic_AdoptsTheSameClientServedByAnotherNode(t *testing.T) {
 	t.Cleanup(func() { _ = database.CloseDB() })
 	db := database.GetDB()
 
-	const same, clash = "vless_same", "vless_clash"
+	const same, clash, fresh = "vless_same", "vless_clash", "trojan_fresh"
 	const uid, otherUID = "11111111-2222-3333-4444-555555555555", "99999999-8888-7777-6666-555555555555"
 	local := &model.Inbound{
 		UserId: 1, Tag: "in-12053-tcp", Enable: true, Port: 12053, Protocol: model.VLESS,
@@ -31,7 +31,7 @@ func TestSetRemoteTraffic_AdoptsTheSameClientServedByAnotherNode(t *testing.T) {
 	if err := db.Create(local).Error; err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range []*model.ClientRecord{{Email: same, UUID: uid, Enable: true}, {Email: clash, UUID: uid, Enable: true}} {
+	for _, c := range []*model.ClientRecord{{Email: same, UUID: uid, Enable: true}, {Email: clash, UUID: uid, Enable: true}, {Email: fresh, UUID: uid, Enable: true}} {
 		if err := db.Create(c).Error; err != nil {
 			t.Fatal(err)
 		}
@@ -40,7 +40,8 @@ func TestSetRemoteTraffic_AdoptsTheSameClientServedByAnotherNode(t *testing.T) {
 		}
 	}
 	nodeID := 4
-	nodeSettings := `{"clients":[{"email":"` + same + `","id":"` + uid + `","enable":true},{"email":"` + clash + `","id":"` + otherUID + `","enable":true}]}`
+	nodeSettings := `{"clients":[{"email":"` + same + `","id":"` + uid + `","enable":true},{"email":"` + clash + `","id":"` + otherUID + `","enable":true},` +
+		`{"email":"` + fresh + `","password":"never-stored-here","enable":true}]}`
 	central := &model.Inbound{UserId: 1, NodeID: &nodeID, Tag: "n4-in-12053-tcp", Enable: true, Port: 12053, Protocol: model.VLESS, Settings: nodeSettings}
 	if err := db.Create(central).Error; err != nil {
 		t.Fatal(err)
@@ -54,7 +55,8 @@ func TestSetRemoteTraffic_AdoptsTheSameClientServedByAnotherNode(t *testing.T) {
 	var attached []string
 	db.Table("clients").Joins("JOIN client_inbounds ON client_inbounds.client_id = clients.id").
 		Where("client_inbounds.inbound_id = ?", central.Id).Pluck("clients.email", &attached)
-	if !slices.Equal(attached, []string{same}) {
-		t.Fatalf("attached to ru4's inbound = %v, want only %q", attached, same)
+	slices.Sort(attached)
+	if !slices.Equal(attached, []string{fresh, same}) {
+		t.Fatalf("attached to ru4's inbound = %v, want %q and %q", attached, fresh, same)
 	}
 }
