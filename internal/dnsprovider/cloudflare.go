@@ -219,8 +219,10 @@ func (c *cloudflare) listZones(ctx context.Context) ([]string, error) {
 		if err := c.do(ctx, http.MethodGet, "/zones?"+q.Encode(), nil, &zones); err != nil {
 			return nil, err
 		}
+		// A pending zone is not delegated to Cloudflare yet: records written
+		// there are invisible, so another account must keep serving the name.
 		for _, z := range zones {
-			if z.Status != "deactivated" {
+			if z.Status == "active" {
 				out = append(out, z.Name)
 			}
 		}
