@@ -122,6 +122,20 @@ func (s *InboundService) ReconcileNode(ctx context.Context, rt *runtime.Remote, 
 		remoteTagSet[remoteIb.Tag] = struct{}{}
 	}
 	prefix := nodeTagPrefix(&nodeID)
+	// A remote inbound another central row already maps to is taken: aliasing
+	// a stray row onto it would make deleting that row delete the live one.
+	claimed := make(map[string]struct{}, len(inbounds))
+	for _, ib := range inbounds {
+		forms := []string{ib.Tag}
+		if prefix != "" {
+			forms = append(forms, strings.TrimPrefix(ib.Tag, prefix), prefix+ib.Tag)
+		}
+		for _, tag := range forms {
+			if _, ok := remoteTagSet[tag]; ok {
+				claimed[tag] = struct{}{}
+			}
+		}
+	}
 	desiredTags := make(map[string]struct{}, len(inbounds)*2)
 	var errs []error
 	for _, ib := range inbounds {
@@ -149,6 +163,9 @@ func (s *InboundService) ReconcileNode(ctx context.Context, rt *runtime.Remote, 
 		if !existsOnNode && n.Guid != "" && ib.OriginNodeGuid == n.Guid {
 			var compatible []runtime.RemoteInboundOption
 			for _, remoteIb := range remoteInbounds {
+				if _, taken := claimed[remoteIb.Tag]; taken {
+					continue
+				}
 				if remoteIb.Port == runtimeIb.Port &&
 					remoteIb.Protocol == runtimeIb.Protocol &&
 					strings.TrimSpace(remoteIb.Listen) == strings.TrimSpace(runtimeIb.Listen) {
