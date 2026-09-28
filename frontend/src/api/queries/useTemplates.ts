@@ -11,6 +11,8 @@ import {
   type InboundTemplateResult,
 } from '@/generated/zod';
 
+// The template endpoints bind JSON; a form body fails with "invalid character 'o'".
+const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } };
 export type { InboundTemplate, InboundTemplateResult };
 
 // The slim list carries more than these; the page needs only these.
@@ -43,7 +45,8 @@ export function useTemplates() {
     },
   });
   const post = useMutation({
-    mutationFn: ({ url, body }: { url: string; body?: unknown }) => HttpUtil.post(url, body),
+    mutationFn: ({ url, body }: { url: string; body?: unknown }) =>
+      HttpUtil.post(url, body, JSON_HEADERS),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.templates.root() }),
   });
   return {
@@ -57,7 +60,11 @@ export function useTemplates() {
       }),
     remove: (id: number) => post.mutateAsync({ url: `/panel/api/templates/del/${id}` }),
     apply: async (id: number, nodeIds: number[]): Promise<InboundTemplateResult[] | null> => {
-      const msg = await HttpUtil.post(`/panel/api/templates/apply/${id}`, { nodeIds });
+      const msg = await HttpUtil.post(
+        `/panel/api/templates/apply/${id}`,
+        { nodeIds },
+        JSON_HEADERS,
+      );
       if (!msg?.success) return null;
       return parseMsg(msg, z.array(InboundTemplateResultSchema), 'templates/apply').obj ?? [];
     },
