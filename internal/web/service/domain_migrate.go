@@ -70,15 +70,22 @@ func isNameByte(c byte) bool {
 }
 
 // spans are the standalone matches: not glued to a longer label, not a
-// parent of a longer name (old.com.evil.net) and not part of a file path.
+// parent of a longer name (old.com.evil.net) and not part of a file path;
+// the host of a URL counts.
 func (r *domainRewriter) spans(text string) [][]int {
 	var out [][]int
 	for _, m := range r.re.FindAllStringIndex(text, -1) {
-		if m[0] > 0 && isNameByte(text[m[0]-1]) {
+		// https://name/path is a URL host, not a file path.
+		inURL := m[0] >= 3 && text[m[0]-3:m[0]] == "://"
+		if m[0] > 0 && isNameByte(text[m[0]-1]) && !inURL {
 			continue
 		}
 		if m[1] < len(text) {
 			next := text[m[1]]
+			if inURL && (next == '/' || next == '?' || next == '#') {
+				out = append(out, m)
+				continue
+			}
 			if next == '.' {
 				if m[1]+1 < len(text) && isNameByte(text[m[1]+1]) {
 					continue
