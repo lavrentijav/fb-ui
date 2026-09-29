@@ -59,8 +59,12 @@ Split between RU and EU is a normal state, not a disaster.
 - Masters are trusted by certificates from the fleet CA pinned at enrollment.
 - Desired state carries the stamp of the newest op it was rendered from;
   the agent never applies an older one, so two masters cannot roll it back.
-- Reports are journaled on the node (`oplog`: per-origin file log with CRC)
-  and acked by whichever master received them.
+- Reports (traffic deltas, onlines) go to the bound master's stream
+  `REP_<master>` (subject `rep.<master>.<node>`), mirrored to the others and
+  kept 7 days. Every master projects all report streams into Postgres;
+  `(node, seq)` is recorded in the same transaction, so a report re-sent to
+  another master after a lost ack counts once. A master away longer than
+  the retention reports the lost count instead of stalling.
 
 ## Packages (branch `native`)
 
@@ -75,7 +79,8 @@ Split between RU and EU is a normal state, not a disaster.
 | `internal/native/fleetca` | fleet CA, mutual TLS between masters |
 | `internal/native/pick` | node's choice of master, hourly rebind |
 | `internal/native/probe` | RTT, throughput, TCP MSS, load over NATS |
-| next | TLS + auth on gateways, operational streams (traffic → Postgres), `fbnode` |
+| `internal/native/reports` | node reports → JetStream → Postgres totals, once |
+| next | node auth on the client port, `fbnode` agent (journal, send loop, desired state) |
 
 Tests: `XUI_TEST_PG_DSN` enables the Postgres cases, `XUI_NATS_SPLIT_TEST=1`
 the bus split test.

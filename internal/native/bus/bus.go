@@ -118,6 +118,15 @@ func Start(cfg Config) (*Bus, error) {
 func opsStream(origin string) string          { return "OPS_" + origin }
 func mirrorStream(self, origin string) string { return "M_" + self + "_" + origin }
 func opsSubject(origin string) string         { return "ops." + origin }
+func repStream(master string) string          { return "REP_" + master }
+func repMirror(self, master string) string    { return "MR_" + self + "_" + master }
+
+// ReportSubject is where a node bound to master publishes its reports.
+func ReportSubject(master, node string) string { return "rep." + master + "." + node }
+
+// ReportRetention is how long masters keep raw node reports in JetStream;
+// a master away for longer loses them (Postgres keeps the totals).
+const ReportRetention = 7 * 24 * time.Hour
 
 // streamFor is where this master reads an origin's ops.
 func (b *Bus) streamFor(origin string) string {
@@ -127,29 +136,68 @@ func (b *Bus) streamFor(origin string) string {
 	return mirrorStream(b.name, origin)
 }
 
-// Ensure creates this master's op stream and a mirror of every other
-// master's. It needs the JetStream meta quorum, so it runs while joined.
+func (b *Bus) repStreamFor(master string) string {
+	if master == b.name {
+		return repStream(master)
+	}
+	return repMirror(b.name, master)
+}
+
+// Ensure creates this master's op and report streams and a mirror of every
+// other master's. It needs the JetStream meta quorum, so it runs while joined.
 func (b *Bus) Ensure(ctx context.Context, masters []string) error {
 	place := &jetstream.Placement{Cluster: b.name}
-	if _, err := b.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+	own := []jetstream.StreamConfig{{
 		Name: opsStream(b.name), Subjects: []string{opsSubject(b.name)},
 		Storage: jetstream.FileStorage, Placement: place, AllowDirect: true,
 		Duplicates: 10 * time.Minute,
-	}); err != nil {
-		return fmt.Errorf("bus: own stream: %w", err)
-	}
+	}, {
+		Name: repStream(b.name), Subjects: []string{ReportSubject(b.name, "*")},
+		Storage: jetstream.FileStorage, Placement: place, AllowDirect: true,
+		Duplicates: 10 * time.Minute, MaxAge: ReportRetention,
+	}}
 	for _, m := range masters {
 		if m == b.name {
 			continue
 		}
-		if _, err := b.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		own = append(own, jetstream.StreamConfig{
 			Name: mirrorStream(b.name, m), Storage: jetstream.FileStorage, Placement: place,
 			AllowDirect: true, Mirror: &jetstream.StreamSource{Name: opsStream(m)},
-		}); err != nil {
-			return fmt.Errorf("bus: mirror of %s: %w", m, err)
+		}, jetstream.StreamConfig{
+			Name: repMirror(b.name, m), Storage: jetstream.FileStorage, Placement: place,
+			AllowDirect: true, MaxAge: ReportRetention, Mirror: &jetstream.StreamSource{Name: repStream(m)},
+		})
+	}
+	for _, cfg := range own {
+		if _, err := b.js.CreateOrUpdateStream(ctx, cfg); err != nil {
+			return fmt.Errorf("bus: stream %s: %w", cfg.Name, err)
 		}
 	}
 	return nil
+}
+
+// ReportRange is the first and last report seq held locally for a master's
+// stream; first moves up as old reports age out.
+func (b *Bus) ReportRange(ctx context.Context, master string) (first, last uint64, err error) {
+	st, err := b.js.Stream(ctx, b.repStreamFor(master))
+	if err != nil {
+		return 0, 0, err
+	}
+	state := st.CachedInfo().State
+	return state.FirstSeq, state.LastSeq, nil
+}
+
+// GetReport reads one raw report of a master's stream by seq.
+func (b *Bus) GetReport(ctx context.Context, master string, seq uint64) ([]byte, error) {
+	st, err := b.js.Stream(ctx, b.repStreamFor(master))
+	if err != nil {
+		return nil, err
+	}
+	msg, err := st.GetMsg(ctx, seq)
+	if err != nil {
+		return nil, err
+	}
+	return msg.Data, nil
 }
 
 // Publish appends a local op; its seq must be the stream's next, so two
