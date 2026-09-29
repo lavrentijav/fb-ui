@@ -1,7 +1,5 @@
-// Package replica is one master's copy of the shared state: it stamps local
-// writes, keeps them in the op log and exchanges ops with other masters by
-// version vector. It knows nothing about the transport; repl carries Pull
-// and Ingest over the network.
+// Package replica is one master's copy of the shared state: local writes,
+// op log and exchange by version vector, independent of the transport.
 package replica
 
 import (
@@ -85,9 +83,8 @@ func (r *Replica) Pull(v oplog.Vector, limit int) ([]oplog.Op, error) {
 	return r.log.Since(v, limit)
 }
 
-// Ingest stores and applies ops from a peer. Ops already held are skipped;
-// an op that skips a seq stops the batch (the rest is fetched next round).
-// It returns how many ops were new.
+// Ingest stores and applies a peer's ops and returns how many were new; held
+// ops are skipped, a seq gap ends the batch (the rest comes next round).
 func (r *Replica) Ingest(ops []oplog.Op) (int, error) {
 	n := 0
 	for _, op := range ops {
@@ -107,10 +104,13 @@ func (r *Replica) Ingest(ops []oplog.Op) (int, error) {
 	return n, nil
 }
 
+// Puller is a peer seen from here: a local Replica or a network client.
+type Puller interface {
+	Pull(v oplog.Vector, limit int) ([]oplog.Op, error)
+}
+
 // SyncFrom pulls everything peer has that r lacks, in pages.
-func (r *Replica) SyncFrom(peer interface {
-	Pull(oplog.Vector, int) ([]oplog.Op, error)
-}, page int) (int, error) {
+func (r *Replica) SyncFrom(peer Puller, page int) (int, error) {
 	total := 0
 	for {
 		ops, err := peer.Pull(r.Vector(), page)

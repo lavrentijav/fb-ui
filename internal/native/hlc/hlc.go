@@ -1,7 +1,5 @@
-// Package hlc is a hybrid logical clock: stamps follow wall time, stay
-// monotonic when the host clock steps back, and order events across masters
-// that exchange them. Ties between masters are broken by origin id, so any
-// two stamps compare the same way everywhere.
+// Package hlc stamps events so masters order them the same way everywhere:
+// wall ms + logical counter + origin id, monotonic across clock steps.
 package hlc
 
 import (
