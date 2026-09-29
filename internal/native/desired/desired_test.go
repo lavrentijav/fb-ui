@@ -39,7 +39,7 @@ func TestNodeNeverRollsBackAcrossMasters(t *testing.T) {
 			t.Fatal(err)
 		}
 		ms[name] = m
-		if _, err := desired.Serve(buses[name], name, render(m, st)); err != nil {
+		if _, err := desired.Serve(buses[name].Conn(), name, render(m, st)); err != nil {
 			t.Fatal(err)
 		}
 	}
