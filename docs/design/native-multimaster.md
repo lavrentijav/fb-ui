@@ -86,7 +86,8 @@ Split between RU and EU is a normal state, not a disaster.
 | `internal/native/reports` | node reports → JetStream → Postgres totals, once |
 | `internal/native/recio` | length + CRC32C record framing (op log, journal) |
 | `internal/native/agent` | fbnode: durable report journal, send loop with failover |
-| next | desired state: master renders, agent applies (never older), Xray control |
+| `internal/native/desired` | node pulls its state from any master, never older (stamp), apply only on config change (hash) |
+| next | real renderer (Xray config from the projection), Xray apply on the node, `cmd/fbnode` |
 
 Tests: `XUI_TEST_PG_DSN` enables the Postgres cases, `XUI_NATS_SPLIT_TEST=1`
 the bus split test.

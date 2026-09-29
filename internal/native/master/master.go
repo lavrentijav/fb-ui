@@ -62,6 +62,22 @@ func New(ctx context.Context, name string, masters []string, b *bus.Bus, store S
 
 func (m *Master) Name() string { return m.name }
 
+// Version is the newest stamp this master has projected from any origin;
+// a node never accepts a state rendered from an older one.
+func (m *Master) Version(ctx context.Context) (hlc.Stamp, error) {
+	var v hlc.Stamp
+	for _, origin := range m.masters {
+		s, err := m.store.Newest(ctx, origin)
+		if err != nil {
+			return hlc.Stamp{}, err
+		}
+		if s.After(v) {
+			v = s
+		}
+	}
+	return v, nil
+}
+
 // Set writes fields of one record; values are marshalled to JSON.
 func (m *Master) Set(ctx context.Context, table, key string, fields map[string]any) (oplog.Op, error) {
 	raw := make(map[string]json.RawMessage, len(fields))
