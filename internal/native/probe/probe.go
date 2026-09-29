@@ -26,6 +26,8 @@ type Config struct {
 	TLS   *tls.Config
 	Bytes int // throughput sample size (0 = 256 KiB)
 	Pings int // RTT samples, the minimum counts (0 = 3)
+	// Inbox is the node's reply prefix (bus.NodeInbox) when masters check certificates.
+	Inbox string
 }
 
 // NATS returns a pick.Prober that opens a fresh connection per probe, so
@@ -55,6 +57,9 @@ func NATS(cfg Config) pick.Prober {
 		opts := []nats.Option{nats.SetCustomDialer(d), nats.NoReconnect(), nats.Name("probe")}
 		if cfg.TLS != nil {
 			opts = append(opts, nats.Secure(cfg.TLS))
+		}
+		if cfg.Inbox != "" {
+			opts = append(opts, nats.CustomInboxPrefix(cfg.Inbox))
 		}
 		nc, err := nats.Connect(url, opts...)
 		if err != nil {
