@@ -1,6 +1,9 @@
 package hlc
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestNowIsMonotonicWhenWallStepsBack(t *testing.T) {
 	wall := int64(1000)
@@ -48,6 +51,27 @@ func TestStringRoundTrip(t *testing.T) {
 	for _, bad := range []string{"", "1.2", "x.1@a", "1.x@a", "1@a"} {
 		if _, err := Parse(bad); err == nil {
 			t.Fatalf("Parse(%q) accepted", bad)
+		}
+	}
+}
+
+func TestKeySortsLikeCompare(t *testing.T) {
+	stamps := []Stamp{
+		{},
+		{Wall: 1, Origin: "fi1"},
+		{Wall: 1, Logical: 1, Origin: "de2"},
+		{Wall: 1, Logical: 1, Origin: "ru2"},
+		{Wall: 256, Origin: "a"},
+		{Wall: 1 << 40, Logical: 3, Origin: "fi1"},
+	}
+	for _, a := range stamps {
+		for _, b := range stamps {
+			if got, want := bytes.Compare(a.Key(), b.Key()), a.Compare(b); got != want {
+				t.Fatalf("%v vs %v: key order %d, stamp order %d", a, b, got, want)
+			}
+		}
+		if back, err := FromKey(a.Key()); err != nil || back != a {
+			t.Fatalf("FromKey(%v) = %v %v", a, back, err)
 		}
 	}
 }

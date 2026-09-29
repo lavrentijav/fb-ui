@@ -72,11 +72,11 @@ shrink Node's role, then drop it.
    Node.js leaves the repo entirely.
 5. **Multi-master** (fi1, ru2, de2): every master manages every node, also
    during a split. Moved to the foundation — see `native-multimaster.md`
-   (leaderless op log + field-level LWW; no Raft/NATS).
+   (JetStream mirrors between masters + Postgres projection with field-level LWW).
 
 ## Open questions
 
-- ~~Store for journals/replication~~ — decided 2026-09-29: own op log files
-  + LWW state, SQLite/Postgres as a projection (`native-multimaster.md`).
+- ~~Store for journals/replication~~ — decided 2026-09-29: JetStream
+  (operational data, mirrored) + Postgres on every master (`native-multimaster.md`).
 - Keep following upstream at all after track 4, or freeze at a version?
 - Postgres on masters or replicated SQLite?
