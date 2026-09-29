@@ -139,7 +139,7 @@ func run(path string, logger *log.Logger) error {
 	prober := probe.NATS(probe.Config{URLs: c.Masters, TLS: tlsCfg, Inbox: inbox})
 	sel := pick.New(masters, prober, pick.Settings{RebindEvery: c.RebindEvery.Duration, MinPacket: c.MinPacket})
 	node := &agent.Node{
-		Name: c.Node, Applier: app, Xray: xr, Log: logger.Printf,
+		Name: c.Node, Applier: app, Xray: xr, Log: logger.Printf, DrainState: edge.DrainState,
 		ReportEvery: c.ReportEvery.Duration, PullEvery: c.PullEvery.Duration,
 		Sender: &agent.Sender{
 			Journal: journal, Select: sel,

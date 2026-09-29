@@ -171,23 +171,37 @@ func waitTCP(t *testing.T, addr string) {
 // runNode is a node agent without masters: it applies one bundle file with
 // the same code fbnode uses, then serves until SIGTERM.
 func runNode() int {
-	raw, err := os.ReadFile(os.Getenv("NETLAB_BUNDLE"))
-	if err != nil {
-		fmt.Println(err)
-		return 1
-	}
 	dir := os.Getenv("NETLAB_DIR")
 	xr := &xrayrun.Runner{Bin: os.Getenv("NETLAB_XRAY"), Config: filepath.Join(dir, "xray.json"), Output: os.Stdout}
 	defer xr.Stop()
 	edge := &edgerun.Runner{Listen: ":443", Logf: func(f string, a ...any) { fmt.Printf(f+"\n", a...) }}
 	defer edge.Close()
 	b := &agent.BundleApplier{Xray: xr, Edge: edge}
-	if err := b.Apply(context.Background(), desired.State{Config: raw}); err != nil {
+	apply := func() error {
+		raw, err := os.ReadFile(os.Getenv("NETLAB_BUNDLE"))
+		if err != nil {
+			return err
+		}
+		return b.Apply(context.Background(), desired.State{Config: raw})
+	}
+	if err := apply(); err != nil {
 		fmt.Println("apply:", err)
 		return 1
 	}
 	fmt.Println("node up")
-	waitSignal()
+	// SIGHUP re-reads the bundle, as the agent does when a master sends a new one
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, os.Interrupt, syscall.SIGHUP)
+	for sig := range ch {
+		if sig != syscall.SIGHUP {
+			return 0
+		}
+		if err := apply(); err != nil {
+			fmt.Println("re-apply:", err)
+		} else {
+			fmt.Printf("re-applied, drain %+v\n", edge.DrainState())
+		}
+	}
 	return 0
 }
 
@@ -195,6 +209,14 @@ func runNode() int {
 // :8443 is a TLS service with its own certificate (for SNI splicing).
 func runWeb() int {
 	who := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow" { // 8 chunks over 4 s: a download in progress
+			for i := range 8 {
+				fmt.Fprintf(w, "chunk%d;", i)
+				w.(http.Flusher).Flush()
+				time.Sleep(500 * time.Millisecond)
+			}
+			return
+		}
 		host, _, _ := net.SplitHostPort(r.RemoteAddr)
 		fmt.Fprintf(w, "%s %s", r.URL.Path, host)
 	})

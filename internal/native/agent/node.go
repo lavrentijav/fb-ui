@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/edge"
+
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
@@ -25,6 +27,8 @@ type Node struct {
 	Applier *desired.Applier
 	Xray    Xray
 	Log     func(format string, args ...any)
+	// DrainState reports maintenance from the edge; nil means never draining.
+	DrainState func() edge.DrainState
 
 	ReportEvery time.Duration // 0 = 10s
 	PullEvery   time.Duration // 0 = 15s
@@ -43,10 +47,16 @@ func (n *Node) Collect(ctx context.Context) {
 		n.logf("traffic: %v", err)
 		return
 	}
-	if len(traffic) == 0 {
+	r := reports.Report{At: time.Now().UnixMilli()}
+	if n.DrainState != nil {
+		// while draining, report even without traffic: the master watches Active fall
+		if st := n.DrainState(); st.Enable {
+			r.Drain = &reports.Drain{Since: st.Since, Active: st.Active}
+		}
+	}
+	if len(traffic) == 0 && r.Drain == nil {
 		return
 	}
-	r := reports.Report{At: time.Now().UnixMilli()}
 	for _, t := range traffic {
 		r.Traffic = append(r.Traffic, reports.Traffic{Email: t.Email, Up: t.Up, Down: t.Down})
 		r.Online = append(r.Online, t.Email)

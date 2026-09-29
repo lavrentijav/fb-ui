@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -150,6 +151,19 @@ func (l *lab) client(t *testing.T, paths map[int]string) {
 	})
 	for port := range paths {
 		waitTCP(t, fmt.Sprintf("%s:%d", ipOf("client"), port))
+	}
+}
+
+// setBundle rewrites a running node's bundle and tells it to re-apply.
+func (l *lab) setBundle(t *testing.T, cmd *exec.Cmd, spec nodespec.Spec) {
+	t.Helper()
+	b, err := nodespec.Render(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeJSON(t, filepath.Join(l.dir, spec.Node, "bundle.json"), b)
+	if err := cmd.Process.Signal(syscall.SIGHUP); err != nil {
+		t.Fatal(err)
 	}
 }
 

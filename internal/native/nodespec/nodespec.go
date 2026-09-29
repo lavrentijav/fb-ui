@@ -36,6 +36,14 @@ type Spec struct {
 	DirectAllow []string `json:"directAllow,omitempty"`
 	// Probe checks the hops of balanced exits (defaults below).
 	Probe Probe `json:"probe,omitzero"`
+	// Drain puts the node in maintenance: the edge refuses new tunnels and
+	// lets open ones finish (closing those idle longer than Idle).
+	Drain Drain `json:"drain,omitzero"`
+}
+
+type Drain struct {
+	On   bool   `json:"on"`
+	Idle string `json:"idle,omitempty"` // default 2m
 }
 
 // Probe is how Xray's observatory checks each hop of a balanced exit.
@@ -156,6 +164,11 @@ func (s *Spec) Validate() error {
 	if s.Probe.Interval != "" {
 		if d, err := time.ParseDuration(s.Probe.Interval); err != nil || d < time.Second {
 			return fmt.Errorf("nodespec: probe interval %q", s.Probe.Interval)
+		}
+	}
+	if s.Drain.Idle != "" {
+		if d, err := time.ParseDuration(s.Drain.Idle); err != nil || d < time.Second {
+			return fmt.Errorf("nodespec: drain idle %q", s.Drain.Idle)
 		}
 	}
 	for _, cidr := range s.DirectAllow {

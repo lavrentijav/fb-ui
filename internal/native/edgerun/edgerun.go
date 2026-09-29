@@ -145,6 +145,32 @@ func (r *Runner) start() error {
 	return nil
 }
 
+// SetDrain turns maintenance on or off; idle "" keeps the edge default.
+func (r *Runner) SetDrain(d nodespec.Drain) error {
+	idle := time.Duration(0)
+	if d.Idle != "" {
+		v, err := time.ParseDuration(d.Idle)
+		if err != nil {
+			return fmt.Errorf("edgerun: drain idle: %w", err)
+		}
+		idle = v
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.Drain == nil {
+		r.Drain = edge.NewDrain()
+	}
+	r.Drain.Set(d.On, idle)
+	return nil
+}
+
+// DrainState is the maintenance state and the tunnels still open.
+func (r *Runner) DrainState() edge.DrainState {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.Drain.State()
+}
+
 // Addr is where the edge listens, once started.
 func (r *Runner) Addr() net.Addr {
 	r.mu.Lock()

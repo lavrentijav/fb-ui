@@ -27,5 +27,8 @@ func (b *BundleApplier) Apply(ctx context.Context, st desired.State) error {
 	if err := b.Xray.Apply(ctx, bundle.Xray); err != nil {
 		return err
 	}
-	return b.Edge.Apply(bundle.Edge, bundle.Certs)
+	if err := b.Edge.Apply(bundle.Edge, bundle.Certs); err != nil {
+		return err
+	}
+	return b.Edge.SetDrain(bundle.Drain)
 }
