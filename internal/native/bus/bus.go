@@ -4,6 +4,7 @@ package bus
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
@@ -37,8 +39,11 @@ type Config struct {
 	Advertise string
 	Peers     map[string]string // master name -> gateway URL
 	// TLS, when set, is mutual TLS on the gateways (fleetca.MutualTLS).
-	TLS    *tls.Config
-	Logger server.Logger
+	TLS *tls.Config
+	// ClientTLS, when set, makes the client port require a fleet certificate
+	// whose CN is "node.<name>"; that node may only send its own reports.
+	ClientTLS *tls.Config
+	Logger    server.Logger
 }
 
 type Bus struct {
@@ -47,6 +52,8 @@ type Bus struct {
 	nc    *nats.Conn
 	js    jetstream.JetStream
 	probe *nats.Subscription
+	// clustered: joined to other masters, streams are placed on this one
+	clustered bool
 }
 
 // ProbeSubject is where a node measures a master; the reply carries the
@@ -67,27 +74,36 @@ func Start(cfg Config) (*Bus, error) {
 	if o.Host == "" {
 		o.Host = "127.0.0.1"
 	}
-	o.Cluster.Name, o.Cluster.Host, o.Cluster.Port = cfg.Name, "127.0.0.1", cfg.RoutePort
-	self, err := url.Parse("nats://127.0.0.1:" + strconv.Itoa(cfg.RoutePort))
-	if err != nil {
-		return nil, err
-	}
-	o.Routes = []*url.URL{self}
-	o.Gateway.Name, o.Gateway.Host, o.Gateway.Port = cfg.Name, cfg.GatewayHost, cfg.GatewayPort
-	o.Gateway.Advertise, o.Gateway.ConnectRetries = cfg.Advertise, -1
-	if cfg.TLS != nil {
-		o.Gateway.TLSConfig, o.Gateway.TLSTimeout = cfg.TLS, 5
-	}
-	for name, raw := range cfg.Peers {
-		u, err := url.Parse(raw)
+	// a master without peers runs JetStream standalone: a cluster of one never forms a quorum
+	if len(cfg.Peers) > 0 {
+		o.Cluster.Name, o.Cluster.Host, o.Cluster.Port = cfg.Name, "127.0.0.1", cfg.RoutePort
+		self, err := url.Parse("nats://127.0.0.1:" + strconv.Itoa(cfg.RoutePort))
 		if err != nil {
-			return nil, fmt.Errorf("bus: peer %s: %w", name, err)
+			return nil, err
 		}
-		remote := &server.RemoteGatewayOpts{Name: name, URLs: []*url.URL{u}}
+		o.Routes = []*url.URL{self}
+		o.Gateway.Name, o.Gateway.Host, o.Gateway.Port = cfg.Name, cfg.GatewayHost, cfg.GatewayPort
+		o.Gateway.Advertise, o.Gateway.ConnectRetries = cfg.Advertise, -1
 		if cfg.TLS != nil {
-			remote.TLSConfig, remote.TLSTimeout = cfg.TLS.Clone(), 5
+			o.Gateway.TLSConfig, o.Gateway.TLSTimeout = cfg.TLS, 5
 		}
-		o.Gateway.Gateways = append(o.Gateway.Gateways, remote)
+		for name, raw := range cfg.Peers {
+			u, err := url.Parse(raw)
+			if err != nil {
+				return nil, fmt.Errorf("bus: peer %s: %w", name, err)
+			}
+			remote := &server.RemoteGatewayOpts{Name: name, URLs: []*url.URL{u}}
+			if cfg.TLS != nil {
+				remote.TLSConfig, remote.TLSTimeout = cfg.TLS.Clone(), 5
+			}
+			o.Gateway.Gateways = append(o.Gateway.Gateways, remote)
+		}
+	}
+	var token string
+	if cfg.ClientTLS != nil {
+		token = rand.Text()
+		o.TLSConfig, o.TLSVerify, o.TLSTimeout = cfg.ClientTLS, true, 5
+		o.CustomClientAuthentication = nodeAuth{token: token}
 	}
 	srv, err := server.NewServer(o)
 	if err != nil {
@@ -101,7 +117,7 @@ func Start(cfg Config) (*Bus, error) {
 		srv.Shutdown()
 		return nil, errors.New("bus: server did not start")
 	}
-	nc, err := nats.Connect("", nats.InProcessServer(srv), nats.MaxReconnects(-1))
+	nc, err := nats.Connect("", nats.InProcessServer(srv), nats.MaxReconnects(-1), nats.Token(token))
 	if err != nil {
 		srv.Shutdown()
 		return nil, err
@@ -112,7 +128,7 @@ func Start(cfg Config) (*Bus, error) {
 		srv.Shutdown()
 		return nil, err
 	}
-	return &Bus{name: cfg.Name, srv: srv, nc: nc, js: js}, nil
+	return &Bus{name: cfg.Name, srv: srv, nc: nc, js: js, clustered: len(cfg.Peers) > 0}, nil
 }
 
 func opsStream(origin string) string          { return "OPS_" + origin }
@@ -120,6 +136,39 @@ func mirrorStream(self, origin string) string { return "M_" + self + "_" + origi
 func opsSubject(origin string) string         { return "ops." + origin }
 func repStream(master string) string          { return "REP_" + master }
 func repMirror(self, master string) string    { return "MR_" + self + "_" + master }
+
+// NodeCN is the certificate common name of a node's client certificate.
+func NodeCN(node string) string { return "node." + node }
+
+// NodeInbox is the reply prefix a node must use (nats.CustomInboxPrefix).
+func NodeInbox(node string) string { return "_INBOX." + node }
+
+// nodeAuth lets in the master's own connection by token and nodes by the
+// verified fleet certificate, each limited to its own subjects.
+type nodeAuth struct{ token string }
+
+func (a nodeAuth) Check(c server.ClientAuthentication) bool {
+	if c.Kind() != server.CLIENT {
+		return false
+	}
+	if opts := c.GetOpts(); opts != nil && a.token != "" && opts.Token == a.token {
+		c.RegisterUser(&server.User{Username: "master"})
+		return true
+	}
+	cs := c.GetTLSConnectionState()
+	if cs == nil || len(cs.VerifiedChains) == 0 {
+		return false
+	}
+	node, ok := strings.CutPrefix(cs.VerifiedChains[0][0].Subject.CommonName, "node.")
+	if !ok || node == "" || strings.ContainsAny(node, ".*> ") {
+		return false
+	}
+	c.RegisterUser(&server.User{Username: NodeCN(node), Permissions: &server.Permissions{
+		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*"}},
+		Subscribe: &server.SubjectPermission{Allow: []string{NodeInbox(node) + ".>"}},
+	}})
+	return true
+}
 
 // ReportSubject is where a node bound to master publishes its reports.
 func ReportSubject(master, node string) string { return "rep." + master + "." + node }
@@ -146,7 +195,10 @@ func (b *Bus) repStreamFor(master string) string {
 // Ensure creates this master's op and report streams and a mirror of every
 // other master's. It needs the JetStream meta quorum, so it runs while joined.
 func (b *Bus) Ensure(ctx context.Context, masters []string) error {
-	place := &jetstream.Placement{Cluster: b.name}
+	var place *jetstream.Placement
+	if b.clustered {
+		place = &jetstream.Placement{Cluster: b.name}
+	}
 	own := []jetstream.StreamConfig{{
 		Name: opsStream(b.name), Subjects: []string{opsSubject(b.name)},
 		Storage: jetstream.FileStorage, Placement: place, AllowDirect: true,

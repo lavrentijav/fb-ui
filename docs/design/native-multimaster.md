@@ -57,6 +57,10 @@ Split between RU and EU is a normal state, not a disaster.
   hysteresis, and at once when sends to the bound master fail. Masters
   answer `probe.<name>` with their load and a sized payload.
 - Masters are trusted by certificates from the fleet CA pinned at enrollment.
+  The master's client port requires a fleet certificate with CN
+  `node.<name>`; that node may publish only `rep.*.<name>` and `probe.*`
+  and receive only on `_INBOX.<name>.>`. A master without peers runs
+  JetStream standalone (a cluster of one never forms a quorum).
 - Desired state carries the stamp of the newest op it was rendered from;
   the agent never applies an older one, so two masters cannot roll it back.
 - Reports (traffic deltas, onlines) go to the bound master's stream
@@ -80,7 +84,7 @@ Split between RU and EU is a normal state, not a disaster.
 | `internal/native/pick` | node's choice of master, hourly rebind |
 | `internal/native/probe` | RTT, throughput, TCP MSS, load over NATS |
 | `internal/native/reports` | node reports → JetStream → Postgres totals, once |
-| next | node auth on the client port, `fbnode` agent (journal, send loop, desired state) |
+| next | `fbnode` agent: report journal + send loop over `pick`, desired state |
 
 Tests: `XUI_TEST_PG_DSN` enables the Postgres cases, `XUI_NATS_SPLIT_TEST=1`
 the bus split test.
