@@ -4,11 +4,9 @@ package oplog
 
 import (
 	"bufio"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"io"
 	"maps"
 	"os"
@@ -19,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/hlc"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/recio"
 )
 
 // Op is one change to one record. Fields set values (JSON) with the op's
@@ -43,10 +42,7 @@ var (
 	ErrGap     = errors.New("oplog: op out of order")
 	errBadName = errors.New("oplog: bad origin name")
 	validName  = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,62}$`)
-	castagnoli = crc32.MakeTable(crc32.Castagnoli)
 )
-
-const maxRecord = 16 << 20
 
 // Log is safe for concurrent use.
 type Log struct {
@@ -126,26 +122,15 @@ func (l *Log) load(origin string) error {
 }
 
 func readRecord(r io.Reader) (Op, int64, error) {
-	var hdr [8]byte
-	if _, err := io.ReadFull(r, hdr[:]); err != nil {
+	body, n, err := recio.Read(r)
+	if err != nil {
 		return Op{}, 0, err
-	}
-	n := binary.BigEndian.Uint32(hdr[:4])
-	if n == 0 || n > maxRecord {
-		return Op{}, 0, errors.New("oplog: bad record length")
-	}
-	body := make([]byte, n)
-	if _, err := io.ReadFull(r, body); err != nil {
-		return Op{}, 0, err
-	}
-	if crc32.Checksum(body, castagnoli) != binary.BigEndian.Uint32(hdr[4:]) {
-		return Op{}, 0, errors.New("oplog: bad checksum")
 	}
 	var op Op
 	if err := json.Unmarshal(body, &op); err != nil {
 		return Op{}, 0, err
 	}
-	return op, int64(8 + n), nil
+	return op, n, nil
 }
 
 // Append stores op if it is the next one of its origin. An op already held
@@ -158,8 +143,9 @@ func (l *Log) Append(op Op) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if len(body) > maxRecord {
-		return false, fmt.Errorf("oplog: op of %d bytes is too large", len(body))
+	rec, err := recio.Frame(body)
+	if err != nil {
+		return false, err
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -177,10 +163,6 @@ func (l *Log) Append(op Op) (bool, error) {
 		}
 		l.files[op.Origin] = f
 	}
-	rec := make([]byte, 8+len(body))
-	binary.BigEndian.PutUint32(rec[:4], uint32(len(body)))
-	binary.BigEndian.PutUint32(rec[4:8], crc32.Checksum(body, castagnoli))
-	copy(rec[8:], body)
 	start := l.sizes[op.Origin]
 	if _, err := f.WriteAt(rec, start); err != nil {
 		_ = f.Truncate(start)
