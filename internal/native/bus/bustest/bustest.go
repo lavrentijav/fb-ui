@@ -3,6 +3,7 @@ package bustest
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -93,6 +94,12 @@ var Masters = []string{"fi1", "ru2", "de2"}
 // links["a>b"], and waits until JetStream accepts the streams.
 func Fleet(t *testing.T) (map[string]*bus.Bus, map[string]*Link) {
 	t.Helper()
+	return FleetWith(t, nil)
+}
+
+// FleetWith is Fleet with gateway TLS from tlsFor(master) when not nil.
+func FleetWith(t *testing.T, tlsFor func(name string) *tls.Config) (map[string]*bus.Bus, map[string]*Link) {
+	t.Helper()
 	gw := map[string]int{}
 	for _, m := range Masters {
 		gw[m] = freePort(t)
@@ -116,7 +123,7 @@ func Fleet(t *testing.T) (map[string]*bus.Bus, map[string]*Link) {
 		b, err := bus.Start(bus.Config{
 			Name: m, StoreDir: t.TempDir(), Port: -1, RoutePort: freePort(t),
 			GatewayHost: "127.0.0.1", GatewayPort: gw[m], Advertise: "127.0.0.1:1",
-			Peers: peers, Logger: Quiet{},
+			Peers: peers, Logger: Quiet{}, TLS: tlsOf(tlsFor, m),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -141,6 +148,16 @@ func Fleet(t *testing.T) (map[string]*bus.Bus, map[string]*Link) {
 	}
 	return buses, links
 }
+
+func tlsOf(f func(string) *tls.Config, name string) *tls.Config {
+	if f == nil {
+		return nil
+	}
+	return f(name)
+}
+
+// FreePort returns a TCP port that was free a moment ago.
+func FreePort(t *testing.T) int { return freePort(t) }
 
 // WaitHeads waits until every master holds want, and returns how long it took.
 func WaitHeads(t *testing.T, buses map[string]*bus.Bus, want oplog.Vector, within time.Duration) time.Duration {

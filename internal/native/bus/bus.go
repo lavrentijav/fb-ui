@@ -4,10 +4,13 @@ package bus
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
+	"slices"
 	"strconv"
 	"time"
 
@@ -33,7 +36,9 @@ type Config struct {
 	// Advertise is how peers reach this gateway; it must not be a local-only address in production.
 	Advertise string
 	Peers     map[string]string // master name -> gateway URL
-	Logger    server.Logger
+	// TLS, when set, is mutual TLS on the gateways (fleetca.MutualTLS).
+	TLS    *tls.Config
+	Logger server.Logger
 }
 
 type Bus struct {
@@ -62,12 +67,19 @@ func Start(cfg Config) (*Bus, error) {
 	o.Routes = []*url.URL{self}
 	o.Gateway.Name, o.Gateway.Host, o.Gateway.Port = cfg.Name, cfg.GatewayHost, cfg.GatewayPort
 	o.Gateway.Advertise, o.Gateway.ConnectRetries = cfg.Advertise, -1
+	if cfg.TLS != nil {
+		o.Gateway.TLSConfig, o.Gateway.TLSTimeout = cfg.TLS, 5
+	}
 	for name, raw := range cfg.Peers {
 		u, err := url.Parse(raw)
 		if err != nil {
 			return nil, fmt.Errorf("bus: peer %s: %w", name, err)
 		}
-		o.Gateway.Gateways = append(o.Gateway.Gateways, &server.RemoteGatewayOpts{Name: name, URLs: []*url.URL{u}})
+		remote := &server.RemoteGatewayOpts{Name: name, URLs: []*url.URL{u}}
+		if cfg.TLS != nil {
+			remote.TLSConfig, remote.TLSTimeout = cfg.TLS.Clone(), 5
+		}
+		o.Gateway.Gateways = append(o.Gateway.Gateways, remote)
 	}
 	srv, err := server.NewServer(o)
 	if err != nil {
@@ -187,6 +199,20 @@ func (b *Bus) Heads(ctx context.Context, masters []string) (oplog.Vector, error)
 		}
 	}
 	return v, nil
+}
+
+// InboundGateways names the masters connected to this one.
+func (b *Bus) InboundGateways() []string {
+	gz, err := b.srv.Gatewayz(nil)
+	if err != nil {
+		return nil
+	}
+	return slices.Sorted(maps.Keys(gz.InboundGateways))
+}
+
+// GatewayURL is where peers dial this master's gateway.
+func (b *Bus) GatewayURL() string {
+	return fmt.Sprintf("nats://127.0.0.1:%d", b.srv.GatewayAddr().Port)
 }
 
 func (b *Bus) Close() {
