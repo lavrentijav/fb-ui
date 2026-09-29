@@ -33,7 +33,7 @@ main-line commit that has been reviewed. The main line is
 
 | Area | State on `native` |
 |---|---|
-| Node agent (`fbnode`) | in progress: report journal + send loop with nearest-master pick (`internal/native/agent`) |
+| Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control); missing: edge 443, certs, drain, fail2ban, sidecars |
 | Master ↔ agent runtime | not started |
 | Master modules / build tags | not started |
 | Go UI console | not started |
