@@ -50,8 +50,13 @@ Split between RU and EU is a normal state, not a disaster.
 
 ## Nodes (`fbnode`)
 
-- The agent knows all masters and talks to whichever answers first; trusts
-  their ed25519 keys pinned at enrollment.
+- The agent knows all masters and binds to the nearest one (`pick` +
+  `probe`): lowest score of RTT × (1 + 2·load), plus a penalty for slow
+  throughput and a ×10 penalty for a path MSS below the minimum. It
+  re-chooses every `RebindEvery` (setting, default 1 h) with 20 %
+  hysteresis, and at once when sends to the bound master fail. Masters
+  answer `probe.<name>` with their load and a sized payload.
+- Masters are trusted by certificates from the fleet CA pinned at enrollment.
 - Desired state carries the stamp of the newest op it was rendered from;
   the agent never applies an older one, so two masters cannot roll it back.
 - Reports are journaled on the node (`oplog`: per-origin file log with CRC)
@@ -67,6 +72,9 @@ Split between RU and EU is a normal state, not a disaster.
 | `internal/native/lww` | in-memory LWW reference (tests, tools) |
 | `internal/native/master` | writes on any master, catch-up projection |
 | `internal/native/oplog` | durable per-origin file log (node journal) |
+| `internal/native/fleetca` | fleet CA, mutual TLS between masters |
+| `internal/native/pick` | node's choice of master, hourly rebind |
+| `internal/native/probe` | RTT, throughput, TCP MSS, load over NATS |
 | next | TLS + auth on gateways, operational streams (traffic → Postgres), `fbnode` |
 
 Tests: `XUI_TEST_PG_DSN` enables the Postgres cases, `XUI_NATS_SPLIT_TEST=1`

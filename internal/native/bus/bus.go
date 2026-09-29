@@ -42,11 +42,19 @@ type Config struct {
 }
 
 type Bus struct {
-	name string
-	srv  *server.Server
-	nc   *nats.Conn
-	js   jetstream.JetStream
+	name  string
+	srv   *server.Server
+	nc    *nats.Conn
+	js    jetstream.JetStream
+	probe *nats.Subscription
 }
+
+// ProbeSubject is where a node measures a master; the reply carries the
+// requested number of bytes and the master's load in the Load header.
+func ProbeSubject(master string) string { return "probe." + master }
+
+// MaxProbeBytes caps a probe reply below NATS' 1 MiB max payload, headers included.
+const MaxProbeBytes = 512 << 10
 
 func Start(cfg Config) (*Bus, error) {
 	if cfg.Name == "" || cfg.StoreDir == "" {
@@ -200,6 +208,26 @@ func (b *Bus) Heads(ctx context.Context, masters []string) (oplog.Vector, error)
 	}
 	return v, nil
 }
+
+// ServeProbe answers node probes with load() (0 idle, 1 saturated).
+func (b *Bus) ServeProbe(load func() float64) error {
+	sub, err := b.nc.Subscribe(ProbeSubject(b.name), func(m *nats.Msg) {
+		n, _ := strconv.Atoi(string(m.Data))
+		n = min(max(n, 0), MaxProbeBytes)
+		reply := nats.NewMsg(m.Reply)
+		reply.Header.Set("Load", strconv.FormatFloat(load(), 'f', 3, 64))
+		reply.Data = make([]byte, n)
+		_ = m.RespondMsg(reply)
+	})
+	if err != nil {
+		return err
+	}
+	b.probe = sub
+	return b.nc.Flush()
+}
+
+// ClientURL is where agents connect.
+func (b *Bus) ClientURL() string { return b.srv.ClientURL() }
 
 // InboundGateways names the masters connected to this one.
 func (b *Bus) InboundGateways() []string {
