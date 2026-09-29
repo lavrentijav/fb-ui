@@ -43,3 +43,20 @@ main-line commit that has been reviewed. The main line is
 
 | main sha | subject | decision | native commit / reason |
 |---|---|---|---|
+| 3d3f0e940 | fix(xray): restart a core that runs but has lost an inbound's port | carry | merge 92f0cb5a7 (area not rewritten) |
+| d854d0d63 | fix(sub): treat encryption=none as the same VLESS link when deduping | carry | merge 92f0cb5a7 (area not rewritten) |
+| 00cd0ad17 | fix(xray): check stored inbound ports, not only the process config | carry | merge 92f0cb5a7 (area not rewritten) |
+| e143f2bed | fix(xray): drop client encryption from VLESS inbounds sent to the core | carry | merge 92f0cb5a7 (area not rewritten) |
+| 2fe9c4421 | fix(dns): accept a Cloudflare Global API Key as email:key | carry | merge 92f0cb5a7 (area not rewritten) |
+| 87c197607 | feat(dns): subdomains below a provider's zones | carry | merge 92f0cb5a7 (area not rewritten) |
+| dac09166c | feat(provision): name a new node in several domains | carry | merge 92f0cb5a7 (area not rewritten) |
+| d315e5b6c | feat(domains): plan and apply a move to (or copy into) a new base domain | carry | merge 92f0cb5a7 (area not rewritten) |
+| dec3e7684 | fix(cascades): dial a cascade target the way its host group advertises it | carry | merge 92f0cb5a7 (area not rewritten) |
+| 214973d8b | feat(nodes): release a node to another master without touching it | carry | merge 92f0cb5a7 (area not rewritten) |
+| 223a60f82 | fix(nodes): never alias a stray inbound row onto one another row owns | carry | merge 92f0cb5a7 (area not rewritten) |
+| 23a83e29c | fix(nodes): adopt a client another node serves when its credential matches | carry | merge 92f0cb5a7 (area not rewritten) |
+| ccdedc834 | fix(routing): key a node's managed rules by the node's own inbound tags | carry | merge 92f0cb5a7 (area not rewritten) |
+| d98841c95 | fix(nodes): a credential never stored for an email cannot clash | carry | merge 92f0cb5a7 (area not rewritten) |
+| 2040ac3ec | fix(dns): list only active Cloudflare zones | carry | merge 92f0cb5a7 (area not rewritten) |
+| 95ab039d7 | fix(templates): send template requests as JSON | carry | merge 92f0cb5a7 (area not rewritten) |
+| 5bb19108e | fix(domains): rename the host of a URL during migration | carry | merge 92f0cb5a7 (area not rewritten) |
