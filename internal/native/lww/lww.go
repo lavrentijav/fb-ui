@@ -1,7 +1,5 @@
-// Package lww materializes ops into records field by field: for each field
-// the value with the highest stamp wins, and a delete hides every field
-// stamped before it. Applying the same ops in any order gives the same
-// state, which is what lets every master accept writes on its own.
+// Package lww merges ops field by field: the newest stamp wins, a delete hides
+// older fields; any delivery order gives the same state.
 package lww
 
 import (

@@ -1,8 +1,5 @@
-// Package oplog is the replicated change log of the masters. Every origin (a
-// master, or a node for its own reports) numbers its ops 1, 2, 3…; the log
-// keeps each origin's ops in one append-only file and accepts another
-// origin's op only in that order, so a version vector says exactly what a
-// peer has and what it is missing.
+// Package oplog is the replicated change log: each origin numbers its ops
+// 1, 2, 3… in its own file, so a version vector says what a peer misses.
 package oplog
 
 import (
