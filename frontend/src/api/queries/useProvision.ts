@@ -14,7 +14,10 @@ import {
 export type { NodeProvisionRequest, ProvisionJob, ProvisionStep };
 
 export async function startProvision(req: NodeProvisionRequest): Promise<ProvisionJob | null> {
-  const msg = await HttpUtil.post('/panel/api/provision/start', req, { silentSuccess: true });
+  const msg = await HttpUtil.post('/panel/api/provision/start', req, {
+    silentSuccess: true,
+    headers: { 'Content-Type': 'application/json' },
+  });
   if (!msg?.success) return null;
   return parseMsg(msg, ProvisionJobSchema, 'provision/start').obj ?? null;
 }

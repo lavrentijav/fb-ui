@@ -2432,6 +2432,16 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "corp",
         "type": "string"
       },
+      "subdomains": {
+        "description": "Subdomains are base domains the operator added below a zone, such as\nwalk.example.com, offered next to the zones wherever a domain is picked.",
+        "example": [
+          "walk.corp.example"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "type": {
         "enum": [
           "cloudflare",
@@ -2470,6 +2480,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "hasCredential",
       "id",
       "name",
+      "subdomains",
       "type",
       "updatedAt",
       "zone",
@@ -2496,6 +2507,17 @@ export const SCHEMAS: Record<string, unknown> = {
       "name": {
         "example": "technitium",
         "type": "string"
+      },
+      "subdomains": {
+        "description": "Subdomains replaces the stored list when present; omitted keeps it.",
+        "example": [
+          "walk.corp.example"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "nullable": true,
+        "type": "array"
       },
       "type": {
         "example": "technitium",
@@ -2530,6 +2552,10 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "technitium",
         "type": "string"
       },
+      "subdomain": {
+        "example": false,
+        "type": "boolean"
+      },
       "zone": {
         "example": "corp.example",
         "type": "string"
@@ -2539,7 +2565,75 @@ export const SCHEMAS: Record<string, unknown> = {
       "providerId",
       "providerName",
       "providerType",
+      "subdomain",
       "zone"
+    ],
+    "type": "object"
+  },
+  "DomainMigrateAction": {
+    "description": "DomainMigrateAction is one change the migration makes, planned or done.",
+    "properties": {
+      "detail": {
+        "example": "A 203.0.113.7",
+        "type": "string"
+      },
+      "done": {
+        "example": false,
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string"
+      },
+      "kind": {
+        "example": "dns",
+        "type": "string"
+      },
+      "target": {
+        "example": "ru7.walk.example.com",
+        "type": "string"
+      }
+    },
+    "required": [
+      "detail",
+      "done",
+      "error",
+      "kind",
+      "target"
+    ],
+    "type": "object"
+  },
+  "DomainMigrateRequest": {
+    "description": "DomainMigrateRequest moves (or copies) every name under one base domain to\nanother: ru7.walk.old.com becomes ru7.walk.new.com, and so do pools.",
+    "properties": {
+      "from": {
+        "example": "walk.home.example",
+        "type": "string"
+      },
+      "mode": {
+        "example": "add",
+        "type": "string"
+      },
+      "nodeIds": {
+        "description": "NodeIds limits the per-node work (edge routes, addresses, inbounds);\nempty means every node. 0 is this panel.",
+        "example": [
+          3,
+          4
+        ],
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "to": {
+        "example": "walk.example.com",
+        "type": "string"
+      }
+    },
+    "required": [
+      "from",
+      "mode",
+      "nodeIds",
+      "to"
     ],
     "type": "object"
   },
@@ -4588,6 +4682,16 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": "msk2.corp.example",
         "type": "string"
       },
+      "extraZones": {
+        "description": "ExtraZones names the node in more base domains too: \u003cname\u003e.\u003czone\u003e for\neach gets its record and a place on the node's certificate.",
+        "example": [
+          "walk.example.com"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "force": {
         "example": false,
         "type": "boolean"
@@ -4648,6 +4752,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "disablePasswordAuth",
       "dnsProviderId",
       "domain",
+      "extraZones",
       "force",
       "host",
       "hostKeySha256",
@@ -4661,6 +4766,29 @@ export const SCHEMAS: Record<string, unknown> = {
       "sshPrivateKey",
       "sshUser",
       "zone"
+    ],
+    "type": "object"
+  },
+  "NodeRelease": {
+    "description": "NodeRelease reports what a release dropped from this panel.",
+    "properties": {
+      "cascades": {
+        "example": 4,
+        "type": "integer"
+      },
+      "filters": {
+        "example": 0,
+        "type": "integer"
+      },
+      "inbounds": {
+        "example": 9,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "cascades",
+      "filters",
+      "inbounds"
     ],
     "type": "object"
   },

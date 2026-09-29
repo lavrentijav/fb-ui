@@ -290,3 +290,41 @@ func TestProvisionShipsACentrallyIssuedCertificate(t *testing.T) {
 		t.Fatalf("node got key %q, want the one issued here", got)
 	}
 }
+
+// One node, two base domains in two accounts: both records are written and
+// the node's certificate carries both names.
+func TestProvisionNamesTheNodeInExtraDomains(t *testing.T) {
+	initCertTestDB(t)
+	rec := &recordingDNS{}
+	oldFactory := dnsProviderFactory
+	dnsProviderFactory = func(dnsprovider.Config) (dnsprovider.Provider, error) { return rec, nil }
+	t.Cleanup(func() { dnsProviderFactory = oldFactory })
+	prov := addZone(t, "example.com")
+	addZone(t, "example.org")
+	var s NodeProvisionService
+
+	req := &NodeProvisionRequest{
+		Name: "ru7", Host: "203.0.113.7", SshPassword: "x", Zone: "example.com",
+		ExtraZones: []string{"example.org", "example.com", ""},
+	}
+	got, err := s.validate(req)
+	if err != nil || got.Id != prov.Id || !slices.Equal(req.extraDomains, []string{"ru7.example.org"}) {
+		t.Fatalf("validate: domain=%q extra=%v err=%v", req.Domain, req.extraDomains, err)
+	}
+	run := &provisionRun{job: ProvisionJob{Steps: []ProvisionStep{{Name: stepDNS}}}}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = s.stepDNS(ctx, run, req, got)
+	if want := []string{"ru7.example.com A 203.0.113.7", "ru7.example.org A 203.0.113.7"}; !slices.Equal(rec.sets, want) {
+		t.Fatalf("DNS writes = %v, want %v", rec.sets, want)
+	}
+	cert, err := s.certs.ensureNodeCert(append([]string{req.Domain}, req.extraDomains...), got.Id)
+	if err != nil || !slices.Equal(cert.Domains, []string{"ru7.example.com", "ru7.example.org"}) {
+		t.Fatalf("certificate names = %v, %v", cert, err)
+	}
+
+	bad := &NodeProvisionRequest{Name: "ru7", Host: "h", SshPassword: "x", Zone: "example.com", ExtraZones: []string{"other.net"}}
+	if _, err := s.validate(bad); err == nil || !strings.Contains(err.Error(), "no DNS provider manages ru7.other.net") {
+		t.Fatalf("extra domain nobody holds: %v", err)
+	}
+}

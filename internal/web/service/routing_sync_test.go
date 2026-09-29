@@ -127,3 +127,34 @@ func mustJSON(t *testing.T, v any) []byte {
 	}
 	return b
 }
+
+// ru4's DE inbound is n4-in-12053-tcp on the master and in-12053-tcp in ru4's
+// Xray; a rule keyed by the master's name never matched a single connection.
+func TestManagedRoutingUsesTheNodesOwnInboundTags(t *testing.T) {
+	initFilterTestDB(t)
+	exit, target := seedCascadeTarget(t, "de2.example.com")
+	db := database.GetDB()
+	entry := &model.Node{
+		Name: "ru4", Scheme: "https", Address: "ru4.example.com", Port: 1367, BasePath: "/",
+		Role: model.NodeRoleNode, Enable: true, Status: "online",
+	}
+	if err := db.Create(entry).Error; err != nil {
+		t.Fatal(err)
+	}
+	central := nodeTagPrefix(&entry.Id) + "in-12053-tcp"
+	if err := db.Create(&model.Inbound{
+		UserId: 1, Tag: central, Enable: true, Port: 12053, NodeID: &entry.Id,
+		Protocol: model.VLESS, Settings: `{"clients":[]}`, StreamSettings: `{"network":"ws"}`,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	db.Create(&model.CascadeLink{SourcePanelId: entry.Id, SourceInboundTag: central, TargetPanelId: exit.Id, TargetInboundId: target.Id, Enable: true})
+	mr, _, _, err := BuildManagedRouting(entry.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := string(mustJSON(t, mr.Rules))
+	if !strings.Contains(joined, `"in-12053-tcp"`) || strings.Contains(joined, central) {
+		t.Fatalf("rules = %s, want the node's own tag in-12053-tcp", joined)
+	}
+}

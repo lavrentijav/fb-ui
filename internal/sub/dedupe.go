@@ -3,6 +3,7 @@ package sub
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/url"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/util/json_util"
@@ -51,9 +52,22 @@ func linkIdentity(link string) string {
 		}
 	}
 	if i := strings.IndexByte(link, '#'); i >= 0 {
-		return link[:i]
+		link = link[:i]
 	}
-	return link
+	head, query, ok := strings.Cut(link, "?")
+	if !ok {
+		return link
+	}
+	params, err := url.ParseQuery(query)
+	if err != nil {
+		return link
+	}
+	// An inbound with decryption "none" writes encryption=none, its twin
+	// without the field omits it; both are the same VLESS link.
+	if strings.HasPrefix(head, "vless://") && params.Get("encryption") == "none" {
+		params.Del("encryption")
+	}
+	return head + "?" + params.Encode()
 }
 
 // dedupeJSONConfigs keeps the first of several configs whose proxy outbound

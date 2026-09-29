@@ -170,9 +170,15 @@ func (s *CertificateService) fromRequest(dst *model.Certificate, req *Certificat
 		} else if _, zone, err = s.dns.ClientFor(dst.DnsProviderId, first); err != nil {
 			return common.NewErrorf("DNS provider %d cannot write %s: %v", dst.DnsProviderId, first, err)
 		}
+		// Names outside the account's zone are fine when another account
+		// holds them: issuance resolves the DNS account per name.
 		for _, d := range domains {
-			if !dnsprovider.InZone(strings.TrimPrefix(d, "*."), zone) {
-				return common.NewErrorf("%s is outside zone %s; issue it separately", d, zone)
+			name := strings.TrimPrefix(d, "*.")
+			if dnsprovider.InZone(name, zone) {
+				continue
+			}
+			if _, _, err := s.dns.ForName(name); err != nil {
+				return common.NewErrorf("%s is in no zone a DNS provider here manages", d)
 			}
 		}
 	case model.CertChallengeHTTP01:
@@ -268,13 +274,21 @@ func (s *CertificateService) setDeliveries(certId int, ids []int) error {
 }
 
 // ensureNodeCert returns the certificate a node being provisioned will get,
-// reusing the row a failed earlier attempt left for the same domain.
-func (s *CertificateService) ensureNodeCert(domain string, dnsProviderId int) (*model.Certificate, error) {
-	dir := nodeCertDir(domain)
+// reusing the row a failed earlier attempt left for the same primary domain.
+func (s *CertificateService) ensureNodeCert(domains []string, dnsProviderId int) (*model.Certificate, error) {
+	dir := nodeCertDir(domains[0])
 	row := &model.Certificate{}
 	err := database.GetDB().Where("cert_file = ?", filepath.Join(dir, "fullchain.pem")).First(row).Error
 	if err == nil {
-		return row, nil
+		if slices.Equal(row.Domains, domains) {
+			return row, nil
+		}
+		// A retry with other names needs a new order, not the old copy.
+		row.Status = model.CertStatusPending
+		if err := s.fromRequest(row, &CertificateRequest{Domains: domains, DnsProviderId: dnsProviderId}); err != nil {
+			return nil, err
+		}
+		return row, database.GetDB().Save(row).Error
 	}
 	if !database.IsNotFound(err) {
 		return nil, err
@@ -283,7 +297,7 @@ func (s *CertificateService) ensureNodeCert(domain string, dnsProviderId int) (*
 		AutoRenew: true, Status: model.CertStatusPending,
 		CertFile: filepath.Join(dir, "fullchain.pem"), KeyFile: filepath.Join(dir, "privkey.pem"),
 	}
-	if err := s.fromRequest(row, &CertificateRequest{Domains: []string{domain}, DnsProviderId: dnsProviderId}); err != nil {
+	if err := s.fromRequest(row, &CertificateRequest{Domains: domains, DnsProviderId: dnsProviderId}); err != nil {
 		return nil, err
 	}
 	return row, database.GetDB().Create(row).Error
@@ -391,8 +405,17 @@ func (s *CertificateService) issue(row *model.Certificate) error {
 		},
 	}
 	if row.Challenge == model.CertChallengeDNS01 {
-		if req.DNS, req.Zone, err = s.dns.ClientFor(row.DnsProviderId, strings.TrimPrefix(row.Domains[0], "*.")); err != nil {
-			return err
+		// The row's account first; a name outside it goes to whichever
+		// account holds its zone, so one certificate can span accounts.
+		req.DNSFor = func(name string) (dnsprovider.Provider, string, error) {
+			if p, zone, err := s.dns.ClientFor(row.DnsProviderId, name); err == nil {
+				return p, zone, nil
+			}
+			prov, _, err := s.dns.ForName(name)
+			if err != nil {
+				return nil, "", err
+			}
+			return s.dns.ClientFor(prov.Id, name)
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), certIssueTimeout)

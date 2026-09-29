@@ -2458,6 +2458,16 @@
             "example": "corp",
             "type": "string"
           },
+          "subdomains": {
+            "description": "Subdomains are base domains the operator added below a zone, such as\nwalk.example.com, offered next to the zones wherever a domain is picked.",
+            "example": [
+              "walk.corp.example"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "type": {
             "enum": [
               "cloudflare",
@@ -2496,6 +2506,7 @@
           "hasCredential",
           "id",
           "name",
+          "subdomains",
           "type",
           "updatedAt",
           "zone",
@@ -2522,6 +2533,17 @@
           "name": {
             "example": "technitium",
             "type": "string"
+          },
+          "subdomains": {
+            "description": "Subdomains replaces the stored list when present; omitted keeps it.",
+            "example": [
+              "walk.corp.example"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "type": {
             "example": "technitium",
@@ -2556,6 +2578,10 @@
             "example": "technitium",
             "type": "string"
           },
+          "subdomain": {
+            "example": false,
+            "type": "boolean"
+          },
           "zone": {
             "example": "corp.example",
             "type": "string"
@@ -2565,7 +2591,75 @@
           "providerId",
           "providerName",
           "providerType",
+          "subdomain",
           "zone"
+        ],
+        "type": "object"
+      },
+      "DomainMigrateAction": {
+        "description": "DomainMigrateAction is one change the migration makes, planned or done.",
+        "properties": {
+          "detail": {
+            "example": "A 203.0.113.7",
+            "type": "string"
+          },
+          "done": {
+            "example": false,
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          },
+          "kind": {
+            "example": "dns",
+            "type": "string"
+          },
+          "target": {
+            "example": "ru7.walk.example.com",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "done",
+          "error",
+          "kind",
+          "target"
+        ],
+        "type": "object"
+      },
+      "DomainMigrateRequest": {
+        "description": "DomainMigrateRequest moves (or copies) every name under one base domain to\nanother: ru7.walk.old.com becomes ru7.walk.new.com, and so do pools.",
+        "properties": {
+          "from": {
+            "example": "walk.home.example",
+            "type": "string"
+          },
+          "mode": {
+            "example": "add",
+            "type": "string"
+          },
+          "nodeIds": {
+            "description": "NodeIds limits the per-node work (edge routes, addresses, inbounds);\nempty means every node. 0 is this panel.",
+            "example": [
+              3,
+              4
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "to": {
+            "example": "walk.example.com",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "mode",
+          "nodeIds",
+          "to"
         ],
         "type": "object"
       },
@@ -4614,6 +4708,16 @@
             "example": "msk2.corp.example",
             "type": "string"
           },
+          "extraZones": {
+            "description": "ExtraZones names the node in more base domains too: <name>.<zone> for\neach gets its record and a place on the node's certificate.",
+            "example": [
+              "walk.example.com"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "force": {
             "example": false,
             "type": "boolean"
@@ -4674,6 +4778,7 @@
           "disablePasswordAuth",
           "dnsProviderId",
           "domain",
+          "extraZones",
           "force",
           "host",
           "hostKeySha256",
@@ -4687,6 +4792,29 @@
           "sshPrivateKey",
           "sshUser",
           "zone"
+        ],
+        "type": "object"
+      },
+      "NodeRelease": {
+        "description": "NodeRelease reports what a release dropped from this panel.",
+        "properties": {
+          "cascades": {
+            "example": 4,
+            "type": "integer"
+          },
+          "filters": {
+            "example": 0,
+            "type": "integer"
+          },
+          "inbounds": {
+            "example": 9,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cascades",
+          "filters",
+          "inbounds"
         ],
         "type": "object"
       },
@@ -12613,6 +12741,57 @@
         }
       }
     },
+    "/panel/api/nodes/release/{id}": {
+      "post": {
+        "tags": [
+          "Nodes"
+        ],
+        "summary": "Forget a node without touching it, to hand it to another master: it is disabled, then its inbounds, host groups, cascade links and filter rules leave this panel’s database and the node row is deleted. Nothing is sent to the node, which keeps serving every inbound and client until the new master takes it over.",
+        "operationId": "post_panel_api_nodes_release_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Node ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/NodeRelease"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "cascades": 4,
+                    "filters": 0,
+                    "inbounds": 9
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/nodes/maintenance/{id}": {
       "post": {
         "tags": [
@@ -15178,6 +15357,132 @@
         }
       }
     },
+    "/panel/api/domains/plan": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "List what moving (switch) or copying (add) every name under one base domain to another would change: DNS records with the same addresses, certificates extended and reissued, edge routes copied on each panel, and in switch mode host groups, inbound SNI/Host, node addresses and subscription URIs. Changes nothing.",
+        "operationId": "post_panel_api_domains_plan",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "from": "walk.home.example",
+                "to": "walk.example.com",
+                "mode": "add",
+                "nodeIds": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DomainMigrateAction"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "detail": "A 203.0.113.7",
+                      "done": false,
+                      "error": "",
+                      "kind": "dns",
+                      "target": "ru7.walk.example.com"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/domains/apply": {
+      "post": {
+        "tags": [
+          "Edge (shared port)"
+        ],
+        "summary": "Make the changes /domains/plan lists, in order: records first (waiting until they are visible), then certificates and edge routes, then the switches that depend on them. Old names are kept in DNS and on certificates. Each action reports done or its error.",
+        "operationId": "post_panel_api_domains_apply",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "from": "walk.home.example",
+                "to": "walk.example.com",
+                "mode": "switch",
+                "nodeIds": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DomainMigrateAction"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "detail": "A 203.0.113.7",
+                      "done": false,
+                      "error": "",
+                      "kind": "dns",
+                      "target": "ru7.walk.example.com"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/edge/maintenance": {
       "get": {
         "tags": [
@@ -15524,6 +15829,9 @@
                       "hasCredential": true,
                       "id": 1,
                       "name": "corp",
+                      "subdomains": [
+                        "walk.corp.example"
+                      ],
                       "type": "technitium",
                       "updatedAt": 0,
                       "zone": "",
@@ -15587,6 +15895,9 @@
                     "hasCredential": true,
                     "id": 1,
                     "name": "corp",
+                    "subdomains": [
+                      "walk.corp.example"
+                    ],
                     "type": "technitium",
                     "updatedAt": 0,
                     "zone": "",
@@ -15656,6 +15967,9 @@
                     "hasCredential": true,
                     "id": 1,
                     "name": "corp",
+                    "subdomains": [
+                      "walk.corp.example"
+                    ],
                     "type": "technitium",
                     "updatedAt": 0,
                     "zone": "",
@@ -15856,6 +16170,7 @@
                       "providerId": 1,
                       "providerName": "technitium",
                       "providerType": "technitium",
+                      "subdomain": false,
                       "zone": "corp.example"
                     }
                   ]

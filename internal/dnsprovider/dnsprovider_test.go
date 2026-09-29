@@ -28,12 +28,24 @@ func (f *fakeCloudflare) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		b, _ := json.Marshal(result)
 		_ = json.NewEncoder(w).Encode(cfEnvelope{Success: true, Result: b})
 	}
-	if r.Header.Get("Authorization") != "Bearer tok" {
+	globalKey := r.Header.Get("X-Auth-Email") == "me@example.com" && r.Header.Get("X-Auth-Key") == "0123abcd"
+	if r.Header.Get("Authorization") == "Bearer 0123abcd" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(cfEnvelope{Errors: []cfError{{Code: 6003, Message: "Invalid request headers"}}})
+		return
+	}
+	if r.Header.Get("Authorization") != "Bearer tok" && !globalKey {
 		w.WriteHeader(http.StatusForbidden)
 		_ = json.NewEncoder(w).Encode(cfEnvelope{Errors: []cfError{{Code: 10000, Message: "Authentication error"}}})
 		return
 	}
 	switch {
+	case r.Method == http.MethodGet && r.URL.Path == "/zones" && r.URL.Query().Get("name") == "":
+		reply([]map[string]string{
+			{"id": "z1", "name": "example.com", "status": "active"},
+			{"id": "z2", "name": "other.example", "status": "pending"},
+			{"id": "z3", "name": "old.org", "status": "deactivated"},
+		})
 	case r.Method == http.MethodGet && r.URL.Path == "/zones":
 		reply([]map[string]string{{"id": "z1", "name": r.URL.Query().Get("name")}})
 	case r.Method == http.MethodGet && r.URL.Path == "/zones/z1/dns_records":
@@ -249,5 +261,34 @@ func TestTechnitiumListZonesKeepsWritablePrimaries(t *testing.T) {
 	}
 	if got := ZoneFor("corp.example", zones); got != "" {
 		t.Fatalf("ZoneFor foreign name = %q, want empty", got)
+	}
+}
+
+// A Global API Key pasted where a token goes got Cloudflare's bare "6003
+// Invalid request headers"; as email:key it has to work, alone it must say why.
+func TestCloudflareGlobalAPIKey(t *testing.T) {
+	srv := httptest.NewServer(&fakeCloudflare{records: map[string]cfRecord{}})
+	defer srv.Close()
+	ctx := context.Background()
+
+	ok := newCloudflare("example.com", "me@example.com:0123abcd", srv.URL)
+	if err := ok.SetRecords(ctx, "a.example.com", "A", []string{"192.0.2.1"}, 60); err != nil {
+		t.Fatalf("email:key: %v", err)
+	}
+	bare := newCloudflare("example.com", "0123abcd", srv.URL)
+	err := bare.SetRecords(ctx, "a.example.com", "A", []string{"192.0.2.1"}, 60)
+	if err == nil || !strings.Contains(err.Error(), "enter it as email:key") {
+		t.Fatalf("bare global key: %v", err)
+	}
+}
+
+// other.example sat in the Cloudflare account as pending while Technitium
+// served it; listing it sent DNS-01 tokens where no resolver looks.
+func TestCloudflareListsOnlyActiveZones(t *testing.T) {
+	srv := httptest.NewServer(&fakeCloudflare{records: map[string]cfRecord{}})
+	defer srv.Close()
+	zones, err := newCloudflare("", "tok", srv.URL).listZones(context.Background())
+	if err != nil || !slices.Equal(zones, []string{"example.com"}) {
+		t.Fatalf("zones = %v, %v", zones, err)
 	}
 }

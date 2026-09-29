@@ -562,6 +562,7 @@ export interface DnsProvider {
   hasCredential: boolean;
   id: number;
   name: string;
+  subdomains: string[];
   type: string;
   updatedAt: number;
   zone: string;
@@ -574,6 +575,7 @@ export interface DnsProviderRequest {
   apiUrl: string;
   credential: string;
   name: string;
+  subdomains?: string[] | null;
   type: string;
   zone: string;
 }
@@ -582,7 +584,23 @@ export interface DnsZone {
   providerId: number;
   providerName: string;
   providerType: string;
+  subdomain: boolean;
   zone: string;
+}
+
+export interface DomainMigrateAction {
+  detail: string;
+  done: boolean;
+  error: string;
+  kind: string;
+  target: string;
+}
+
+export interface DomainMigrateRequest {
+  from: string;
+  mode: string;
+  nodeIds: number[];
+  to: string;
 }
 
 export interface DrainState {
@@ -1034,6 +1052,7 @@ export interface NodeProvisionRequest {
   disablePasswordAuth: boolean;
   dnsProviderId: number;
   domain: string;
+  extraZones: string[];
   force: boolean;
   host: string;
   hostKeySha256: string;
@@ -1047,6 +1066,12 @@ export interface NodeProvisionRequest {
   sshPrivateKey: string;
   sshUser: string;
   zone: string;
+}
+
+export interface NodeRelease {
+  cascades: number;
+  filters: number;
+  inbounds: number;
 }
 
 export interface NodeRoleChangeRequest {

@@ -265,6 +265,11 @@ export default function CertsPage() {
                 {zones.map((z) => (
                   <Tag key={z}>{z}</Tag>
                 ))}
+                {(d.subdomains ?? []).map((z) => (
+                  <Tag key={z} color="blue">
+                    {z}
+                  </Tag>
+                ))}
                 {zones.length === 0 && (
                   <Tag color="red">{t('pages.certs.zonesFound', { count: 0 })}</Tag>
                 )}
