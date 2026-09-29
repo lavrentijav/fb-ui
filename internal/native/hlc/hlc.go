@@ -3,6 +3,7 @@
 package hlc
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
@@ -38,6 +39,22 @@ func cmp(less bool) int {
 
 func (s Stamp) After(o Stamp) bool { return s.Compare(o) > 0 }
 func (s Stamp) IsZero() bool       { return s == Stamp{} }
+
+// Key is the stamp as bytes that sort like Compare (bytea in Postgres).
+func (s Stamp) Key() []byte {
+	b := make([]byte, 12, 12+len(s.Origin))
+	binary.BigEndian.PutUint64(b, uint64(s.Wall))
+	binary.BigEndian.PutUint32(b[8:], s.Logical)
+	return append(b, s.Origin...)
+}
+
+// FromKey reverses Key.
+func FromKey(b []byte) (Stamp, error) {
+	if len(b) < 12 {
+		return Stamp{}, fmt.Errorf("hlc: short key of %d bytes", len(b))
+	}
+	return Stamp{Wall: int64(binary.BigEndian.Uint64(b)), Logical: binary.BigEndian.Uint32(b[8:]), Origin: string(b[12:])}, nil
+}
 
 // String is "wall.logical@origin", which Parse reads back.
 func (s Stamp) String() string {

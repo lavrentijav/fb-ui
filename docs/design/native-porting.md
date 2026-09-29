@@ -37,7 +37,7 @@ main-line commit that has been reviewed. The main line is
 | Master ↔ agent runtime | not started |
 | Master modules / build tags | not started |
 | Go UI console | not started |
-| Multi-master core (`internal/native/{hlc,oplog,lww,replica}`) | in progress: clock, op log, LWW state, replica with split/heal tests |
+| Multi-master core (`internal/native/{hlc,bus,pgstate,lww,master,oplog}`) | in progress: JetStream supercluster + Postgres projection, split/heal tested |
 
 ## Ledger
 
