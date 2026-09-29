@@ -1,4 +1,4 @@
-package reports_test
+package reportdb_test
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus/bustest"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/reportdb"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
 )
 
@@ -86,7 +87,7 @@ func TestFailoverReportCountedOnceOnEveryMaster(t *testing.T) {
 	for _, m := range bustest.Masters {
 		schema := fmt.Sprintf("r_%s_%d", m, rand.IntN(1<<30))
 		t.Cleanup(func() { _, _ = db.Exec(ctx, "DROP SCHEMA "+schema+" CASCADE") })
-		st, err := reports.Open(ctx, db, schema, buses[m], bustest.Masters)
+		st, err := reportdb.Open(ctx, db, schema, buses[m], bustest.Masters)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +106,7 @@ func TestFailoverReportCountedOnceOnEveryMaster(t *testing.T) {
 		if !slices.Equal(online, []string{"alice"}) {
 			t.Fatalf("%s online %v", m, online)
 		}
-		if again, _ := st.CatchUp(ctx); again != (reports.Progress{}) {
+		if again, _ := st.CatchUp(ctx); again != (reportdb.Progress{}) {
 			t.Fatalf("%s second catch-up %+v", m, again)
 		}
 		if _, err := st.PruneSeen(ctx, time.Hour); err == nil {

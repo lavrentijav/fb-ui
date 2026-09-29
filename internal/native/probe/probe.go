@@ -16,8 +16,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 )
 
 // Config says how to reach each master.
@@ -26,7 +26,7 @@ type Config struct {
 	TLS   *tls.Config
 	Bytes int // throughput sample size (0 = 256 KiB)
 	Pings int // RTT samples, the minimum counts (0 = 3)
-	// Inbox is the node's reply prefix (bus.NodeInbox) when masters check certificates.
+	// Inbox is the node's reply prefix (wire.NodeInbox) when masters check certificates.
 	Inbox string
 }
 
@@ -36,7 +36,7 @@ func NATS(cfg Config) pick.Prober {
 	if cfg.Bytes <= 0 {
 		cfg.Bytes = 256 << 10
 	}
-	cfg.Bytes = min(cfg.Bytes, bus.MaxProbeBytes)
+	cfg.Bytes = min(cfg.Bytes, wire.MaxProbeBytes)
 	if cfg.Pings <= 0 {
 		cfg.Pings = 3
 	}
@@ -78,7 +78,7 @@ func NATS(cfg Config) pick.Prober {
 			}
 		}
 		start := time.Now()
-		reply, err := nc.RequestWithContext(ctx, bus.ProbeSubject(master), []byte(strconv.Itoa(cfg.Bytes)))
+		reply, err := nc.RequestWithContext(ctx, wire.ProbeSubject(master), []byte(strconv.Itoa(cfg.Bytes)))
 		if err != nil {
 			return pick.Measure{}, err
 		}

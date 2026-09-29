@@ -21,6 +21,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/oplog"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 )
 
 // Config places one master in the supercluster: a one-server cluster named
@@ -55,13 +56,6 @@ type Bus struct {
 	// clustered: joined to other masters, streams are placed on this one
 	clustered bool
 }
-
-// ProbeSubject is where a node measures a master; the reply carries the
-// requested number of bytes and the master's load in the Load header.
-func ProbeSubject(master string) string { return "probe." + master }
-
-// MaxProbeBytes caps a probe reply below NATS' 1 MiB max payload, headers included.
-const MaxProbeBytes = 512 << 10
 
 func Start(cfg Config) (*Bus, error) {
 	if cfg.Name == "" || cfg.StoreDir == "" {
@@ -137,12 +131,6 @@ func opsSubject(origin string) string         { return "ops." + origin }
 func repStream(master string) string          { return "REP_" + master }
 func repMirror(self, master string) string    { return "MR_" + self + "_" + master }
 
-// NodeCN is the certificate common name of a node's client certificate.
-func NodeCN(node string) string { return "node." + node }
-
-// NodeInbox is the reply prefix a node must use (nats.CustomInboxPrefix).
-func NodeInbox(node string) string { return "_INBOX." + node }
-
 // nodeAuth lets in the master's own connection by token and nodes by the
 // verified fleet certificate, each limited to its own subjects.
 type nodeAuth struct{ token string }
@@ -163,22 +151,12 @@ func (a nodeAuth) Check(c server.ClientAuthentication) bool {
 	if !ok || node == "" || strings.ContainsAny(node, ".*> ") {
 		return false
 	}
-	c.RegisterUser(&server.User{Username: NodeCN(node), Permissions: &server.Permissions{
-		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*", DesiredSubject("*", node)}},
-		Subscribe: &server.SubjectPermission{Allow: []string{NodeInbox(node) + ".>"}},
+	c.RegisterUser(&server.User{Username: wire.NodeCN(node), Permissions: &server.Permissions{
+		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*", wire.DesiredSubject("*", node)}},
+		Subscribe: &server.SubjectPermission{Allow: []string{wire.NodeInbox(node) + ".>"}},
 	}})
 	return true
 }
-
-// DesiredSubject is where a node asks master for its desired state.
-func DesiredSubject(master, node string) string { return "desired." + master + "." + node }
-
-// ReportSubject is where a node bound to master publishes its reports.
-func ReportSubject(master, node string) string { return "rep." + master + "." + node }
-
-// ReportRetention is how long masters keep raw node reports in JetStream;
-// a master away for longer loses them (Postgres keeps the totals).
-const ReportRetention = 7 * 24 * time.Hour
 
 // streamFor is where this master reads an origin's ops.
 func (b *Bus) streamFor(origin string) string {
@@ -207,9 +185,9 @@ func (b *Bus) Ensure(ctx context.Context, masters []string) error {
 		Storage: jetstream.FileStorage, Placement: place, AllowDirect: true,
 		Duplicates: 10 * time.Minute,
 	}, {
-		Name: repStream(b.name), Subjects: []string{ReportSubject(b.name, "*")},
+		Name: repStream(b.name), Subjects: []string{wire.ReportSubject(b.name, "*")},
 		Storage: jetstream.FileStorage, Placement: place, AllowDirect: true,
-		Duplicates: 10 * time.Minute, MaxAge: ReportRetention,
+		Duplicates: 10 * time.Minute, MaxAge: wire.ReportRetention,
 	}}
 	for _, m := range masters {
 		if m == b.name {
@@ -220,7 +198,7 @@ func (b *Bus) Ensure(ctx context.Context, masters []string) error {
 			AllowDirect: true, Mirror: &jetstream.StreamSource{Name: opsStream(m)},
 		}, jetstream.StreamConfig{
 			Name: repMirror(b.name, m), Storage: jetstream.FileStorage, Placement: place,
-			AllowDirect: true, MaxAge: ReportRetention, Mirror: &jetstream.StreamSource{Name: repStream(m)},
+			AllowDirect: true, MaxAge: wire.ReportRetention, Mirror: &jetstream.StreamSource{Name: repStream(m)},
 		})
 	}
 	for _, cfg := range own {
@@ -314,9 +292,9 @@ func (b *Bus) Heads(ctx context.Context, masters []string) (oplog.Vector, error)
 
 // ServeProbe answers node probes with load() (0 idle, 1 saturated).
 func (b *Bus) ServeProbe(load func() float64) error {
-	sub, err := b.nc.Subscribe(ProbeSubject(b.name), func(m *nats.Msg) {
+	sub, err := b.nc.Subscribe(wire.ProbeSubject(b.name), func(m *nats.Msg) {
 		n, _ := strconv.Atoi(string(m.Data))
-		n = min(max(n, 0), MaxProbeBytes)
+		n = min(max(n, 0), wire.MaxProbeBytes)
 		reply := nats.NewMsg(m.Reply)
 		reply.Header.Set("Load", strconv.FormatFloat(load(), 'f', 3, 64))
 		reply.Data = make([]byte, n)

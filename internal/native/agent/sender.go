@@ -16,7 +16,7 @@ import (
 type Sender struct {
 	Journal *Journal
 	Select  *pick.Selector
-	// Dial connects to a master's client port (TLS, bus.NodeInbox prefix).
+	// Dial connects to a master's client port (TLS, wire.NodeInbox prefix).
 	Dial    func(ctx context.Context, master string) (*nats.Conn, error)
 	Timeout time.Duration // per report (0 = 5s)
 	Batch   int           // reports per Flush (0 = 200)

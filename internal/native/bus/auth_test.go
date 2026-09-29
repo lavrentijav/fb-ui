@@ -14,6 +14,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 )
 
 func soloMaster(t *testing.T, ca *fleetca.CA) *bus.Bus {
@@ -65,9 +66,9 @@ func TestNodesAuthenticateByFleetCert(t *testing.T) {
 	b := soloMaster(t, ca)
 	publish(t, b, "ru2", 1, 1) // master's in-process connection still works
 
-	nodeCert, _ := ca.Issue(bus.NodeCN("nl2"), nil, time.Hour)
+	nodeCert, _ := ca.Issue(wire.NodeCN("nl2"), nil, time.Hour)
 	nodeTLS := ca.MutualTLS(nodeCert)
-	nc, err := connect(b, nodeTLS, bus.NodeInbox("nl2"))
+	nc, err := connect(b, nodeTLS, wire.NodeInbox("nl2"))
 	if err != nil {
 		t.Fatalf("node with fleet cert refused: %v", err)
 	}
@@ -82,7 +83,7 @@ func TestNodesAuthenticateByFleetCert(t *testing.T) {
 	if err := reports.Send(short, nc, "ru2", reports.Report{Node: "de9", Seq: 1}); err == nil {
 		t.Fatal("nl2 reported as de9")
 	}
-	prober := probe.NATS(probe.Config{URLs: map[string]string{"ru2": b.ClientURL()}, TLS: nodeTLS, Inbox: bus.NodeInbox("nl2")})
+	prober := probe.NATS(probe.Config{URLs: map[string]string{"ru2": b.ClientURL()}, TLS: nodeTLS, Inbox: wire.NodeInbox("nl2")})
 	if _, err := pick.New([]string{"ru2"}, prober, pick.Settings{}).Tick(context.Background()); err != nil {
 		t.Fatalf("node probe: %v", err)
 	}
@@ -92,7 +93,7 @@ func TestNodesAuthenticateByFleetCert(t *testing.T) {
 
 	masterCert, _ := ca.Issue("de2", nil, time.Hour)
 	foreign, _ := fleetca.New("other")
-	foreignCert, _ := foreign.Issue(bus.NodeCN("nl2"), nil, time.Hour)
+	foreignCert, _ := foreign.Issue(wire.NodeCN("nl2"), nil, time.Hour)
 	for name, cfg := range map[string]*tls.Config{
 		"master cert on the client port": ca.MutualTLS(masterCert),
 		"foreign CA":                     func() *tls.Config { c := ca.MutualTLS(foreignCert); return c }(),

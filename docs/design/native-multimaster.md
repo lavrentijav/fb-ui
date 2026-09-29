@@ -83,7 +83,9 @@ Split between RU and EU is a normal state, not a disaster.
 | `internal/native/fleetca` | fleet CA, mutual TLS between masters |
 | `internal/native/pick` | node's choice of master, hourly rebind |
 | `internal/native/probe` | RTT, throughput, TCP MSS, load over NATS |
-| `internal/native/reports` | node reports → JetStream → Postgres totals, once |
+| `internal/native/wire` | subjects and limits shared by masters and nodes, no deps |
+| `internal/native/reports` | report format and send (node side) |
+| `internal/native/reportdb` | report streams → Postgres totals, once (master side) |
 | `internal/native/recio` | length + CRC32C record framing (op log, journal) |
 | `internal/native/agent` | fbnode: durable report journal, send loop with failover |
 | `internal/native/desired` | node pulls its state from any master, never older (stamp), apply only on config change (hash) |

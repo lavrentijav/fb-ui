@@ -16,8 +16,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/hlc"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 )
 
 // State is what a node should run. Stamp is the master's projection version
@@ -48,10 +48,10 @@ type reply struct {
 // Render builds a node's state on this master.
 type Render func(ctx context.Context, node string) (State, error)
 
-// Serve answers nodes on desired.<master>.* until the subscription ends.
-func Serve(b *bus.Bus, master string, render Render) (*nats.Subscription, error) {
-	prefix := bus.DesiredSubject(master, "")
-	return b.Conn().Subscribe(bus.DesiredSubject(master, "*"), func(m *nats.Msg) {
+// Serve answers nodes on desired.<master>.* over the master's connection.
+func Serve(nc *nats.Conn, master string, render Render) (*nats.Subscription, error) {
+	prefix := wire.DesiredSubject(master, "")
+	return nc.Subscribe(wire.DesiredSubject(master, "*"), func(m *nats.Msg) {
 		node := strings.TrimPrefix(m.Subject, prefix)
 		var req request
 		_ = json.Unmarshal(m.Data, &req)
@@ -114,7 +114,7 @@ func (a *Applier) Pull(ctx context.Context, nc *nats.Conn, master, node string) 
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	data, _ := json.Marshal(request{Have: a.cur.Stamp})
-	msg, err := nc.RequestWithContext(ctx, bus.DesiredSubject(master, node), data)
+	msg, err := nc.RequestWithContext(ctx, wire.DesiredSubject(master, node), data)
 	if err != nil {
 		return false, err
 	}
