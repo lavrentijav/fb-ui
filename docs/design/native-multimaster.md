@@ -84,7 +84,9 @@ Split between RU and EU is a normal state, not a disaster.
 | `internal/native/pick` | node's choice of master, hourly rebind |
 | `internal/native/probe` | RTT, throughput, TCP MSS, load over NATS |
 | `internal/native/reports` | node reports → JetStream → Postgres totals, once |
-| next | `fbnode` agent: report journal + send loop over `pick`, desired state |
+| `internal/native/recio` | length + CRC32C record framing (op log, journal) |
+| `internal/native/agent` | fbnode: durable report journal, send loop with failover |
+| next | desired state: master renders, agent applies (never older), Xray control |
 
 Tests: `XUI_TEST_PG_DSN` enables the Postgres cases, `XUI_NATS_SPLIT_TEST=1`
 the bus split test.
