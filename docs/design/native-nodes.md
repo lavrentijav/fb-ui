@@ -37,11 +37,22 @@ every process trusts through `SSL_CERT_FILE` (like a public CA).
 | de2 (exit) | 10.0.3.2 | de2.lab.firewalk.test |
 | web (a site) | 10.0.8.1 | web.lab.test, mail.lab.firewalk.test |
 | client | 10.0.9.1 | — |
+| fi1m, ru2m, de2m (masters) | 10.0.1.1–3 | `<m>.m.lab.firewalk.test` |
 
 `TestCascadeThroughEdges`: client → ru4:443 (edge, TLS, WS → Xray,
 `proxy_de`) → de2:443 (edge, WS → Xray, `direct`) → site sees de2's
 address; `direct` exits from ru4; `block` goes nowhere; HTTP and TCP reverse;
 unknown SNI refused; traffic counted on both nodes.
+
+`TestMastersDriveNodes`: three `masterd` processes (JetStream gateways on
+:7222 between masters, their own edge on :443 splicing
+`<m>.m.lab.firewalk.test` to the bus, which speaks TLS first so SNI routing
+works), nodes run the real `fbnode` binary and reach masters only through
+443. Specs go in through different masters (de2 via ru2, ru4 via fi1); ru4
+bound to ru2 got "no spec" for ~2 s while fi1's write replicated, then the
+bundle; nodes' reports reach the masters. Then fi1 and ru2 are killed and
+ru4's route is changed on de2m alone (no quorum): ru4 fails over to de2m
+and applies it.
 
 Found by the lab, now handled:
 - clients with a Chrome fingerprint (Xray default, v2rayNG) refuse Ed25519
@@ -53,8 +64,8 @@ Found by the lab, now handled:
 
 ## Next steps (in order)
 
-1. Masters in the lab (10.0.1.x): real `fbnode` processes enroll, pick the
-   nearest master, pull bundles, report traffic; kill a master mid-run.
+1. ~~Masters in the lab~~ — done (`TestMastersDriveNodes`). Enrollment
+   (a master issuing `node.<name>` certificates) is still manual.
 2. **Group balancer.** Nodes of one group (e.g. exits `de1`, `de2`) behind
    one `proxy_de`: an `Exit` with several hops renders one outbound per hop
    plus an Xray balancer `proxy_de` (observatory probing through each hop;

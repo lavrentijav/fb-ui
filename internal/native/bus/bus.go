@@ -97,6 +97,8 @@ func Start(cfg Config) (*Bus, error) {
 	if cfg.ClientTLS != nil {
 		token = rand.Text()
 		o.TLSConfig, o.TLSVerify, o.TLSTimeout = cfg.ClientTLS, true, 5
+		// TLS before NATS' INFO, so an edge can route nodes to it by SNI on 443
+		o.TLSHandshakeFirst = true
 		o.CustomClientAuthentication = nodeAuth{token: token}
 	}
 	srv, err := server.NewServer(o)
