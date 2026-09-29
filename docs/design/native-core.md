@@ -70,12 +70,13 @@ shrink Node's role, then drop it.
    modals in the same places): own sections first (nodes, wizard, edge,
    certs/DNS, templates, maintenance), upstream sections last. When done,
    Node.js leaves the repo entirely.
-5. **Master replication** (fi1, ru2, de2): journals between masters, agents
-   report to the nearest one.
+5. **Multi-master** (fi1, ru2, de2): every master manages every node, also
+   during a split. Moved to the foundation — see `native-multimaster.md`
+   (leaderless op log + field-level LWW; no Raft/NATS).
 
 ## Open questions
 
-- Store for journals/replication: embedded NATS JetStream vs bbolt + Raft vs
-  SQLite + log shipping — decide after a prototype with RAM numbers.
+- ~~Store for journals/replication~~ — decided 2026-09-29: own op log files
+  + LWW state, SQLite/Postgres as a projection (`native-multimaster.md`).
 - Keep following upstream at all after track 4, or freeze at a version?
 - Postgres on masters or replicated SQLite?
