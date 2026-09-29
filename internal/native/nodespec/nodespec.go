@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Built-in outbounds every node has.
@@ -33,6 +34,14 @@ type Spec struct {
 	// DirectAllow are private CIDRs direct may reach; Xray blocks private
 	// destinations by default (internal services, the lab network).
 	DirectAllow []string `json:"directAllow,omitempty"`
+	// Probe checks the hops of balanced exits (defaults below).
+	Probe Probe `json:"probe,omitzero"`
+}
+
+// Probe is how Xray's observatory checks each hop of a balanced exit.
+type Probe struct {
+	URL      string `json:"url,omitempty"`      // default https://www.gstatic.com/generate_204
+	Interval string `json:"interval,omitempty"` // default 30s
 }
 
 // Inbound is a VLESS inbound on loopback behind the edge: the edge
@@ -53,8 +62,8 @@ type Client struct {
 	ID    string `json:"id"`
 }
 
-// Exit leaves through another node (a cascade). One hop for now; several
-// hops of one group become a balancer (see native-nodes.md).
+// Exit leaves through another node (a cascade). Several hops (the exit
+// nodes of one group) become a balancer that prefers the fastest alive hop.
 type Exit struct {
 	Country string `json:"country"`
 	Hops    []Hop  `json:"hops"`
@@ -109,8 +118,8 @@ func (s *Spec) Validate() error {
 		if slices.Contains(outs, ProxyTag(e.Country)) {
 			return fmt.Errorf("nodespec: exit %s twice", e.Country)
 		}
-		if len(e.Hops) != 1 {
-			return fmt.Errorf("nodespec: exit %s has %d hops; balancing over a group is not built yet", e.Country, len(e.Hops))
+		if len(e.Hops) == 0 {
+			return fmt.Errorf("nodespec: exit %s has no hops", e.Country)
 		}
 		for _, h := range e.Hops {
 			if h.Address == "" || h.Port <= 0 || h.Port > 65535 || !validUUID.MatchString(h.ID) {
@@ -143,6 +152,11 @@ func (s *Spec) Validate() error {
 			emails[c.Email] = true
 		}
 		tags[ib.Tag], ports[ib.Port] = true, true
+	}
+	if s.Probe.Interval != "" {
+		if d, err := time.ParseDuration(s.Probe.Interval); err != nil || d < time.Second {
+			return fmt.Errorf("nodespec: probe interval %q", s.Probe.Interval)
+		}
 	}
 	for _, cidr := range s.DirectAllow {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
