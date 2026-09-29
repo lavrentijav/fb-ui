@@ -164,11 +164,14 @@ func (a nodeAuth) Check(c server.ClientAuthentication) bool {
 		return false
 	}
 	c.RegisterUser(&server.User{Username: NodeCN(node), Permissions: &server.Permissions{
-		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*"}},
+		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*", DesiredSubject("*", node)}},
 		Subscribe: &server.SubjectPermission{Allow: []string{NodeInbox(node) + ".>"}},
 	}})
 	return true
 }
+
+// DesiredSubject is where a node asks master for its desired state.
+func DesiredSubject(master, node string) string { return "desired." + master + "." + node }
 
 // ReportSubject is where a node bound to master publishes its reports.
 func ReportSubject(master, node string) string { return "rep." + master + "." + node }
@@ -325,6 +328,9 @@ func (b *Bus) ServeProbe(load func() float64) error {
 	b.probe = sub
 	return b.nc.Flush()
 }
+
+// Conn is the master's own connection, for services that answer nodes.
+func (b *Bus) Conn() *nats.Conn { return b.nc }
 
 // ClientURL is where agents connect.
 func (b *Bus) ClientURL() string { return b.srv.ClientURL() }
