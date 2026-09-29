@@ -114,3 +114,39 @@ func TestFailoverReportCountedOnceOnEveryMaster(t *testing.T) {
 		}
 	}
 }
+
+// A node's newest report sets its state even when an older one, sent to
+// another master, is projected after it.
+func TestNodeStateKeepsNewestReport(t *testing.T) {
+	db := pool(t)
+	ctx := context.Background()
+	buses, _ := bustest.Fleet(t)
+	publish := func(via string, r reports.Report) {
+		t.Helper()
+		nc, err := nats.Connect(buses[via].ClientURL())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer nc.Close()
+		if err := reports.Send(ctx, nc, via, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	publish("ru2", reports.Report{Node: "nl2", Seq: 1, At: time.Now().UnixMilli(), Drain: &reports.Drain{Since: 1790000000, Active: 3}})
+	publish("fi1", reports.Report{Node: "nl2", Seq: 2, At: time.Now().UnixMilli()})
+	waitReports(t, buses, map[string]uint64{"ru2": 1, "fi1": 1})
+
+	schema := fmt.Sprintf("s_%d", rand.IntN(1<<30))
+	t.Cleanup(func() { _, _ = db.Exec(ctx, "DROP SCHEMA "+schema+" CASCADE") })
+	st, err := reportdb.Open(ctx, db, schema, buses["de2"], bustest.Masters) // fi1's stream is projected before ru2's
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CatchUp(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.NodeState(ctx, "nl2")
+	if err != nil || got.Draining || got.Active != 0 {
+		t.Fatalf("state %+v %v: the older draining report overrode the newer one", got, err)
+	}
+}

@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS %[1]s.rep_seen (
 CREATE TABLE IF NOT EXISTS %[1]s.traffic (
 	email text NOT NULL, node text NOT NULL, up bigint NOT NULL, down bigint NOT NULL,
 	PRIMARY KEY (email, node));
+CREATE TABLE IF NOT EXISTS %[1]s.node_state (
+	node text PRIMARY KEY, seen timestamptz NOT NULL, seq bigint NOT NULL,
+	draining boolean NOT NULL, drain_since timestamptz, active integer NOT NULL);
 CREATE TABLE IF NOT EXISTS %[1]s.online (
 	node text NOT NULL, email text NOT NULL, seen timestamptz NOT NULL,
 	PRIMARY KEY (node, email));`))
@@ -134,6 +137,23 @@ ON CONFLICT (node, email) DO UPDATE SET seen = GREATEST(%[1]s.online.seen, exclu
 			}
 		}
 	}
+	if fresh {
+		draining, active := false, 0
+		var since *time.Time
+		if r.Drain != nil {
+			draining, active = true, r.Drain.Active
+			t := time.Unix(r.Drain.Since, 0)
+			since = &t
+		}
+		// the newest report of a node wins, whichever master got it first
+		if _, err := tx.Exec(ctx, s.q(`
+INSERT INTO %[1]s.node_state (node, seen, seq, draining, drain_since, active) VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (node) DO UPDATE SET seen = excluded.seen, seq = excluded.seq, draining = excluded.draining,
+	drain_since = excluded.drain_since, active = excluded.active
+WHERE %[1]s.node_state.seq < excluded.seq`), r.Node, at, r.Seq, draining, since, active); err != nil {
+			return false, err
+		}
+	}
 	if err := s.advance(ctx, tx, master, seq); err != nil {
 		return false, err
 	}
@@ -149,6 +169,19 @@ func (s *Store) advance(ctx context.Context, db execer, master string, seq uint6
 	_, err := db.Exec(ctx, s.q(`INSERT INTO %s.rep_pos (master, seq) VALUES ($1, $2)
 ON CONFLICT (master) DO UPDATE SET seq = excluded.seq`), master, seq)
 	return err
+}
+
+// NodeState is a node's last reported maintenance state.
+type NodeState struct {
+	Seen     time.Time
+	Draining bool
+	Active   int
+}
+
+func (s *Store) NodeState(ctx context.Context, node string) (NodeState, error) {
+	var st NodeState
+	err := s.db.QueryRow(ctx, s.q(`SELECT seen, draining, active FROM %s.node_state WHERE node = $1`), node).Scan(&st.Seen, &st.Draining, &st.Active)
+	return st, err
 }
 
 // Total is a client's traffic summed over every node.

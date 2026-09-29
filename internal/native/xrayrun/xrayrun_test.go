@@ -71,6 +71,10 @@ func TestApplyWithRealXray(t *testing.T) {
 	if !r.Running() {
 		t.Fatal("xray not running after apply")
 	}
+	pid := r.cmd.Process.Pid
+	if err := r.Apply(ctx, good); err != nil || r.cmd.Process.Pid != pid {
+		t.Fatalf("same config restarted Xray (pid %d -> %d, %v): open tunnels would drop", pid, r.cmd.Process.Pid, err)
+	}
 	if err := r.Apply(ctx, []byte(`{"inbounds":[{"protocol":"no-such-protocol","port":1}]}`)); err == nil {
 		t.Fatal("broken config accepted")
 	}

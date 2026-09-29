@@ -34,6 +34,10 @@ type Runner struct {
 // Apply validates config with `xray run -test`, installs it atomically and
 // restarts Xray; a config Xray rejects leaves the running one untouched.
 func (r *Runner) Apply(ctx context.Context, config []byte) error {
+	// an unchanged config must not restart Xray: that would cut every tunnel
+	if cur, err := os.ReadFile(r.Config); err == nil && bytes.Equal(cur, config) && r.Running() {
+		return nil
+	}
 	dir := filepath.Dir(r.Config)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err

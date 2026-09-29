@@ -3,9 +3,13 @@ package agent_test
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/edge"
 
 	"github.com/nats-io/nats.go"
 
@@ -104,5 +108,38 @@ func TestNodeRoundTrip(t *testing.T) {
 	n.Collect(ctx) // nothing counted: no empty report
 	if len(j.Pending(10)) != 0 {
 		t.Fatal("empty traffic produced a report")
+	}
+}
+
+// A draining node reports how many tunnels it still carries even when
+// nothing moved, so the master sees the count fall to zero.
+func TestDrainingNodeReportsWithoutTraffic(t *testing.T) {
+	j, err := agent.OpenJournal(t.TempDir(), "nl2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Close()
+	dir := t.TempDir() // a state a master sent before: Collect only runs once Xray has a config
+	if err := os.WriteFile(filepath.Join(dir, "desired.json"), []byte(`{"hash":"h"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := desired.OpenApplier(dir, func(context.Context, desired.State) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := edge.DrainState{}
+	n := &agent.Node{
+		Name: "nl2", Applier: app, Xray: &fakeXray{}, Sender: &agent.Sender{Journal: j},
+		DrainState: func() edge.DrainState { return st },
+	}
+	n.Collect(context.Background())
+	if len(j.Pending(10)) != 0 {
+		t.Fatal("idle node sent an empty report")
+	}
+	st = edge.DrainState{Enable: true, Since: 1790000000, Active: 3}
+	n.Collect(context.Background())
+	got := j.Pending(10)
+	if len(got) != 1 || got[0].Drain == nil || got[0].Drain.Active != 3 || got[0].Drain.Since != 1790000000 {
+		t.Fatalf("reports %+v", got)
 	}
 }

@@ -21,6 +21,14 @@ type Report struct {
 	At      int64     `json:"at"` // unix ms
 	Traffic []Traffic `json:"t,omitempty"`
 	Online  []string  `json:"o,omitempty"`
+	// Drain is set while the node is in maintenance.
+	Drain *Drain `json:"dr,omitempty"`
+}
+
+// Drain is how many tunnels a draining node still carries.
+type Drain struct {
+	Since  int64 `json:"since"` // unix seconds
+	Active int   `json:"active"`
 }
 
 type Traffic struct {

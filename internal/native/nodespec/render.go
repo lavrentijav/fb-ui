@@ -18,6 +18,7 @@ type Bundle struct {
 	// API is where the agent reads traffic from Xray.
 	API   string `json:"api"`
 	Certs []Cert `json:"certs,omitempty"`
+	Drain Drain  `json:"drain,omitzero"`
 }
 
 // Edge is the node's 443 table: SNI routes, then HTTP routes for names the
@@ -156,7 +157,7 @@ func Render(s Spec) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs}, nil
+	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain}, nil
 }
 
 // hopOutbound is a cascade to one exit node's inbound.
