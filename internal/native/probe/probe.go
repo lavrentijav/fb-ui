@@ -56,7 +56,7 @@ func NATS(cfg Config) pick.Prober {
 		}
 		opts := []nats.Option{nats.SetCustomDialer(d), nats.NoReconnect(), nats.Name("probe")}
 		if cfg.TLS != nil {
-			opts = append(opts, nats.Secure(cfg.TLS))
+			opts = append(opts, nats.Secure(cfg.TLS), nats.TLSHandshakeFirst())
 		}
 		if cfg.Inbox != "" {
 			opts = append(opts, nats.CustomInboxPrefix(cfg.Inbox))

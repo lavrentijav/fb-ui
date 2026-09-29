@@ -52,7 +52,7 @@ func soloMaster(t *testing.T, ca *fleetca.CA) *bus.Bus {
 }
 
 func connect(b *bus.Bus, cfg *tls.Config, inbox string) (*nats.Conn, error) {
-	opts := []nats.Option{nats.Secure(cfg), nats.NoReconnect(), nats.ErrorHandler(func(*nats.Conn, *nats.Subscription, error) {})}
+	opts := []nats.Option{nats.Secure(cfg), nats.TLSHandshakeFirst(), nats.NoReconnect(), nats.ErrorHandler(func(*nats.Conn, *nats.Subscription, error) {})}
 	if inbox != "" {
 		opts = append(opts, nats.CustomInboxPrefix(inbox))
 	}

@@ -36,6 +36,9 @@ type host struct {
 }
 
 var hosts = []host{
+	{"fi1m", "10.0.1.1", []string{"fi1.m.lab.firewalk.test"}},
+	{"ru2m", "10.0.1.2", []string{"ru2.m.lab.firewalk.test"}},
+	{"de2m", "10.0.1.3", []string{"de2.m.lab.firewalk.test"}},
 	{"ru4", "10.0.2.4", []string{"ru4.lab.firewalk.test", "ru.lab.firewalk.test"}},
 	{"de2", "10.0.3.2", []string{"de2.lab.firewalk.test"}},
 	{"web", "10.0.8.1", []string{"web.lab.test", "mail.lab.firewalk.test"}},
@@ -57,6 +60,8 @@ func TestMain(m *testing.M) {
 		os.Exit(runNode())
 	case "web":
 		os.Exit(runWeb())
+	case "master":
+		os.Exit(runMaster())
 	}
 	if os.Getenv("NETLAB") != "1" {
 		fmt.Println("netlab: run through tools/netlab/run.sh")
@@ -117,11 +122,17 @@ func buildNetwork() error {
 }
 
 // spawn runs this test binary as role inside host's namespace.
-func spawn(t *testing.T, hostName, role string, env ...string) {
+func spawn(t *testing.T, hostName, role string, env ...string) *exec.Cmd {
 	t.Helper()
 	self, _ := os.Executable()
-	cmd := exec.Command("ip", "netns", "exec", hostName, self)
-	cmd.Env = append(os.Environ(), append(env, "NETLAB_ROLE="+role)...)
+	return spawnCmd(t, hostName, append(env, "NETLAB_ROLE="+role), self)
+}
+
+// spawnCmd runs argv inside host's namespace, logging to the test on failure.
+func spawnCmd(t *testing.T, hostName string, env []string, argv ...string) *exec.Cmd {
+	t.Helper()
+	cmd := exec.Command("ip", append([]string{"netns", "exec", hostName}, argv...)...)
+	cmd.Env = append(os.Environ(), env...)
 	logf, _ := os.Create(filepath.Join(t.TempDir(), hostName+".log"))
 	cmd.Stdout, cmd.Stderr = logf, logf
 	if err := cmd.Start(); err != nil {
@@ -130,11 +141,17 @@ func spawn(t *testing.T, hostName, role string, env ...string) {
 	t.Cleanup(func() {
 		_ = cmd.Process.Signal(syscall.SIGTERM)
 		_ = cmd.Wait()
-		if t.Failed() {
+		if t.Failed() || os.Getenv("NETLAB_VERBOSE") != "" {
 			b, _ := os.ReadFile(logf.Name())
-			t.Logf("--- %s log:\n%s", hostName, b)
+			t.Logf("--- %s log:\n%s", hostName, tail(b, 60))
 		}
 	})
+	return cmd
+}
+
+func tail(b []byte, n int) string {
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	return strings.Join(lines[max(0, len(lines)-n):], "\n")
 }
 
 func waitTCP(t *testing.T, addr string) {
@@ -181,6 +198,10 @@ func runWeb() int {
 		fmt.Fprintf(w, "%s %s", r.URL.Path, host)
 	})
 	go func() { _ = http.ListenAndServe(":80", who) }()
+	if os.Getenv("NETLAB_CERT") == "" {
+		waitSignal()
+		return 0
+	}
 	pair, err := tls.LoadX509KeyPair(os.Getenv("NETLAB_CERT"), os.Getenv("NETLAB_KEY"))
 	if err != nil {
 		fmt.Println(err)

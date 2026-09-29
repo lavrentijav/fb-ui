@@ -144,7 +144,7 @@ func run(path string, logger *log.Logger) error {
 		Sender: &agent.Sender{
 			Journal: journal, Select: sel,
 			Dial: func(_ context.Context, m string) (*nats.Conn, error) {
-				return nats.Connect(c.Masters[m], nats.Secure(tlsCfg), nats.CustomInboxPrefix(inbox),
+				return nats.Connect(c.Masters[m], nats.Secure(tlsCfg), nats.TLSHandshakeFirst(), nats.CustomInboxPrefix(inbox),
 					nats.Name(c.Node), nats.MaxReconnects(-1))
 			},
 		},
