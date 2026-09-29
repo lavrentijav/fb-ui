@@ -80,6 +80,11 @@ func (s *Sender) Run(ctx context.Context, every time.Duration, onErr func(error)
 	}
 }
 
+// Conn is the open connection to master, dialled if needed.
+func (s *Sender) Conn(ctx context.Context, master string) (*nats.Conn, error) {
+	return s.conn(ctx, master)
+}
+
 func (s *Sender) conn(ctx context.Context, master string) (*nats.Conn, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

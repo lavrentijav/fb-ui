@@ -1,0 +1,173 @@
+// Package xrayrun runs Xray on a node: it swaps in a config only after
+// `xray run -test` accepts it, restarts the process, and reads traffic.
+package xrayrun
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+)
+
+type Runner struct {
+	Bin    string // xray binary
+	Config string // path of the running config
+	// API is the Xray API address for stats (the rendered config must have
+	// an api inbound there); empty disables Traffic.
+	API string
+
+	mu   sync.Mutex
+	cmd  *exec.Cmd
+	done chan struct{}
+}
+
+// Apply validates config with `xray run -test`, installs it atomically and
+// restarts Xray; a config Xray rejects leaves the running one untouched.
+func (r *Runner) Apply(ctx context.Context, config []byte) error {
+	dir := filepath.Dir(r.Config)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".next-*.json")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(config); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := errors.Join(tmp.Sync(), tmp.Close()); err != nil {
+		return err
+	}
+	test := exec.CommandContext(ctx, r.Bin, "run", "-test", "-c", tmp.Name())
+	if out, err := test.CombinedOutput(); err != nil {
+		return fmt.Errorf("xrayrun: config rejected: %s", lastLine(out))
+	}
+	if err := os.Rename(tmp.Name(), r.Config); err != nil {
+		return err
+	}
+	return r.Restart()
+}
+
+// Restart (re)starts Xray with the installed config.
+func (r *Runner) Restart() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.stopLocked()
+	// Xray outlives any request; Stop ends it
+	cmd := exec.CommandContext(context.Background(), r.Bin, "run", "-c", r.Config)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	done := make(chan struct{})
+	go func() { _ = cmd.Wait(); close(done) }()
+	r.cmd, r.done = cmd, done
+	return nil
+}
+
+// Running reports whether the Xray process is alive.
+func (r *Runner) Running() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.done == nil {
+		return false
+	}
+	select {
+	case <-r.done:
+		return false
+	default:
+		return true
+	}
+}
+
+func (r *Runner) Stop() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.stopLocked()
+}
+
+func (r *Runner) stopLocked() {
+	if r.cmd == nil {
+		return
+	}
+	_ = r.cmd.Process.Signal(os.Interrupt)
+	select {
+	case <-r.done:
+	case <-time.After(5 * time.Second):
+		_ = r.cmd.Process.Kill()
+		<-r.done
+	}
+	r.cmd, r.done = nil, nil
+}
+
+// UserTraffic is bytes moved by one client since the previous call.
+type UserTraffic struct {
+	Email    string
+	Up, Down int64
+}
+
+// Traffic reads and resets per-user counters through the Xray API.
+func (r *Runner) Traffic(ctx context.Context) ([]UserTraffic, error) {
+	if r.API == "" {
+		return nil, errors.New("xrayrun: no API address")
+	}
+	out, err := exec.CommandContext(ctx, r.Bin, "api", "statsquery", "--server="+r.API, "-pattern", "user>>>", "-reset").Output()
+	if err != nil {
+		return nil, fmt.Errorf("xrayrun: statsquery: %w", err)
+	}
+	return parseStats(out)
+}
+
+func parseStats(out []byte) ([]UserTraffic, error) {
+	var res struct {
+		Stat []struct {
+			Name  string `json:"name"`
+			Value int64  `json:"value"`
+		} `json:"stat"`
+	}
+	if len(bytes.TrimSpace(out)) == 0 {
+		return nil, nil
+	}
+	if err := json.Unmarshal(out, &res); err != nil {
+		return nil, fmt.Errorf("xrayrun: stats: %w", err)
+	}
+	byEmail := map[string]*UserTraffic{}
+	var order []string
+	for _, s := range res.Stat {
+		// user>>>EMAIL>>>traffic>>>uplink|downlink
+		parts := strings.Split(s.Name, ">>>")
+		if len(parts) != 4 || parts[0] != "user" || parts[2] != "traffic" || s.Value == 0 {
+			continue
+		}
+		u := byEmail[parts[1]]
+		if u == nil {
+			u = &UserTraffic{Email: parts[1]}
+			byEmail[parts[1]] = u
+			order = append(order, parts[1])
+		}
+		switch parts[3] {
+		case "uplink":
+			u.Up += s.Value
+		case "downlink":
+			u.Down += s.Value
+		}
+	}
+	out2 := make([]UserTraffic, 0, len(order))
+	for _, e := range order {
+		out2 = append(out2, *byEmail[e])
+	}
+	return out2, nil
+}
+
+func lastLine(b []byte) string {
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	return lines[len(lines)-1]
+}
