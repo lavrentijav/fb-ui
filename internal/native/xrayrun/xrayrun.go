@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,8 @@ type Runner struct {
 	// API is the Xray API address for stats (the rendered config must have
 	// an api inbound there); empty disables Traffic.
 	API string
+	// Output receives Xray's stdout and stderr (the agent's log); nil drops it.
+	Output io.Writer
 
 	mu   sync.Mutex
 	cmd  *exec.Cmd
@@ -64,6 +67,7 @@ func (r *Runner) Restart() error {
 	r.stopLocked()
 	// Xray outlives any request; Stop ends it
 	cmd := exec.CommandContext(context.Background(), r.Bin, "run", "-c", r.Config)
+	cmd.Stdout, cmd.Stderr = r.Output, r.Output
 	if err := cmd.Start(); err != nil {
 		return err
 	}
