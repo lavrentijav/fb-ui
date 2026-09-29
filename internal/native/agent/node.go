@@ -30,13 +30,8 @@ type Node struct {
 	PullEvery   time.Duration // 0 = 15s
 }
 
-// Start brings Xray up on the last applied state before any master answers.
-func (n *Node) Start() error {
-	if n.Applier.Current().Hash == "" {
-		return nil
-	}
-	return n.Xray.Restart()
-}
+// Start brings the last applied state up before any master answers.
+func (n *Node) Start(ctx context.Context) error { return n.Applier.Reapply(ctx) }
 
 // Collect journals the traffic Xray counted since the last call.
 func (n *Node) Collect(ctx context.Context) {

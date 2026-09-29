@@ -22,6 +22,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/agent"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
@@ -50,8 +51,9 @@ type config struct {
 	Xray    struct {
 		Bin    string `json:"bin"`
 		Config string `json:"config"`
-		API    string `json:"api"`
 	} `json:"xray"`
+	// Listen is the edge address (default ":443").
+	Listen      string   `json:"listen"`
 	RebindEvery duration `json:"rebindEvery"`
 	MinPacket   int      `json:"minPacket"`
 	ReportEvery duration `json:"reportEvery"`
@@ -63,7 +65,7 @@ func load(path string) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &config{DataDir: "/var/lib/fbnode"}
+	c := &config{DataDir: "/var/lib/fbnode", Listen: ":443"}
 	if err := json.Unmarshal(b, c); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -117,11 +119,14 @@ func run(path string, logger *log.Logger) error {
 	slices.Sort(masters)
 	inbox := wire.NodeInbox(c.Node)
 
-	xr := &xrayrun.Runner{Bin: c.Xray.Bin, Config: c.Xray.Config, API: c.Xray.API}
+	xr := &xrayrun.Runner{Bin: c.Xray.Bin, Config: c.Xray.Config}
 	defer xr.Stop()
+	edge := &edgerun.Runner{Listen: c.Listen, Logf: logger.Printf}
+	defer edge.Close()
+	bundles := &agent.BundleApplier{Xray: xr, Edge: edge}
 	app, err := desired.OpenApplier(filepath.Join(c.DataDir, "state"), func(ctx context.Context, st desired.State) error {
-		logger.Printf("applying config %.12s (stamp %s)", st.Hash, st.Stamp)
-		return xr.Apply(ctx, st.Config)
+		logger.Printf("applying bundle %.12s (stamp %s)", st.Hash, st.Stamp)
+		return bundles.Apply(ctx, st)
 	})
 	if err != nil {
 		return err
@@ -144,11 +149,11 @@ func run(path string, logger *log.Logger) error {
 			},
 		},
 	}
-	if err := node.Start(); err != nil {
-		logger.Printf("starting xray on the last state: %v", err)
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if err := node.Start(ctx); err != nil {
+		logger.Printf("restoring the last state: %v", err)
+	}
 	logger.Printf("node %s, masters %v", c.Node, masters)
 	node.Run(ctx)
 	return nil

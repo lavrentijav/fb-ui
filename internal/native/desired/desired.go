@@ -108,6 +108,17 @@ func (a *Applier) Current() State {
 	return a.cur
 }
 
+// Reapply puts the stored state into effect again, e.g. after a restart
+// of the agent; with no state yet it does nothing.
+func (a *Applier) Reapply(ctx context.Context) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cur.Hash == "" {
+		return nil
+	}
+	return a.apply(ctx, a.cur)
+}
+
 // Pull asks master for a newer state and applies it; a state with the
 // same config only advances the stamp. It reports whether apply ran.
 func (a *Applier) Pull(ctx context.Context, nc *nats.Conn, master, node string) (bool, error) {
