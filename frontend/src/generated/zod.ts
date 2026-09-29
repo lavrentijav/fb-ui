@@ -596,6 +596,7 @@ export const DnsProviderSchema = z.object({
   hasCredential: z.boolean(),
   id: z.number().int(),
   name: z.string(),
+  subdomains: z.array(z.string()),
   type: z.enum(['cloudflare', 'technitium']),
   updatedAt: z.number().int(),
   zone: z.string(),
@@ -609,6 +610,7 @@ export const DnsProviderRequestSchema = z.object({
   apiUrl: z.string(),
   credential: z.string(),
   name: z.string(),
+  subdomains: z.array(z.string()).nullable().optional(),
   type: z.string(),
   zone: z.string(),
 });
@@ -618,9 +620,27 @@ export const DnsZoneSchema = z.object({
   providerId: z.number().int(),
   providerName: z.string(),
   providerType: z.string(),
+  subdomain: z.boolean(),
   zone: z.string(),
 });
 export type DnsZone = z.infer<typeof DnsZoneSchema>;
+
+export const DomainMigrateActionSchema = z.object({
+  detail: z.string(),
+  done: z.boolean(),
+  error: z.string(),
+  kind: z.string(),
+  target: z.string(),
+});
+export type DomainMigrateAction = z.infer<typeof DomainMigrateActionSchema>;
+
+export const DomainMigrateRequestSchema = z.object({
+  from: z.string(),
+  mode: z.string(),
+  nodeIds: z.array(z.number().int()),
+  to: z.string(),
+});
+export type DomainMigrateRequest = z.infer<typeof DomainMigrateRequestSchema>;
 
 export const DrainStateSchema = z.object({
   active: z.number().int(),
@@ -1109,6 +1129,7 @@ export const NodeProvisionRequestSchema = z.object({
   disablePasswordAuth: z.boolean(),
   dnsProviderId: z.number().int(),
   domain: z.string(),
+  extraZones: z.array(z.string()),
   force: z.boolean(),
   host: z.string(),
   hostKeySha256: z.string(),
@@ -1124,6 +1145,13 @@ export const NodeProvisionRequestSchema = z.object({
   zone: z.string(),
 });
 export type NodeProvisionRequest = z.infer<typeof NodeProvisionRequestSchema>;
+
+export const NodeReleaseSchema = z.object({
+  cascades: z.number().int(),
+  filters: z.number().int(),
+  inbounds: z.number().int(),
+});
+export type NodeRelease = z.infer<typeof NodeReleaseSchema>;
 
 export const NodeRoleChangeRequestSchema = z.object({
   address: z.string(),

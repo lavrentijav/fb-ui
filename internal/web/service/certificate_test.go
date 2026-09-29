@@ -137,7 +137,7 @@ func TestCertificateCreatePicksOwningZone(t *testing.T) {
 		req  CertificateRequest
 		want string
 	}{
-		{"domain outside the chosen zone", CertificateRequest{Domains: []string{"a.ru.example.com", "b.example.com"}}, "b.example.com is outside zone ru.example.com"},
+		{"second name no account holds", CertificateRequest{Domains: []string{"a.ru.example.com", "b.other.org"}}, "b.other.org is in no zone"},
 		{"no zone at all", CertificateRequest{Domains: []string{"x.other.org"}}, "add a DNS provider for x.other.org first"},
 		{"wildcard over http01", CertificateRequest{Domains: []string{"*.example.com"}, Challenge: "http01"}, "wildcard *.example.com needs dns01"},
 		{"same files twice", CertificateRequest{Domains: []string{"msk1.ru.example.com"}}, "already writes"},
@@ -172,8 +172,12 @@ func TestCertificateIssueInstallsFilesAndRecordsFailure(t *testing.T) {
 	if st, err := os.Stat(got.KeyFile); err != nil || st.Mode().Perm() != 0o600 {
 		t.Fatalf("key file: %v mode %v, want 0600", err, st)
 	}
-	if req := ca.requests[0]; req.Challenge != certissuer.DNS01 || req.Zone != "example.com" || req.DNS == nil {
-		t.Fatalf("issuer got challenge=%q zone=%q dns=%v", req.Challenge, req.Zone, req.DNS)
+	req := ca.requests[0]
+	if req.Challenge != certissuer.DNS01 || req.DNSFor == nil {
+		t.Fatalf("issuer got challenge=%q without a DNS resolver", req.Challenge)
+	}
+	if p, zone, err := req.DNSFor("node.example.com"); err != nil || p == nil || zone != "example.com" {
+		t.Fatalf("DNSFor(node.example.com) = %v %q %v", p, zone, err)
 	}
 
 	ca.fail = errors.New("rateLimited: too many certificates")
@@ -479,5 +483,56 @@ func TestInstallStoresAMastersCertificate(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(filepath.Join(certRoot, "msk1.example.com", "privkey.pem")); string(data) != string(keyPEM) {
 		t.Fatal("key not written under the cert root")
+	}
+}
+
+// Cloudflare only lists apexes; walk.example.com has to be addable by hand
+// and then offered, and put a node at <name>.walk.example.com in example.com.
+func TestDnsAccountSubdomains(t *testing.T) {
+	initCertTestDB(t)
+	old := dnsZoneLister
+	dnsZoneLister = func(context.Context, dnsprovider.Config) ([]string, error) { return []string{"example.com"}, nil }
+	t.Cleanup(func() { dnsZoneLister = old })
+	lastDnsResync.Store(0)
+
+	var dns DnsProviderService
+	if _, err := dns.Create(&DnsProviderRequest{
+		Type: model.DnsProviderCloudflare, Credential: "tok",
+		Subdomains: &[]string{"walk.other.org"},
+	}); err == nil || !strings.Contains(err.Error(), "not below any zone") {
+		t.Fatalf("subdomain outside the zones: %v", err)
+	}
+	acct, err := dns.Create(&DnsProviderRequest{
+		Type: model.DnsProviderCloudflare, Credential: `"tok"`,
+		Subdomains: &[]string{"Walk.Example.com.", "walk.example.com"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := dns.load(acct.Id)
+	if stored.Credential != "tok" || !slices.Equal(stored.Subdomains, []string{"walk.example.com"}) {
+		t.Fatalf("credential=%q subdomains=%v", stored.Credential, stored.Subdomains)
+	}
+	zones, err := dns.Zones()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(zones) != 2 || zones[1].Zone != "walk.example.com" || !zones[1].Subdomain || zones[0].Subdomain {
+		t.Fatalf("zones = %+v", zones)
+	}
+	if err := dns.Update(acct.Id, &DnsProviderRequest{Type: model.DnsProviderCloudflare}); err != nil {
+		t.Fatal(err)
+	}
+	if stored, _ = dns.load(acct.Id); len(stored.Subdomains) != 1 {
+		t.Fatalf("an update without the field dropped the subdomains: %v", stored.Subdomains)
+	}
+
+	var s NodeProvisionService
+	req := &NodeProvisionRequest{Name: "ru7", Host: "203.0.113.7", SshPassword: "x", Zone: "walk.example.com"}
+	if prov, err := s.validate(req); err != nil || prov == nil || req.Domain != "ru7.walk.example.com" {
+		t.Fatalf("provision under a subdomain: domain=%q err=%v", req.Domain, err)
+	}
+	if _, zone, err := dns.ForName(req.Domain); err != nil || zone != "example.com" {
+		t.Fatalf("record zone = %q, %v", zone, err)
 	}
 }

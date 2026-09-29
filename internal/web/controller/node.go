@@ -37,6 +37,7 @@ func (a *NodeController) initRouter(g *gin.RouterGroup) {
 	g.POST("/setEnable/:id", a.setEnable)
 	g.POST("/setRole/:id", a.setRole)
 	g.POST("/maintenance/:id", a.setMaintenance)
+	g.POST("/release/:id", a.release)
 
 	g.POST("/test", a.test)
 	g.POST("/certFingerprint", a.certFingerprint)
@@ -401,4 +402,14 @@ func (a *NodeController) setMaintenance(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.update"), a.nodeService.SetMaintenance(id, req.Enable, req.IdleSeconds))
+}
+
+func (a *NodeController) release(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	res, err := a.nodeService.Release(id)
+	jsonMsgObj(c, I18nWeb(c, "pages.nodes.toasts.delete"), res, err)
 }

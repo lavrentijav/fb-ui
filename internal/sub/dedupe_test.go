@@ -53,8 +53,13 @@ func TestDedupeLinksIgnoresOnlyTheName(t *testing.T) {
 		"vless://u@a.example.com:443?type=ws#DE",
 		"vless://u@a.example.com:443?type=ws#DE copy\nvless://u@b.example.com:443?type=ws#DE",
 		vm("one", "443"), vm("two", "443"), vm("three", "8443"),
+		"vless://u@a.example.com:443?type=ws&encryption=none#DE old port",
+		"vless://u@a.example.com:443?encryption=none&type=grpc#DE grpc",
 	}
-	want := []string{"vless://u@a.example.com:443?type=ws#DE", "vless://u@b.example.com:443?type=ws#DE", vm("one", "443"), vm("three", "8443")}
+	want := []string{
+		"vless://u@a.example.com:443?type=ws#DE", "vless://u@b.example.com:443?type=ws#DE", vm("one", "443"), vm("three", "8443"),
+		"vless://u@a.example.com:443?encryption=none&type=grpc#DE grpc",
+	}
 	if got := dedupeLinks(in); !slices.Equal(got, want) {
 		t.Fatalf("got  %q\nwant %q", got, want)
 	}

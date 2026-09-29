@@ -1686,6 +1686,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
+        path: '/panel/api/nodes/release/:id',
+        summary:
+          'Forget a node without touching it, to hand it to another master: it is disabled, then its inbounds, host groups, cascade links and filter rules leave this panel\u2019s database and the node row is deleted. Nothing is sent to the node, which keeps serving every inbound and client until the new master takes it over.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
+        responseSchema: 'NodeRelease',
+      },
+      {
+        method: 'POST',
         path: '/panel/api/nodes/maintenance/:id',
         summary:
           'Put a node into maintenance or take it out: its edge refuses new tunnels and closes idle ones, and its inbounds leave every subscription until it is switched back. The switch is stored here and re-sent by the heartbeat if the node missed it.',
@@ -2085,6 +2093,24 @@ export const sections: readonly Section[] = [
         path: '/panel/api/edge/check',
         summary: 'Dial every tcp target and http upstream once and report which answer.',
         responseSchema: 'EdgeTargetCheck',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/domains/plan',
+        summary:
+          'List what moving (switch) or copying (add) every name under one base domain to another would change: DNS records with the same addresses, certificates extended and reissued, edge routes copied on each panel, and in switch mode host groups, inbound SNI/Host, node addresses and subscription URIs. Changes nothing.',
+        body: '{\n  "from": "walk.boykisser.online",\n  "to": "walk.example.com",\n  "mode": "add",\n  "nodeIds": []\n}',
+        responseSchema: 'DomainMigrateAction',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/domains/apply',
+        summary:
+          'Make the changes /domains/plan lists, in order: records first (waiting until they are visible), then certificates and edge routes, then the switches that depend on them. Old names are kept in DNS and on certificates. Each action reports done or its error.',
+        body: '{\n  "from": "walk.boykisser.online",\n  "to": "walk.example.com",\n  "mode": "switch",\n  "nodeIds": []\n}',
+        responseSchema: 'DomainMigrateAction',
         responseSchemaArray: true,
       },
       {

@@ -614,6 +614,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "hasCredential": true,
     "id": 1,
     "name": "fire-core",
+    "subdomains": [
+      "walk.fire-core.ru"
+    ],
     "type": "technitium",
     "updatedAt": 0,
     "zone": "",
@@ -628,6 +631,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "apiUrl": "ns1.example.com",
     "credential": "api-token",
     "name": "technitium",
+    "subdomains": [
+      "walk.fire-core.ru"
+    ],
     "type": "technitium",
     "zone": ""
   },
@@ -635,7 +641,24 @@ export const EXAMPLES: Record<string, unknown> = {
     "providerId": 1,
     "providerName": "technitium",
     "providerType": "technitium",
+    "subdomain": false,
     "zone": "fire-core.ru"
+  },
+  "DomainMigrateAction": {
+    "detail": "A 203.0.113.7",
+    "done": false,
+    "error": "",
+    "kind": "dns",
+    "target": "ru7.walk.example.com"
+  },
+  "DomainMigrateRequest": {
+    "from": "walk.boykisser.online",
+    "mode": "add",
+    "nodeIds": [
+      3,
+      4
+    ],
+    "to": "walk.example.com"
   },
   "DrainState": {
     "active": 12,
@@ -1151,6 +1174,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "disablePasswordAuth": false,
     "dnsProviderId": 0,
     "domain": "msk2.fire-core.ru",
+    "extraZones": [
+      "walk.example.com"
+    ],
     "force": false,
     "host": "203.0.113.10",
     "hostKeySha256": "",
@@ -1164,6 +1190,11 @@ export const EXAMPLES: Record<string, unknown> = {
     "sshPrivateKey": "",
     "sshUser": "root",
     "zone": "fire-core.ru"
+  },
+  "NodeRelease": {
+    "cascades": 4,
+    "filters": 0,
+    "inbounds": 9
   },
   "NodeRoleChangeRequest": {
     "address": "node1.example.com",

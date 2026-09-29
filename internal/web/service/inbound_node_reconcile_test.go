@@ -500,3 +500,52 @@ func TestReconcileNode_SaveGrowingSelectionRearmsSweepGuard(t *testing.T) {
 		})
 	}
 }
+
+// A stray row (fi2's ghost n3-in-2053-tcp, adopted from ru2 while ru2 briefly
+// mastered ru4) must not be aliased onto ru2's live in-2053-tcp, which another
+// row already owns: deleting the ghost deleted the live inbound on ru2.
+func TestReconcileNode_DoesNotAliasAStrayRowOntoAnOwnedInbound(t *testing.T) {
+	setupConflictDB(t)
+	var mu sync.Mutex
+	var deleted []string
+	writeOK := func(w http.ResponseWriter, obj any) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "msg": "", "obj": obj})
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/panel/api/inbounds/list", func(w http.ResponseWriter, _ *http.Request) {
+		writeOK(w, []map[string]any{{"id": 61, "tag": "in-2053-tcp", "listen": "", "port": 2053, "protocol": "vless"}})
+	})
+	mux.HandleFunc("/panel/api/inbounds/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/del/") {
+			mu.Lock()
+			deleted = append(deleted, r.URL.Path)
+			mu.Unlock()
+		}
+		writeOK(w, nil)
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+	deletedIDs := func() []string { mu.Lock(); defer mu.Unlock(); return slices.Clone(deleted) }
+	node := reconcileTestNode(t, ts, "ru2", "all", nil)
+	node.Guid = "ru2-guid"
+	if err := database.GetDB().Model(node).Update("guid", node.Guid).Error; err != nil {
+		t.Fatal(err)
+	}
+	owner := nodeTagPrefix(&node.Id) + "in-2053-tcp"
+	seedInboundConflictNode(t, owner, "", 2053, model.VLESS, `{"network":"ws"}`, `{"clients":[]}`, &node.Id)
+	seedInboundConflictNode(t, "n3-in-2053-tcp", "", 2053, model.VLESS, `{"network":"ws"}`, `{"clients":[]}`, &node.Id)
+	ghost := &model.Inbound{Tag: "n3-in-2053-tcp", NodeID: &node.Id}
+	if err := database.GetDB().Model(&model.Inbound{}).Where("tag = ?", ghost.Tag).Update("origin_node_guid", node.Guid).Error; err != nil {
+		t.Fatal(err)
+	}
+	svc := InboundService{}
+	rt := runtime.NewRemote(node, nil)
+	_ = svc.ReconcileNode(context.Background(), rt, node)
+	if err := rt.DelInbound(context.Background(), ghost); err != nil {
+		t.Fatal(err)
+	}
+	if got := deletedIDs(); len(got) != 0 {
+		t.Fatalf("deleting the stray row deleted remote inbounds %v", got)
+	}
+}

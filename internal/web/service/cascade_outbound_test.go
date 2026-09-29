@@ -170,3 +170,48 @@ func outboundTags(outbounds []map[string]any) []string {
 	}
 	return tags
 }
+
+// nl1's cascade inbound moved behind the shared port (127.0.0.1:12443, no TLS)
+// and is reachable only as its host group says: nl1.walk:443 over TLS.
+func TestCascadeOutboundFollowsTheTargetHost(t *testing.T) {
+	initFilterTestDB(t)
+	node, inbound := seedCascadeTarget(t, "nl1.walk.example.com")
+	db := database.GetDB()
+	inbound.Listen, inbound.Port = "127.0.0.1", 12443
+	inbound.StreamSettings = `{"network":"ws","security":"none","wsSettings":{"path":"/ws-update","host":""}}`
+	if err := db.Save(inbound).Error; err != nil {
+		t.Fatal(err)
+	}
+	host := &model.Host{
+		GroupId: "g", InboundId: inbound.Id, Remark: "nfc", Address: "nl1.walk.example.com", Port: 443,
+		Security: "tls", Sni: "nl1.walk.example.com", HostHeader: "nl1.walk.example.com", Path: "/ws-update",
+		Alpn: []string{"http/1.1"}, Fingerprint: "chrome",
+	}
+	if err := db.Create(host).Error; err != nil {
+		t.Fatal(err)
+	}
+	built, ok := buildCascadeOutbound(&model.CascadeLink{
+		Id: 2, SourcePanelId: SelfPanelId, SourceInboundTag: "entry-in",
+		TargetPanelId: node.Id, TargetInboundId: inbound.Id, Enable: true,
+	})
+	if !ok {
+		t.Fatal("no outbound built")
+	}
+	var out struct {
+		Settings       map[string]any `json:"settings"`
+		StreamSettings struct {
+			Security    string         `json:"security"`
+			TlsSettings map[string]any `json:"tlsSettings"`
+			WsSettings  map[string]any `json:"wsSettings"`
+		} `json:"streamSettings"`
+	}
+	if err := json.Unmarshal(built, &out); err != nil {
+		t.Fatal(err)
+	}
+	st := out.StreamSettings
+	if out.Settings["address"] != "nl1.walk.example.com" || out.Settings["port"] != float64(443) ||
+		st.Security != "tls" || st.TlsSettings["serverName"] != "nl1.walk.example.com" || st.TlsSettings["fingerprint"] != "chrome" ||
+		st.WsSettings["host"] != "nl1.walk.example.com" || st.WsSettings["path"] != "/ws-update" {
+		t.Fatalf("outbound = %s", built)
+	}
+}

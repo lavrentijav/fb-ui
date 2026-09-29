@@ -79,8 +79,8 @@ func BuildManagedRouting(nodeId int) (mr *ManagedRouting, ruleIds, linkIds []int
 		Rules []json.RawMessage `json:"rules"`
 	}
 	_ = json.Unmarshal(cfg.RouterConfig, &routing)
-	if routing.Rules != nil {
-		mr.Rules = routing.Rules
+	for _, raw := range routing.Rules {
+		mr.Rules = append(mr.Rules, nodeLocalInboundTags(raw, nodeTagPrefix(&nodeId)))
 	}
 	sum := sha256.New()
 	for _, part := range [][]json.RawMessage{mr.Outbounds, mr.Rules} {
@@ -92,6 +92,29 @@ func BuildManagedRouting(nodeId int) (mr *ManagedRouting, ruleIds, linkIds []int
 	}
 	mr.Version = hex.EncodeToString(sum.Sum(nil))
 	return mr, ruleIds, linkIds, nil
+}
+
+// nodeLocalInboundTags renames a rule's inbound tags to the node's own: the
+// master keys a node's inbounds as n<id>-<tag>, the node's Xray knows <tag>.
+func nodeLocalInboundTags(raw json.RawMessage, prefix string) json.RawMessage {
+	var rule map[string]any
+	if json.Unmarshal(raw, &rule) != nil {
+		return raw
+	}
+	tags, ok := rule["inboundTag"].([]any)
+	if !ok {
+		return raw
+	}
+	for i, t := range tags {
+		if s, ok := t.(string); ok {
+			tags[i] = strings.TrimPrefix(s, prefix)
+		}
+	}
+	out, err := json.Marshal(rule)
+	if err != nil {
+		return raw
+	}
+	return out
 }
 
 // StoreManagedRouting is the node side: keep what the master sent and have
