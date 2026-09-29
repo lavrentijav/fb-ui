@@ -105,7 +105,7 @@ func (l *lab) cert(t *testing.T, names ...string) nodespec.Cert {
 }
 
 // node renders spec and starts it in its namespace, waiting for :443.
-func (l *lab) node(t *testing.T, spec nodespec.Spec) {
+func (l *lab) node(t *testing.T, spec nodespec.Spec) *exec.Cmd {
 	t.Helper()
 	b, err := nodespec.Render(spec)
 	if err != nil {
@@ -114,8 +114,9 @@ func (l *lab) node(t *testing.T, spec nodespec.Spec) {
 	dir := filepath.Join(l.dir, spec.Node)
 	os.MkdirAll(dir, 0o700)
 	writeJSON(t, filepath.Join(dir, "bundle.json"), b)
-	spawn(t, spec.Node, "node", "NETLAB_BUNDLE="+filepath.Join(dir, "bundle.json"), "NETLAB_DIR="+dir, "NETLAB_XRAY="+l.xray)
+	cmd := spawn(t, spec.Node, "node", "NETLAB_BUNDLE="+filepath.Join(dir, "bundle.json"), "NETLAB_DIR="+dir, "NETLAB_XRAY="+l.xray)
 	waitTCP(t, ipOf(spec.Node)+":443")
+	return cmd
 }
 
 // client runs Xray in the client namespace: one SOCKS port per path of ru4.

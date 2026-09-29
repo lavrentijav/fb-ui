@@ -66,7 +66,9 @@ Found by the lab, now handled:
 
 1. ~~Masters in the lab~~ — done (`TestMastersDriveNodes`). Enrollment
    (a master issuing `node.<name>` certificates) is still manual.
-2. **Group balancer.** Nodes of one group (e.g. exits `de1`, `de2`) behind
+2. ~~Group balancer~~ — done for exits (`TestGroupBalancerFailsOver`: de2
+   stopped, traffic on de1 in ~2 s). Entry-side DNS pool still to do.
+   Nodes of one group (e.g. exits `de1`, `de2`) behind
    one `proxy_de`: an `Exit` with several hops renders one outbound per hop
    plus an Xray balancer `proxy_de` (observatory probing through each hop;
    strategy leastPing, fallback to the next alive). Routing rules then use

@@ -40,7 +40,8 @@ func TestValidateRejects(t *testing.T) {
 		"relative path":      func(s *Spec) { s.Inbounds[0].Path = "ws-de" },
 		"grpc not supported": func(s *Spec) { s.Inbounds[0].Network = "grpc" },
 		"exit twice":         func(s *Spec) { s.Exits = append(s.Exits, s.Exits[0]) },
-		"balancer not yet":   func(s *Spec) { s.Exits[0].Hops = append(s.Exits[0].Hops, s.Exits[0].Hops[0]) },
+		"exit without hops":  func(s *Spec) { s.Exits[0].Hops = nil },
+		"probe too often":    func(s *Spec) { s.Probe.Interval = "100ms" },
 		"bad reverse kind":   func(s *Spec) { s.Reverse[0].Kind = "udp" },
 	}
 	for name, mutate := range cases {
@@ -110,5 +111,63 @@ func TestRenderEntryNode(t *testing.T) {
 	again, _ := Render(entrySpec())
 	if !bytes.Equal(again.Xray, b.Xray) {
 		t.Fatal("render is not deterministic")
+	}
+}
+
+// Exit nodes of one group behind one proxy_de: one outbound per hop, a
+// leastPing balancer the routing points at, and the observatory probing it.
+func TestRenderGroupBalancer(t *testing.T) {
+	s := entrySpec()
+	de1 := s.Exits[0].Hops[0]
+	de1.Address, de1.SNI, de1.Host = "de1.fleet.example", "de1.fleet.example", "de1.fleet.example"
+	s.Exits[0].Hops = append(s.Exits[0].Hops, de1)
+	s.Probe = Probe{URL: "http://probe.example/204", Interval: "5s"}
+	b, err := Render(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Outbounds []struct{ Tag string } `json:"outbounds"`
+		Routing   struct {
+			Rules []struct {
+				InboundTag  []string `json:"inboundTag"`
+				OutboundTag string   `json:"outboundTag"`
+				BalancerTag string   `json:"balancerTag"`
+			} `json:"rules"`
+			Balancers []struct {
+				Tag         string                `json:"tag"`
+				Selector    []string              `json:"selector"`
+				FallbackTag string                `json:"fallbackTag"`
+				Strategy    struct{ Type string } `json:"strategy"`
+			} `json:"balancers"`
+		} `json:"routing"`
+		Observatory struct {
+			SubjectSelector []string `json:"subjectSelector"`
+			ProbeURL        string   `json:"probeURL"`
+			ProbeInterval   string   `json:"probeInterval"`
+		} `json:"observatory"`
+	}
+	if err := json.Unmarshal(b.Xray, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	var tags []string
+	for _, o := range cfg.Outbounds {
+		tags = append(tags, o.Tag)
+	}
+	if strings.Join(tags, ",") != "direct,block,proxy_de-1,proxy_de-2" {
+		t.Fatalf("outbounds %v", tags)
+	}
+	bal := cfg.Routing.Balancers
+	if len(bal) != 1 || bal[0].Tag != "proxy_de" || bal[0].Selector[0] != "proxy_de-" || bal[0].Strategy.Type != "leastPing" || bal[0].FallbackTag != "proxy_de-1" {
+		t.Fatalf("balancers %+v", bal)
+	}
+	for _, r := range cfg.Routing.Rules {
+		if r.InboundTag[0] == "de" && (r.BalancerTag != "proxy_de" || r.OutboundTag != "") {
+			t.Fatalf("de routes to %+v, want the balancer", r)
+		}
+	}
+	o := cfg.Observatory
+	if len(o.SubjectSelector) != 1 || o.SubjectSelector[0] != "proxy_de-" || o.ProbeURL != "http://probe.example/204" || o.ProbeInterval != "5s" {
+		t.Fatalf("observatory %+v", o)
 	}
 }

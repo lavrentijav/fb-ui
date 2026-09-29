@@ -90,16 +90,30 @@ func Render(s Spec) (Bundle, error) {
 		direct,
 		obj{"tag": Block, "protocol": "blackhole"},
 	}
+	balanced := map[string]bool{}
+	var balancers []any
+	var observed []string
 	for _, e := range s.Exits {
-		h := e.Hops[0]
-		outbounds = append(outbounds, obj{
-			"tag": ProxyTag(e.Country), "protocol": "vless",
-			"settings": obj{"vnext": []any{obj{
-				"address": h.Address, "port": h.Port,
-				"users": []any{obj{"id": h.ID, "encryption": "none"}},
-			}}},
-			"streamSettings": transport(h.Network, h.Path, h.SNI, h.Host),
+		tag := ProxyTag(e.Country)
+		if len(e.Hops) == 1 {
+			outbounds = append(outbounds, hopOutbound(tag, e.Hops[0]))
+			continue
+		}
+		for i, h := range e.Hops {
+			outbounds = append(outbounds, hopOutbound(fmt.Sprintf("%s-%d", tag, i+1), h))
+		}
+		balanced[tag] = true
+		observed = append(observed, tag+"-")
+		balancers = append(balancers, obj{
+			"tag": tag, "selector": []string{tag + "-"},
+			"strategy": obj{"type": "leastPing"}, "fallbackTag": tag + "-1",
 		})
+	}
+	for _, r := range rules {
+		if rule := r.(obj); balanced[fmt.Sprint(rule["outboundTag"])] {
+			rule["balancerTag"] = rule["outboundTag"]
+			delete(rule, "outboundTag")
+		}
 	}
 	for _, r := range s.Reverse {
 		switch r.Kind {
@@ -124,11 +138,37 @@ func Render(s Spec) (Bundle, error) {
 		"outbounds": outbounds,
 		"routing":   obj{"domainStrategy": "AsIs", "rules": rules},
 	}
+	if len(balancers) > 0 {
+		cfg["routing"].(obj)["balancers"] = balancers
+		probe := s.Probe
+		if probe.URL == "" {
+			probe.URL = "https://www.gstatic.com/generate_204"
+		}
+		if probe.Interval == "" {
+			probe.Interval = "30s"
+		}
+		cfg["observatory"] = obj{
+			"subjectSelector": observed, "probeURL": probe.URL,
+			"probeInterval": probe.Interval, "enableConcurrency": true,
+		}
+	}
 	raw, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return Bundle{}, err
 	}
 	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs}, nil
+}
+
+// hopOutbound is a cascade to one exit node's inbound.
+func hopOutbound(tag string, h Hop) obj {
+	return obj{
+		"tag": tag, "protocol": "vless",
+		"settings": obj{"vnext": []any{obj{
+			"address": h.Address, "port": h.Port,
+			"users": []any{obj{"id": h.ID, "encryption": "none"}},
+		}}},
+		"streamSettings": transport(h.Network, h.Path, h.SNI, h.Host),
+	}
 }
 
 // transport is streamSettings for ws/xhttp, with TLS when sni is set.
