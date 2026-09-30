@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/certs"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/dnsacct"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
@@ -59,6 +61,7 @@ type Daemon struct {
 	edge  *edgerun.Runner
 	store *master.Mem
 	m     atomic.Pointer[master.Master]
+	dns   atomic.Pointer[dnsacct.Accounts]
 }
 
 // Start brings the master up; it serves nodes once the streams exist,
@@ -112,20 +115,56 @@ func (d *Daemon) boot(ctx context.Context) {
 	if _, err := desired.Serve(d.bus.Conn(), d.cfg.Name, d.render(m)); err != nil {
 		d.logf("desired: %v", err)
 	}
+	accounts := &dnsacct.Accounts{Master: m, State: d.store.State}
+	d.dns.Store(accounts)
 	d.m.Store(m)
 	d.logf("master %s ready", d.cfg.Name)
-	if a := d.cfg.ACME; a != nil {
+	if d.cfg.ACME != nil {
+		a := *d.cfg.ACME
+		if a.DNSFor == nil {
+			a.DNSFor = accounts.For
+		}
 		every := d.cfg.RenewEvery
 		if every <= 0 {
 			every = time.Hour
 		}
 		r := &certs.Renewer{
 			Master: m, State: d.store.State, Issue: a.Issuer(m, d.store.State),
-			RenewBefore: d.cfg.RenewBefore, Logf: d.cfg.Logf,
+			RenewBefore: d.cfg.RenewBefore, Logf: d.cfg.Logf, Plan: d.planNodeCerts(m),
 		}
 		go r.Run(ctx, every)
 	}
 	m.Run(ctx, 500*time.Millisecond, func(err error) { d.logf("catch-up: %v", err) })
+}
+
+func (d *Daemon) wantNodeCert(ctx context.Context, m *master.Master, spec nodespec.Spec, b nodespec.Bundle) error {
+	var terminated []string
+	for _, rt := range b.Edge.SNI {
+		if rt.Action == "handoff" {
+			terminated = append(terminated, rt.Match)
+		}
+	}
+	return certs.WantForNode(ctx, m, d.store.State, spec.Node, terminated, spec.Certs, spec.CertIDs)
+}
+
+// planNodeCerts redoes every node's certificate from replicated state.
+func (d *Daemon) planNodeCerts(m *master.Master) func(context.Context) error {
+	return func(ctx context.Context) error {
+		var errs []error
+		for _, node := range d.store.State.Keys(SpecTable) {
+			rec, _ := d.store.State.Get(SpecTable, node)
+			var spec nodespec.Spec
+			if err := json.Unmarshal(rec["spec"], &spec); err != nil {
+				continue
+			}
+			b, err := nodespec.Render(spec)
+			if err != nil {
+				continue
+			}
+			errs = append(errs, d.wantNodeCert(ctx, m, spec, b))
+		}
+		return errors.Join(errs...)
+	}
 }
 
 func (d *Daemon) render(m *master.Master) desired.Render {
@@ -140,7 +179,8 @@ func (d *Daemon) render(m *master.Master) desired.Render {
 		}
 		// a renewal is an op like any other: it moves the version, so
 		// nodes pull the new certificate with the next bundle
-		spec.Certs = append(spec.Certs, certs.Resolve(d.store.State, spec.CertIDs)...)
+		ids := append(slices.Clone(spec.CertIDs), certs.NodeID(node))
+		spec.Certs = append(spec.Certs, certs.Resolve(d.store.State, ids)...)
 		b, err := nodespec.Render(spec)
 		if err != nil {
 			return desired.State{}, err
@@ -155,7 +195,7 @@ func (d *Daemon) render(m *master.Master) desired.Render {
 }
 
 // Handler is the master's admin API (the panel API later): PUT /nodes/<node>/spec,
-// PUT /certs/<id>, GET /certs, GET /ready, GET /reports.
+// PUT /certs/<id>, GET /certs, PUT|DELETE /dns/<id>, GET /dns, GET /ready, GET /reports.
 func (d *Daemon) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ready", func(w http.ResponseWriter, _ *http.Request) {
@@ -184,8 +224,14 @@ func (d *Daemon) Handler() http.Handler {
 			http.Error(w, "spec is for "+spec.Node, http.StatusBadRequest)
 			return
 		}
-		if _, err := nodespec.Render(spec); err != nil {
+		b, err := nodespec.Render(spec)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		// the certificate first: the spec's op then already moves the version past it
+		if err := d.wantNodeCert(r.Context(), m, spec, b); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		op, err := m.Set(r.Context(), SpecTable, node, map[string]any{"spec": json.RawMessage(raw)})
@@ -210,6 +256,40 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		if err := certs.Want(r.Context(), m, r.PathValue("id"), body.Names); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	})
+	mux.HandleFunc("PUT /dns/{id}", func(w http.ResponseWriter, r *http.Request) {
+		accounts := d.dns.Load()
+		if accounts == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		var acc dnsacct.Account
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&acc); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		saved, err := accounts.Put(r.Context(), r.PathValue("id"), acc)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		saved.Credential = ""
+		_ = json.NewEncoder(w).Encode(saved)
+	})
+	mux.HandleFunc("DELETE /dns/{id}", func(w http.ResponseWriter, r *http.Request) {
+		accounts := d.dns.Load()
+		if accounts == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		if err := accounts.Delete(r.Context(), r.PathValue("id")); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	mux.HandleFunc("GET /dns", func(w http.ResponseWriter, _ *http.Request) {
+		if accounts := d.dns.Load(); accounts != nil {
+			_ = json.NewEncoder(w).Encode(accounts.List())
 		}
 	})
 	mux.HandleFunc("GET /certs", func(w http.ResponseWriter, _ *http.Request) {

@@ -141,3 +141,57 @@ func waitAll(t *testing.T, f *fleet, ok func(name string) bool) {
 		time.Sleep(200 * time.Millisecond)
 	}
 }
+
+func TestCovers(t *testing.T) {
+	names := []string{"ru.fleet.example", "*.ru.fleet.example"}
+	for host, want := range map[string]bool{
+		"ru.fleet.example":      true,
+		"RU4.ru.fleet.example":  true,
+		"a.b.ru.fleet.example":  false, // a wildcard covers one label only
+		"ru4.fleet.example":     false,
+		"evilru.fleet.example":  false,
+		"xru.fleet.example.com": false,
+	} {
+		if got := certs.Covers(names, host); got != want {
+			t.Errorf("%s: %v, want %v", host, got, want)
+		}
+	}
+}
+
+// The node's own certificate holds only what the group one does not, a
+// repeated save keeps it as it is, and it goes once the group covers all.
+func TestWantForNode(t *testing.T) {
+	f := newFleet(t)
+	ctx := context.Background()
+	m, state := f.masters["ru2"], f.renewers["ru2"].State
+	if err := certs.Want(ctx, m, "ru-group", []string{"ru.fleet.example", "*.ru.fleet.example"}); err != nil {
+		t.Fatal(err)
+	}
+	terminated := []string{"ru.fleet.example", "ru4.fleet.example", "Panel.ru4.fleet.example"}
+	names := func() string {
+		rec, ok := state.Get(certs.Table, certs.NodeID("ru4"))
+		if !ok {
+			return "none"
+		}
+		return string(rec["names"])
+	}
+	if err := certs.WantForNode(ctx, m, state, "ru4", terminated, nil, []string{"ru-group"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := names(); got != `["panel.ru4.fleet.example","ru4.fleet.example"]` {
+		t.Fatalf("node certificate for %s", got)
+	}
+	before, _ := m.Version(ctx)
+	if err := certs.WantForNode(ctx, m, state, "ru4", terminated, nil, []string{"ru-group"}); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := m.Version(ctx); after != before {
+		t.Fatal("saving the same spec wrote the node certificate again")
+	}
+	if err := certs.WantForNode(ctx, m, state, "ru4", []string{"a.ru.fleet.example"}, nil, []string{"ru-group"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := names(); got != "none" {
+		t.Fatalf("node certificate kept for %s", got)
+	}
+}
