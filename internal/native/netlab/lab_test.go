@@ -43,6 +43,8 @@ var hosts = []host{
 	{"de1", "10.0.3.1", []string{"de1.lab.firewalk.test"}},
 	{"de2", "10.0.3.2", []string{"de2.lab.firewalk.test"}},
 	{"web", "10.0.8.1", []string{"web.lab.test", "mail.lab.firewalk.test"}},
+	// a stand-in for Let's Encrypt (Pebble) and the zone's DNS (challtestsrv)
+	{"acme", "10.0.7.1", []string{"pebble"}},
 	{"client", "10.0.9.1", nil},
 }
 

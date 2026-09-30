@@ -31,6 +31,9 @@ type Spec struct {
 	// Reverse are edge routes to local services other than inbounds.
 	Reverse []Reverse `json:"reverse,omitempty"`
 	Certs   []Cert    `json:"certs,omitempty"`
+	// CertIDs name certificates the masters issue and renew; a master
+	// adds them to Certs when it renders the bundle.
+	CertIDs []string `json:"certIds,omitempty"`
 	// DirectAllow are private CIDRs direct may reach; Xray blocks private
 	// destinations by default (internal services, the lab network).
 	DirectAllow []string `json:"directAllow,omitempty"`

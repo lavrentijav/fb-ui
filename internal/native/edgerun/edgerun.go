@@ -81,8 +81,11 @@ func (r *Runner) Apply(e nodespec.Edge, certs []nodespec.Cert) error {
 		action := edge.ActionTCP
 		if rt.Action == "handoff" {
 			action = edge.ActionHandoff
+			// a name whose certificate is still being issued waits,
+			// refused like an unknown one, instead of holding back the rest
 			if table.pick(rt.Match) == nil {
-				return fmt.Errorf("edgerun: no certificate for %s", rt.Match)
+				r.logf("edgerun: no certificate for %s yet, route left out", rt.Match)
+				continue
 			}
 		}
 		cfg.Routes = append(cfg.Routes, edge.Route{Match: rt.Match, Action: action, Target: rt.Target, ProxyProtocol: rt.ProxyProtocol})
@@ -189,4 +192,10 @@ func (r *Runner) Close() error {
 	}
 	r.started = false
 	return errors.Join(r.ln.Close(), r.handoff.Close(), r.srv.Close())
+}
+
+func (r *Runner) logf(format string, args ...any) {
+	if r.Logf != nil {
+		r.Logf(format, args...)
+	}
 }
