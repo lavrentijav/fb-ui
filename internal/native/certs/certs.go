@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/native/lease"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 )
@@ -134,32 +135,11 @@ func (r *Renewer) Tick(ctx context.Context) ([]string, error) {
 	return issued, errors.Join(errs...)
 }
 
-// lease claims id unless another master holds it live, lets the claim
-// replicate and reports if it is still ours: the op log's last writer wins.
 func (r *Renewer) lease(ctx context.Context, id string) (bool, error) {
-	self := r.Master.Name()
-	if rec, ok := r.State.Get(LeaseTable, id); ok {
-		holder, _ := field[string](rec, "holder")
-		until, _ := field[int64](rec, "until")
-		if holder != self && time.UnixMilli(until).After(r.now()) {
-			return false, nil
-		}
-	}
-	until := r.now().Add(orDefault(r.LeaseTTL, 15*time.Minute)).UnixMilli()
-	if _, err := r.Master.Set(ctx, LeaseTable, id, map[string]any{"holder": self, "until": until}); err != nil {
-		return false, err
-	}
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	case <-time.After(orDefault(r.Settle, 5*time.Second)):
-	}
-	if _, err := r.Master.CatchUp(ctx); err != nil {
-		return false, err
-	}
-	rec, _ := r.State.Get(LeaseTable, id)
-	holder, _ := field[string](rec, "holder")
-	return holder == self, nil
+	return lease.Lease{
+		Master: r.Master, State: r.State, Table: LeaseTable, Now: r.Now,
+		TTL: orDefault(r.LeaseTTL, 15*time.Minute), Settle: orDefault(r.Settle, 5*time.Second),
+	}.Claim(ctx, id)
 }
 
 func (r *Renewer) renew(ctx context.Context, id string) error {
