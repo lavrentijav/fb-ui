@@ -136,7 +136,7 @@ func Render(s Spec) (Bundle, error) {
 	slices.SortFunc(edge.SNI, func(a, b SNIRoute) int { return strings.Compare(a.Match, b.Match) })
 	cfg := obj{
 		"log":       obj{"loglevel": "warning"},
-		"api":       obj{"tag": "api", "services": []string{"StatsService", "HandlerService"}},
+		"api":       obj{"tag": "api", "services": []string{"StatsService", "HandlerService", "RoutingService"}},
 		"stats":     obj{},
 		"policy":    obj{"levels": obj{"0": obj{"statsUserUplink": true, "statsUserDownlink": true}}},
 		"inbounds":  inbounds,

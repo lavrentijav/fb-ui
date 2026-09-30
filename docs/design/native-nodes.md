@@ -93,4 +93,12 @@ Found by the lab, now handled:
    terminates that no group certificate covers, and re-planned on every
    renewal tick, so a spec saved before a group certificate replicated is
    corrected (the lab saves ru4's spec first to force this).
-5. Subscriptions served by masters, pointing at group names.
+5. ~~Xray changes without cutting tunnels~~ — done (`TestXrayChangesKeepTunnels`:
+   a user added, a route changed and an inbound added while a download runs;
+   it finishes, Xray keeps its pid). The agent diffs the running config and
+   the next one and applies it through `xray api` (users with `adu`/`rmu`,
+   changed inbounds/outbounds re-added, the whole routing swapped at once
+   with `adrules`, removals last). Anything else — log, api, dns, policy,
+   observatory, the default (first) outbound — restarts Xray, as does any
+   failed call.
+6. Subscriptions served by masters, pointing at group names.

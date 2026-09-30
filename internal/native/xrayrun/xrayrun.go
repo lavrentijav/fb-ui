@@ -31,8 +31,8 @@ type Runner struct {
 	done chan struct{}
 }
 
-// Apply validates config with `xray run -test`, installs it atomically and
-// restarts Xray; a config Xray rejects leaves the running one untouched.
+// Apply installs config once `xray run -test` accepts it: live through the API
+// when it can, else by a restart; a rejected config leaves Xray untouched.
 func (r *Runner) Apply(ctx context.Context, config []byte) error {
 	// an unchanged config must not restart Xray: that would cut every tunnel
 	if cur, err := os.ReadFile(r.Config); err == nil && bytes.Equal(cur, config) && r.Running() {
@@ -57,6 +57,18 @@ func (r *Runner) Apply(ctx context.Context, config []byte) error {
 	test := exec.CommandContext(ctx, r.Bin, "run", "-test", "-c", tmp.Name())
 	if out, err := test.CombinedOutput(); err != nil {
 		return fmt.Errorf("xrayrun: config rejected: %s", lastLine(out))
+	}
+	if cur, err := os.ReadFile(r.Config); err == nil && r.Running() && r.API != "" {
+		if plan, ok := planHot(cur, config); ok {
+			err := r.applyHot(ctx, plan)
+			if err == nil {
+				return os.Rename(tmp.Name(), r.Config)
+			}
+			// a half-applied plan is undone by the restart below
+			if r.Output != nil {
+				fmt.Fprintf(r.Output, "xrayrun: live update failed, restarting: %v\n", err)
+			}
+		}
 	}
 	if err := os.Rename(tmp.Name(), r.Config); err != nil {
 		return err
