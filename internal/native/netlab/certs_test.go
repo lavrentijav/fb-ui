@@ -226,12 +226,14 @@ func TestMastersIssueCerts(t *testing.T) {
 			if err != nil || len(list) != 2 {
 				return false, fmt.Sprint(list, err)
 			}
+			seen := ""
 			for _, c := range list {
 				if c.NotAfter < time.Now().UnixMilli() || !slices.Equal(c.Names, c.IssuedFor) {
 					return false, fmt.Sprint(list)
 				}
-				holders[m] += c.ID + "=" + c.Holder + " "
+				seen += c.ID + "=" + c.Holder + " "
 			}
+			holders[m] = seen
 			return true, ""
 		})
 	}
