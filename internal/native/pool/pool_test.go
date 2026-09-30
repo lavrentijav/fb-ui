@@ -26,7 +26,7 @@ func (d *dns) SetRecords(_ context.Context, _, _ string, values []string, _ int)
 	return nil
 }
 func (d *dns) DeleteRecords(context.Context, string, string) error { return nil }
-func (d *dns) Check(context.Context) error                        { return nil }
+func (d *dns) Check(context.Context) error                         { return nil }
 
 func (d *dns) last() ([]string, int) {
 	d.mu.Lock()
