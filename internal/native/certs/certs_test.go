@@ -141,3 +141,57 @@ func waitAll(t *testing.T, f *fleet, ok func(name string) bool) {
 		time.Sleep(200 * time.Millisecond)
 	}
 }
+
+func TestCovers(t *testing.T) {
+	names := []string{"ru.firewalk.top", "*.ru.firewalk.top"}
+	for host, want := range map[string]bool{
+		"ru.firewalk.top":      true,
+		"RU4.ru.firewalk.top":  true,
+		"a.b.ru.firewalk.top":  false, // a wildcard covers one label only
+		"ru4.firewalk.top":     false,
+		"evilru.firewalk.top":  false,
+		"xru.firewalk.top.com": false,
+	} {
+		if got := certs.Covers(names, host); got != want {
+			t.Errorf("%s: %v, want %v", host, got, want)
+		}
+	}
+}
+
+// The node's own certificate holds only what the group one does not, a
+// repeated save keeps it as it is, and it goes once the group covers all.
+func TestWantForNode(t *testing.T) {
+	f := newFleet(t)
+	ctx := context.Background()
+	m, state := f.masters["ru2"], f.renewers["ru2"].State
+	if err := certs.Want(ctx, m, "ru-group", []string{"ru.firewalk.top", "*.ru.firewalk.top"}); err != nil {
+		t.Fatal(err)
+	}
+	terminated := []string{"ru.firewalk.top", "ru4.firewalk.top", "Panel.ru4.firewalk.top"}
+	names := func() string {
+		rec, ok := state.Get(certs.Table, certs.NodeID("ru4"))
+		if !ok {
+			return "none"
+		}
+		return string(rec["names"])
+	}
+	if err := certs.WantForNode(ctx, m, state, "ru4", terminated, nil, []string{"ru-group"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := names(); got != `["panel.ru4.firewalk.top","ru4.firewalk.top"]` {
+		t.Fatalf("node certificate for %s", got)
+	}
+	before, _ := m.Version(ctx)
+	if err := certs.WantForNode(ctx, m, state, "ru4", terminated, nil, []string{"ru-group"}); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := m.Version(ctx); after != before {
+		t.Fatal("saving the same spec wrote the node certificate again")
+	}
+	if err := certs.WantForNode(ctx, m, state, "ru4", []string{"a.ru.firewalk.top"}, nil, []string{"ru-group"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := names(); got != "none" {
+		t.Fatalf("node certificate kept for %s", got)
+	}
+}

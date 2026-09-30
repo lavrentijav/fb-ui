@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
@@ -46,6 +47,9 @@ type Renewer struct {
 	Settle time.Duration
 	Now    func() time.Time
 	Logf   func(format string, args ...any)
+	// Plan runs before each tick to update what is wanted from replicated
+	// state, fixing what a master decided before another master's ops arrived.
+	Plan func(ctx context.Context) error
 }
 
 // Want declares a certificate for names; any master may call it.
@@ -107,6 +111,11 @@ func (r *Renewer) due() []string {
 func (r *Renewer) Tick(ctx context.Context) ([]string, error) {
 	var issued []string
 	var errs []error
+	if r.Plan != nil {
+		if err := r.Plan(ctx); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	for _, id := range r.due() {
 		ok, err := r.lease(ctx, id)
 		if err != nil {
@@ -231,4 +240,61 @@ func List(state Reader) []Status {
 		out = append(out, s)
 	}
 	return out
+}
+
+// NodeID is the certificate a master keeps for the names only one node serves.
+func NodeID(node string) string { return "node:" + node }
+
+// Covers reports whether a certificate for names is valid for host.
+func Covers(names []string, host string) bool {
+	host = strings.ToLower(host)
+	for _, n := range names {
+		n = strings.ToLower(n)
+		if n == host {
+			return true
+		}
+		if rest, ok := strings.CutPrefix(n, "*."); ok {
+			if _, parent, found := strings.Cut(host, "."); found && parent == rest {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// WantForNode asks for a certificate of the terminated names no other
+// certificate of the node covers, and drops it once there are none.
+func WantForNode(ctx context.Context, m *master.Master, state Reader, node string, terminated []string, spec []nodespec.Cert, ids []string) error {
+	var covering []string
+	for _, c := range spec {
+		covering = append(covering, c.Names...)
+	}
+	for _, id := range ids {
+		rec, _ := state.Get(Table, id)
+		names, _ := field[[]string](rec, "names")
+		covering = append(covering, names...)
+	}
+	var own []string
+	for _, h := range terminated {
+		if !Covers(covering, h) {
+			own = append(own, strings.ToLower(h))
+		}
+	}
+	slices.Sort(own)
+	own = slices.Compact(own)
+
+	id := NodeID(node)
+	rec, exists := state.Get(Table, id)
+	if len(own) == 0 {
+		if !exists {
+			return nil
+		}
+		_, err := m.Delete(ctx, Table, id)
+		return err
+	}
+	// the same names must not look like a change, or every spec save re-issues
+	if cur, _ := field[[]string](rec, "names"); slices.Equal(cur, own) {
+		return nil
+	}
+	return Want(ctx, m, id, own)
 }

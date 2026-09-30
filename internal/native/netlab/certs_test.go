@@ -181,8 +181,8 @@ func certsOn(via string) ([]certs.Status, error) {
 	return out, json.NewDecoder(resp.Body).Decode(&out)
 }
 
-// A wildcard asked for through ru2 is issued once against Pebble, reaches every
-// master and ru4; a name added through de2 re-issues and reaches ru4 too.
+// A group wildcard and ru4's own names are issued against Pebble and reach
+// every master and ru4; a new route re-issues ru4's certificate.
 func TestMastersIssueCerts(t *testing.T) {
 	f := &fleet{lab: newLab(t)}
 	env, pebbleRoots := startACME(t, f.dir)
@@ -191,50 +191,60 @@ func TestMastersIssueCerts(t *testing.T) {
 	waitTCP(t, ipOf("web")+":80")
 	f.startMasters(t, env...)
 
-	f.putCert(t, "ru2", "ru-group", "ru.lab.firewalk.test", "*.ru.lab.firewalk.test")
-	f.putSpec(t, "fi1", nodespec.Spec{
-		Node: "ru4",
-		Reverse: []nodespec.Reverse{
-			{Kind: "http", SNI: "ru.lab.firewalk.test", Target: "http://web.lab.test"},
-			{Kind: "http", SNI: "ru4.lab.firewalk.test", Target: "http://web.lab.test"},
-		},
+	site := func(names ...string) (out []nodespec.Reverse) {
+		for _, n := range names {
+			out = append(out, nodespec.Reverse{Kind: "http", SNI: n, Target: "http://web.lab.test"})
+		}
+		return out
+	}
+	servedAs := func(sni, wantName string) func() (bool, string) {
+		return func() (bool, string) {
+			names, err := served("ru4", sni, pebbleRoots)
+			if err != nil {
+				return false, err.Error()
+			}
+			return slices.Contains(names, wantName), fmt.Sprint(names)
+		}
+	}
+	ru4 := nodespec.Spec{
+		Node:    "ru4",
+		Reverse: site("ru.lab.firewalk.test", "panel.ru.lab.firewalk.test", "ru4.lab.firewalk.test"),
 		CertIDs: []string{"ru-group"},
-	})
+	}
+	// the spec before the group certificate exists: its names first go to
+	// ru4's own certificate, the next plan hands them back to the group
+	f.putSpec(t, "fi1", ru4)
+	f.putCert(t, "ru2", "ru-group", "ru.lab.firewalk.test", "*.ru.lab.firewalk.test")
 	f.startNode(t, "ru4")
 
-	eventually(t, 90*time.Second, "ru4 serves the group certificate from Pebble", func() (bool, string) {
-		names, err := served("ru4", "ru.lab.firewalk.test", pebbleRoots)
-		if err != nil {
-			return false, err.Error()
-		}
-		return slices.Contains(names, "*.ru.lab.firewalk.test"), fmt.Sprint(names)
-	})
+	eventually(t, 90*time.Second, "ru4 serves the group wildcard", servedAs("panel.ru.lab.firewalk.test", "*.ru.lab.firewalk.test"))
+	eventually(t, 90*time.Second, "ru4 serves its own certificate", servedAs("ru4.lab.firewalk.test", "ru4.lab.firewalk.test"))
 	holders := map[string]string{}
 	for m := range masterHosts {
-		eventually(t, 30*time.Second, "master "+m+" holds the certificate", func() (bool, string) {
+		eventually(t, 30*time.Second, "master "+m+" holds both certificates", func() (bool, string) {
 			list, err := certsOn(m)
-			if err != nil || len(list) != 1 {
+			if err != nil || len(list) != 2 {
 				return false, fmt.Sprint(list, err)
 			}
-			holders[m] = list[0].Holder
-			return list[0].NotAfter > time.Now().UnixMilli() && len(list[0].IssuedFor) == 2, fmt.Sprint(list)
+			for _, c := range list {
+				if c.NotAfter < time.Now().UnixMilli() || !slices.Equal(c.Names, c.IssuedFor) {
+					return false, fmt.Sprint(list)
+				}
+				holders[m] += c.ID + "=" + c.Holder + " "
+			}
+			return true, ""
 		})
 	}
 	if holders["fi1"] != holders["ru2"] || holders["ru2"] != holders["de2"] {
 		t.Fatalf("masters disagree on who issued: %v", holders)
 	}
-	t.Logf("issued by %s", holders["fi1"])
+	t.Logf("issued: %s", holders["fi1"])
 
-	// ru4's own name is not in the group certificate yet
-	if _, err := served("ru4", "ru4.lab.firewalk.test", pebbleRoots); err == nil {
-		t.Fatal("ru4.lab.firewalk.test verified before it was asked for")
+	if _, err := served("ru4", "shop.lab.firewalk.test", pebbleRoots); err == nil {
+		t.Fatal("a name no route has verified")
 	}
-	f.putCert(t, "de2", "ru-group", "ru.lab.firewalk.test", "*.ru.lab.firewalk.test", "ru4.lab.firewalk.test")
-	eventually(t, 90*time.Second, "the re-issued certificate reaches ru4", func() (bool, string) {
-		names, err := served("ru4", "ru4.lab.firewalk.test", pebbleRoots)
-		if err != nil {
-			return false, err.Error()
-		}
-		return true, fmt.Sprint(names)
-	})
+	ru4.Reverse = append(ru4.Reverse, site("shop.lab.firewalk.test")...)
+	f.putSpec(t, "de2", ru4)
+	eventually(t, 90*time.Second, "the re-issued node certificate reaches ru4", servedAs("shop.lab.firewalk.test", "shop.lab.firewalk.test"))
+	eventually(t, 10*time.Second, "ru4's name stays in it", servedAs("ru4.lab.firewalk.test", "shop.lab.firewalk.test"))
 }
