@@ -19,6 +19,7 @@ type Bundle struct {
 	API   string `json:"api"`
 	Certs []Cert `json:"certs,omitempty"`
 	Drain Drain  `json:"drain,omitzero"`
+	VNet  *VNet  `json:"vnet,omitempty"`
 }
 
 // Edge is the node's 443 table: SNI routes, then HTTP routes for names the
@@ -69,7 +70,11 @@ func Render(s Spec) (Bundle, error) {
 	for _, ib := range s.Inbounds {
 		clients := make([]any, 0, len(ib.Clients))
 		for _, c := range ib.Clients {
-			clients = append(clients, obj{"id": c.ID, "email": c.Email})
+			client := obj{"id": c.ID, "email": c.Email}
+			if c.Reverse {
+				client["reverse"] = obj{"tag": ReverseTag(c.Email)}
+			}
+			clients = append(clients, client)
 		}
 		inbounds = append(inbounds, obj{
 			"tag": ib.Tag, "listen": "127.0.0.1", "port": ib.Port, "protocol": "vless",
@@ -97,11 +102,11 @@ func Render(s Spec) (Bundle, error) {
 	for _, e := range s.Exits {
 		tag := ProxyTag(e.Country)
 		if len(e.Hops) == 1 {
-			outbounds = append(outbounds, hopOutbound(tag, e.Hops[0]))
+			outbounds = append(outbounds, HopOutbound(tag, e.Hops[0]))
 			continue
 		}
 		for i, h := range e.Hops {
-			outbounds = append(outbounds, hopOutbound(fmt.Sprintf("%s-%d", tag, i+1), h))
+			outbounds = append(outbounds, HopOutbound(fmt.Sprintf("%s-%d", tag, i+1), h))
 		}
 		balanced[tag] = true
 		observed = append(observed, tag+"-")
@@ -138,7 +143,7 @@ func Render(s Spec) (Bundle, error) {
 		"log":       obj{"loglevel": "warning"},
 		"api":       obj{"tag": "api", "services": []string{"StatsService", "HandlerService", "RoutingService"}},
 		"stats":     obj{},
-		"policy":    obj{"levels": obj{"0": obj{"statsUserUplink": true, "statsUserDownlink": true}}},
+		"policy":    obj{"levels": obj{"0": obj{"statsUserUplink": true, "statsUserDownlink": true, "statsUserOnline": true}}},
 		"inbounds":  inbounds,
 		"outbounds": outbounds,
 		"routing":   obj{"domainStrategy": "AsIs", "rules": rules},
@@ -161,11 +166,11 @@ func Render(s Spec) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain}, nil
+	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet}, nil
 }
 
-// hopOutbound is a cascade to one exit node's inbound.
-func hopOutbound(tag string, h Hop) obj {
+// HopOutbound is a cascade to one exit node's inbound.
+func HopOutbound(tag string, h Hop) obj {
 	return obj{
 		"tag": tag, "protocol": "vless",
 		"settings": obj{"vnext": []any{obj{

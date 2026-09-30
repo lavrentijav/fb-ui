@@ -5,6 +5,7 @@ package nodespec
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"regexp"
 	"slices"
 	"strings"
@@ -42,6 +43,10 @@ type Spec struct {
 	// Drain puts the node in maintenance: the edge refuses new tunnels and
 	// lets open ones finish (closing those idle longer than Idle).
 	Drain Drain `json:"drain,omitzero"`
+	// VNetHop is how other nodes reach this node's cascade for network
+	// traffic; VNet is filled by the master.
+	VNetHop *Hop  `json:"vnetHop,omitempty"`
+	VNet    *VNet `json:"vnet,omitempty"`
 }
 
 type Drain struct {
@@ -66,12 +71,37 @@ type Inbound struct {
 	Clients []Client `json:"clients"`
 	// Route is the outbound for its traffic: direct, block or proxy_<country>.
 	Route string `json:"route"`
+	// VNet: the masters add every network user to this inbound.
+	VNet bool `json:"vnet,omitempty"`
 }
 
 type Client struct {
 	Email string `json:"email"`
 	ID    string `json:"id"`
+	// Reverse lets the client take connections from the node (its own tunnel).
+	Reverse bool `json:"reverse,omitempty"`
 }
+
+// ReverseTag is the node's outbound into a user's reverse tunnel.
+func ReverseTag(email string) string { return "u-" + email }
+
+// VNet is the virtual network table a master renders for a node: members,
+// how to reach other nodes, which inbounds carry members and cascades.
+type VNet struct {
+	Members []VMember      `json:"members"`
+	Peers   map[string]Hop `json:"peers,omitempty"`
+	Entry   []string       `json:"entry"`
+	Cascade string         `json:"cascade,omitempty"`
+}
+
+type VMember struct {
+	Email   string `json:"email"`
+	IP      string `json:"ip"`
+	Network string `json:"network"`
+}
+
+// VNetPrefix holds every member address.
+const VNetPrefix = "100.64.0.0/10"
 
 // Exit leaves through another node (a cascade). Several hops (the exit
 // nodes of one group) become a balancer that prefers the fastest alive hop.
@@ -182,6 +212,25 @@ func (s *Spec) Validate() error {
 	for _, r := range s.Reverse {
 		if r.SNI == "" || r.Target == "" || (r.Kind != "tcp" && r.Kind != "http") {
 			return fmt.Errorf("nodespec: bad reverse route %+v", r)
+		}
+	}
+	if v := s.VNet; v != nil {
+		prefix := netip.MustParsePrefix(VNetPrefix)
+		for _, m := range v.Members {
+			ip, err := netip.ParseAddr(m.IP)
+			if m.Email == "" || m.Network == "" || err != nil || !prefix.Contains(ip) {
+				return fmt.Errorf("nodespec: bad network member %+v", m)
+			}
+		}
+		for _, tag := range append(slices.Clone(v.Entry), v.Cascade) {
+			if tag != "" && !tags[tag] {
+				return fmt.Errorf("nodespec: network inbound %q is not an inbound", tag)
+			}
+		}
+		for node, h := range v.Peers {
+			if h.Address == "" || h.Port <= 0 || !validUUID.MatchString(h.ID) || checkTransport(h.Network, h.Path) != nil {
+				return fmt.Errorf("nodespec: bad network peer %s", node)
+			}
 		}
 	}
 	return nil
