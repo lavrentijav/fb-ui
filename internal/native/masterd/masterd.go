@@ -6,10 +6,12 @@ package masterd
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"slices"
 	"strconv"
@@ -23,6 +25,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 )
 
@@ -52,7 +55,13 @@ type Config struct {
 	RenewEvery time.Duration
 	// RenewBefore renews that long before expiry (default 30 days).
 	RenewBefore time.Duration
-	Logf        func(format string, args ...any)
+	// PoolName is the masters' shared name (master.fleet.example), resolving to
+	// every live master; empty keeps this master out of any pool.
+	PoolName  string
+	PublicIP  string         // this master's address in the pool
+	PoolRoots *x509.CertPool // what the pool check trusts (nil: the system's)
+	PoolEvery time.Duration  // default 20 s
+	Logf      func(format string, args ...any)
 }
 
 type Daemon struct {
@@ -78,9 +87,7 @@ func Start(ctx context.Context, cfg Config) (*Daemon, error) {
 	}
 	d := &Daemon{cfg: cfg, bus: b, store: master.NewMem()}
 	d.edge = &edgerun.Runner{Listen: cfg.EdgeListen, Logf: cfg.Logf}
-	if err := d.edge.Apply(nodespec.Edge{SNI: []nodespec.SNIRoute{{
-		Match: cfg.PublicName, Action: "tcp", Target: "127.0.0.1:" + strconv.Itoa(cfg.ClientPort),
-	}}}, nil); err != nil {
+	if err := d.edge.Apply(d.busEdge(), nil); err != nil {
 		b.Close()
 		return nil, err
 	}
@@ -134,7 +141,118 @@ func (d *Daemon) boot(ctx context.Context) {
 		}
 		go r.Run(ctx, every)
 	}
+	if d.cfg.PoolName != "" {
+		go d.runPool(ctx, m, accounts)
+	}
 	m.Run(ctx, 500*time.Millisecond, func(err error) { d.logf("catch-up: %v", err) })
+}
+
+func poolCertID(name string) string { return "pool:" + name }
+
+// runPool puts this master in the pool: its address and the pool's
+// certificate go to the op log, its edge serves the pool name once the
+// certificate is there, and it checks the others for the pool's records.
+func (d *Daemon) runPool(ctx context.Context, m *master.Master, accounts *dnsacct.Accounts) {
+	name := d.cfg.PoolName
+	for ctx.Err() == nil {
+		err := errors.Join(pool.Announce(ctx, m, d.store.State, d.cfg.PublicIP), d.wantPoolCert(ctx, m))
+		if err == nil {
+			break
+		}
+		d.logf("pool: %v", err)
+		time.Sleep(time.Second)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		d.logf("pool: %v", err)
+		return
+	}
+	srv := &http.Server{Handler: d.Public(), ReadHeaderTimeout: 10 * time.Second}
+	go func() { _ = srv.Serve(ln) }()
+	go func() { <-ctx.Done(); _ = srv.Close() }()
+	go d.serveEdge(ctx, "http://"+ln.Addr().String())
+
+	dnsFor := accounts.For
+	if d.cfg.ACME != nil && d.cfg.ACME.DNSFor != nil {
+		dnsFor = d.cfg.ACME.DNSFor
+	}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{ServerName: name, RootCAs: d.cfg.PoolRoots, MinVersion: tls.VersionTLS12},
+	}}
+	p := &pool.Pool{
+		Master: m, State: d.store.State, Name: name, DNS: dnsFor, Logf: d.cfg.Logf,
+		Check: func(ctx context.Context, ip string) error {
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://"+net.JoinHostPort(ip, "443")+"/healthz", nil)
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("healthz: %s", resp.Status)
+			}
+			return nil
+		},
+	}
+	every := d.cfg.PoolEvery
+	if every <= 0 {
+		every = 20 * time.Second
+	}
+	p.Run(ctx, every)
+}
+
+func (d *Daemon) wantPoolCert(ctx context.Context, m *master.Master) error {
+	id := poolCertID(d.cfg.PoolName)
+	if rec, ok := d.store.State.Get(certs.Table, id); ok {
+		var names []string
+		if json.Unmarshal(rec["names"], &names) == nil && slices.Equal(names, []string{d.cfg.PoolName}) {
+			return nil
+		}
+	}
+	return certs.Want(ctx, m, id, []string{d.cfg.PoolName})
+}
+
+// serveEdge keeps the edge's routes: the bus by SNI always, the pool name
+// to the public handler once its certificate is issued or renewed.
+func (d *Daemon) serveEdge(ctx context.Context, public string) {
+	var served string
+	for ctx.Err() == nil {
+		got := certs.Resolve(d.store.State, []string{poolCertID(d.cfg.PoolName)})
+		if len(got) == 1 && got[0].CertPEM != served {
+			e := d.busEdge()
+			e.SNI = append(e.SNI, nodespec.SNIRoute{Match: d.cfg.PoolName, Action: "handoff", Target: nodespec.Handoff})
+			e.HTTP = []nodespec.HTTPRoute{{Host: d.cfg.PoolName, PathPrefix: "/", Target: public}}
+			if err := d.edge.Apply(e, got); err != nil {
+				d.logf("pool edge: %v", err)
+			} else {
+				served = got[0].CertPEM
+			}
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(3 * time.Second):
+		}
+	}
+}
+
+func (d *Daemon) busEdge() nodespec.Edge {
+	return nodespec.Edge{SNI: []nodespec.SNIRoute{{
+		Match: d.cfg.PublicName, Action: "tcp", Target: "127.0.0.1:" + strconv.Itoa(d.cfg.ClientPort),
+	}}}
+}
+
+// Public is what clients reach on the pool name; subscriptions and the panel
+// come here next.
+func (d *Daemon) Public() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		if d.m.Load() == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		fmt.Fprintln(w, "ok", d.cfg.Name)
+	})
+	return mux
 }
 
 func (d *Daemon) wantNodeCert(ctx context.Context, m *master.Master, spec nodespec.Spec, b nodespec.Bundle) error {
