@@ -121,7 +121,11 @@ func Render(s Spec) (Bundle, error) {
 		case "tcp":
 			edge.SNI = append(edge.SNI, SNIRoute{Match: r.SNI, Action: "tcp", Target: r.Target, ProxyProtocol: r.ProxyProtocol})
 		case "http":
-			edge.HTTP = append(edge.HTTP, HTTPRoute{Host: r.SNI, PathPrefix: r.Path, Target: r.Target})
+			path := r.Path
+			if path == "" {
+				path = "/" // the whole site
+			}
+			edge.HTTP = append(edge.HTTP, HTTPRoute{Host: r.SNI, PathPrefix: path, Target: r.Target})
 			terminated[r.SNI] = true
 		}
 	}

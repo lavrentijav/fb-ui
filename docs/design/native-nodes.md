@@ -18,6 +18,7 @@ an inbound that is not listening yet.
 | `Reverse` `http` | edge terminates TLS for the name and proxies Host+path to a local/remote URL |
 | `Reverse` `tcp` | edge splices TLS untouched by SNI (mail, other TLS services), optional PROXY v1/v2 |
 | `Certs` | certificates the edge serves, picked by SNI (exact or `*.zone`) |
+| `CertIDs` | certificates the masters issue and renew (ACME); resolved into `Certs` at render. A name whose certificate is not issued yet is left out of the edge (refused like an unknown SNI), not the whole bundle |
 | `DirectAllow` | private CIDRs `direct` may reach (Xray blocks private targets by default) |
 | `Drain` | maintenance: the edge refuses new tunnels, open ones finish (idle ones closed after `Idle`); the node reports the tunnels still open, masters keep the newest state per node |
 | always | `direct`, `block`, stats API on 127.0.0.1:10085, per-user traffic counters |
@@ -80,6 +81,12 @@ Found by the lab, now handled:
    a download running when maintenance starts finishes, new tunnels are
    refused, lifting it lets them in). The agent no longer restarts Xray for
    a bundle whose Xray config did not change — that would cut every tunnel.
-4. Certificates from the masters' ACME (group wildcard + per-node, see the
-   node-groups design), renewal pushed as a new bundle.
+4. ~~Certificates from the masters' ACME~~ — done (`TestMastersIssueCerts`,
+   Pebble + challtestsrv on the lab's `acme` host): a group wildcard asked
+   for through ru2 is issued once (lease in the op log, fi1 won), every
+   master holds it, ru4 serves it; a name added through de2 re-issues and
+   reaches ru4 with its next bundle. The ACME account key is shared through
+   the op log. Still to do: DNS accounts stored in the masters' state (the
+   lab passes `DNSFor` in code) and per-node certificates asked for
+   automatically from a node's names.
 5. Subscriptions served by masters, pointing at group names.

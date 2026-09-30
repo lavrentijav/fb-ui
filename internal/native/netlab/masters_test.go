@@ -51,7 +51,13 @@ func runMaster() int {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	acme, err := labACME()
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
 	d, err := masterd.Start(ctx, masterd.Config{
+		ACME: acme, RenewEvery: 2 * time.Second,
 		Name: name, Masters: masters, StoreDir: filepath.Join(dir, "js"),
 		PublicName: publicName(name), EdgeListen: ":443", ClientPort: 4222,
 		ClientTLS: mtls, GatewayTLS: mtls, GatewayHost: "0.0.0.0", GatewayPort: 7222,
@@ -73,6 +79,18 @@ type fleet struct {
 	ca    *fleetca.CA
 	caPEM string
 	procs map[string]interface{ Kill() error }
+}
+
+// newFleetCA makes the CA of the fleet's mutual TLS (masters and nodes).
+func (f *fleet) newFleetCA(t *testing.T) {
+	t.Helper()
+	var err error
+	if f.ca, err = fleetca.New("netlab fleet"); err != nil {
+		t.Fatal(err)
+	}
+	caPEM, _, _ := f.ca.PEM()
+	f.caPEM = filepath.Join(f.dir, "fleet-ca.pem")
+	os.WriteFile(f.caPEM, caPEM, 0o644)
 }
 
 func pemPair(t *testing.T, c tls.Certificate) (string, string) {
@@ -97,13 +115,13 @@ func (f *fleet) issue(t *testing.T, dir, cn string, hosts ...string) {
 	os.WriteFile(filepath.Join(dir, "key.pem"), []byte(key), 0o600)
 }
 
-func (f *fleet) startMasters(t *testing.T) {
+func (f *fleet) startMasters(t *testing.T, env ...string) {
 	t.Helper()
 	f.procs = map[string]interface{ Kill() error }{}
 	for m, h := range masterHosts {
 		dir := filepath.Join(f.dir, "master-"+m)
 		f.issue(t, dir, m, publicName(m), ipOf(h))
-		cmd := spawn(t, h, "master", "NETLAB_MASTER="+m, "NETLAB_DIR="+dir, "NETLAB_FLEET_CA="+f.caPEM)
+		cmd := spawn(t, h, "master", append([]string{"NETLAB_MASTER=" + m, "NETLAB_DIR=" + dir, "NETLAB_FLEET_CA=" + f.caPEM}, env...)...)
 		f.procs[m] = cmd.Process
 	}
 	deadline := time.Now().Add(90 * time.Second)
@@ -188,13 +206,7 @@ func exitsVia(socks int) func() (bool, string) {
 // with two masters killed, a change on the last one still reaches ru4.
 func TestMastersDriveNodes(t *testing.T) {
 	f := &fleet{lab: newLab(t)}
-	var err error
-	if f.ca, err = fleetca.New("netlab fleet"); err != nil {
-		t.Fatal(err)
-	}
-	caPEM, _, _ := f.ca.PEM()
-	f.caPEM = filepath.Join(f.dir, "fleet-ca.pem")
-	os.WriteFile(f.caPEM, caPEM, 0o644)
+	f.newFleetCA(t)
 	spawn(t, "web", "web")
 	waitTCP(t, ipOf("web")+":80")
 	f.startMasters(t)
