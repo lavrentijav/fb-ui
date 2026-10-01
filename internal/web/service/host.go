@@ -222,6 +222,33 @@ func (s *HostService) GetHostGroup(groupId string) (*entity.HostGroup, error) {
 	return grouped[0], nil
 }
 
+// rebuildCascadesDialing regenerates the cascades whose target is one of
+// inboundIds: their outbound is built from the target's first enabled host.
+func rebuildCascadesDialing(inboundIds []int) error {
+	if len(inboundIds) == 0 {
+		return nil
+	}
+	var links []*model.CascadeLink
+	if err := database.GetDB().Where("enable = ? AND target_inbound_id IN ?", true, inboundIds).Find(&links).Error; err != nil {
+		return err
+	}
+	network := &NetworkService{}
+	for _, link := range links {
+		if link.SourcePanelId == SelfPanelId {
+			(&XrayService{}).SetToNeedRestart()
+		} else if err := network.markSourceDirty(link.SourcePanelId); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func hostGroupInbounds(groupIds ...string) ([]int, error) {
+	var ids []int
+	err := database.GetDB().Model(&model.Host{}).Where("group_id IN ?", groupIds).Distinct().Pluck("inbound_id", &ids).Error
+	return ids, err
+}
+
 func (s *HostService) AddHostGroup(req *entity.HostGroup) ([]*model.Host, error) {
 	groupId := req.GroupId
 	if groupId == "" {
@@ -241,13 +268,17 @@ func (s *HostService) AddHostGroup(req *entity.HostGroup) ([]*model.Host, error)
 	if err != nil {
 		return nil, err
 	}
-	return created, nil
+	return created, rebuildCascadesDialing(req.InboundIds)
 }
 
 func (s *HostService) UpdateHostGroup(groupId string, req *entity.HostGroup) ([]*model.Host, error) {
 	created := buildHostRows(groupId, req)
+	before, err := hostGroupInbounds(groupId)
+	if err != nil {
+		return nil, err
+	}
 
-	err := database.GetDB().Transaction(func(tx *gorm.DB) error {
+	err = database.GetDB().Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if err := tx.Model(&model.Host{}).Where("group_id = ?", groupId).Count(&count).Error; err != nil {
 			return err
@@ -269,36 +300,50 @@ func (s *HostService) UpdateHostGroup(groupId string, req *entity.HostGroup) ([]
 	if err != nil {
 		return nil, err
 	}
-	return created, nil
+	return created, rebuildCascadesDialing(append(before, req.InboundIds...))
 }
 
 func (s *HostService) DeleteHostGroup(groupId string) error {
-	return database.GetDB().Where("group_id = ?", groupId).Delete(&model.Host{}).Error
+	return s.DeleteHostsGroup([]string{groupId})
 }
 
 func (s *HostService) SetHostGroupEnable(groupId string, enable bool) error {
-	return database.GetDB().Model(&model.Host{}).Where("group_id = ?", groupId).Update("is_disabled", !enable).Error
+	return s.SetHostsGroupEnable([]string{groupId}, enable)
 }
 
 func (s *HostService) SetHostsGroupEnable(groupIds []string, enable bool) error {
 	if len(groupIds) == 0 {
 		return nil
 	}
-	return database.GetDB().Model(&model.Host{}).Where("group_id IN ?", groupIds).Update("is_disabled", !enable).Error
+	if err := database.GetDB().Model(&model.Host{}).Where("group_id IN ?", groupIds).Update("is_disabled", !enable).Error; err != nil {
+		return err
+	}
+	inbounds, err := hostGroupInbounds(groupIds...)
+	if err != nil {
+		return err
+	}
+	return rebuildCascadesDialing(inbounds)
 }
 
 func (s *HostService) DeleteHostsGroup(groupIds []string) error {
 	if len(groupIds) == 0 {
 		return nil
 	}
-	return database.GetDB().Where("group_id IN ?", groupIds).Delete(&model.Host{}).Error
+	inbounds, err := hostGroupInbounds(groupIds...)
+	if err != nil {
+		return err
+	}
+	if err := database.GetDB().Where("group_id IN ?", groupIds).Delete(&model.Host{}).Error; err != nil {
+		return err
+	}
+	return rebuildCascadesDialing(inbounds)
 }
 
 func (s *HostService) ReorderHostGroups(groupIds []string) error {
 	if len(groupIds) == 0 {
 		return nil
 	}
-	return database.GetDB().Transaction(func(tx *gorm.DB) error {
+	err := database.GetDB().Transaction(func(tx *gorm.DB) error {
 		for i, groupId := range groupIds {
 			if err := tx.Model(&model.Host{}).Where("group_id = ?", groupId).Update("sort_order", i).Error; err != nil {
 				return err
@@ -306,6 +351,14 @@ func (s *HostService) ReorderHostGroups(groupIds []string) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	inbounds, err := hostGroupInbounds(groupIds...)
+	if err != nil {
+		return err
+	}
+	return rebuildCascadesDialing(inbounds)
 }
 
 func (s *HostService) GetAllTags() ([]string, error) {
