@@ -1,231 +1,110 @@
-[English](/README.md) | [فارسی](/README.fa_IR.md) | [العربية](/README.ar_EG.md) | [中文](/README.zh_CN.md) | [Español](/README.es_ES.md) | [Русский](/README.ru_RU.md) | [Türkçe](/README.tr_TR.md)
+[English](/README.md) | [Русский](/README.ru_RU.md)
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./media/3x-ui-dark.png">
-    <img alt="3x-ui" src="./media/3x-ui-light.png">
-  </picture>
-</p>
+# fb-ui
 
-<p align="center">
-  <a href="https://github.com/MHSanaei/3x-ui/releases"><img src="https://img.shields.io/github/v/release/mhsanaei/3x-ui" alt="Release"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/actions"><img src="https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg" alt="Build"></a>
-  <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mhsanaei/3x-ui.svg" alt="GO Version"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/mhsanaei/3x-ui/total.svg" alt="Downloads"></a>
-  <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true" alt="License"></a>
-  <a href="https://pkg.go.dev/github.com/mhsanaei/3x-ui/v3"><img src="https://pkg.go.dev/badge/github.com/mhsanaei/3x-ui/v3.svg" alt="Go Reference"></a>
-  <a href="https://docs.sanaei.dev"><img src="https://img.shields.io/badge/docs-docs.sanaei.dev-22d3ee" alt="Documentation"></a>
-</p>
+**fb-ui** — панель управления парком серверов [Xray-core](https://github.com/XTLS/Xray-core),
+сделанная, чтобы вести много серверов так, как это делает небольшой провайдер:
+ноды, каскады между ними, сертификаты и DNS в одном месте, а изменения
+настроек применяются без разрыва соединений.
 
-**3X-UI** — продвинутая веб-панель управления с открытым исходным кодом для управления серверами [Xray-core](https://github.com/XTLS/Xray-core). Она предоставляет аккуратный многоязычный интерфейс для развёртывания, настройки и мониторинга широкого спектра протоколов прокси и VPN — от одного VPS до развёртываний с несколькими узлами.
-
-Созданный как улучшенный форк оригинального проекта X-UI, 3X-UI добавляет более широкую поддержку протоколов, повышенную стабильность, учёт трафика по каждому клиенту и множество функций для удобства использования.
+Проект начался как форк [3x-ui](https://github.com/MHSanaei/3x-ui) и сохраняет
+всё, что умеет 3x-ui — инбаунды, клиентов, учёт трафика, подписки,
+Telegram-бота, API, — добавляя сверху слой управления парком.
 
 > [!IMPORTANT]
-> Этот проект предназначен только для личного использования. Пожалуйста, не используйте его в незаконных целях или в производственной среде.
+> fb-ui активно разрабатывается. Используйте его на своих серверах и в рамках
+> законов, которые к вам применимы.
 
-## Возможности
+## Что fb-ui добавляет к 3x-ui
 
-- **Многопротокольные входящие подключения** — VLESS, VMess, Trojan, Shadowsocks, WireGuard, AmneziaWG, TUIC v5, Hysteria2, MTProto, HTTP, SOCKS (Mixed), Dokodemo-door / Tunnel и TUN.
-- **Современные транспорты и безопасность** — TCP (Raw), mKCP, WebSocket, gRPC, HTTPUpgrade и XHTTP, защищённые с помощью TLS, XTLS и REALITY.
-- **Встроенный AmneziaWG** — устойчивый к DPI WireGuard работает прямо в панели на сетевом стеке в пространстве пользователя: без модуля ядра, DKMS и дополнительных пакетов.
-- **Встроенный TUIC v5** — высокопроизводительный прокси на базе QUIC с нативным учётом трафика через UDP-релей, 0-RTT рукопожатиями и контролем перегрузок BBR.
-- **MTProto-прокси** — секреты FakeTLS, ad-tag и квоты для каждого клиента применяются на лету, не разрывая существующие соединения.
-- **Fallback** — обслуживание нескольких протоколов на одном порту (например, VLESS и Trojan на 443) с помощью функции fallback в Xray.
-- **Управление по каждому клиенту** — квоты трафика, даты истечения, лимиты IP с исключениями для доверенных адресов, лимиты устройств (HWID), запланированные циклы продления, статус «онлайн» в реальном времени, а также ссылки для общего доступа, QR-коды и подписки в один клик.
-- **Статистика трафика** — по каждому входящему, по каждому клиенту и по каждому исходящему, с возможностью сброса.
-- **Поддержка нескольких узлов** — управление и масштабирование на несколько серверов из одной панели, включая клонирование входящих на другие узлы.
-- **Исходящие подключения и маршрутизация** — WARP, NordVPN, PIA, пользовательские правила маршрутизации, балансировщики нагрузки с переключением между балансировщиками и цепочки исходящих прокси. Встроенные категории geosite и geoip можно просматривать прямо в редакторе правил.
-- **Встроенный сервер подписок** — вывод в форматах raw, JSON и Clash, выбираемый автоматически по User-Agent клиента, а также [пользовательские шаблоны страниц](docs/custom-subscription-templates.md).
-- **Telegram- и Discord-боты** для удалённого мониторинга и управления.
-- **RESTful API** с токенами ограниченной области действия и необязательным сроком действия, а также справочником API внутри панели.
-- **Устанавливаемая панель (PWA)** — закрепите 3X-UI на рабочем столе или главном экране телефона.
-- **Гибкое хранилище** — SQLite (по умолчанию) или PostgreSQL.
-- **13 языков интерфейса** с тёмной и светлой темами.
-- **Интеграция с Fail2ban** для применения лимитов IP по каждому клиенту.
+**Парк и ноды**
+- Мастер-панель управляет своими нодами; любой сервер становится нодой
+  **по SSH прямо из панели** (установка, сертификат и регистрация в одном мастере).
+- **Режим обслуживания**: нода перестаёт принимать новые подключения, даёт
+  открытым завершиться и сообщает, когда освободилась.
+- Ноду можно **передать другому мастеру**, не трогая её саму.
+- **Шаблоны**: набор инбаундов сохраняется один раз и раскатывается на другие серверы.
 
-## Скриншоты
+**Каскады и маршрутизация**
+- **Каскады** вход → выход между нодами в **редакторе-графе**; панель сама
+  собирает аутбаунд, которым ходит каждое звено.
+- **Цепочки фильтров** (списки правил, в том числе по URL опубликованного
+  списка) превращаются в маршрутизацию Xray и доставляются с мастера на ноды.
+- Подписка выдаёт вход каскада **один раз**, а не по разу на каждую ноду.
 
-<details>
-<summary>Нажмите, чтобы развернуть</summary>
+**Один публичный порт**
+- **Edge** на 443 делит порт между панелью, инбаундами и обычными сайтами
+  (по SNI и пути) и передаёт в Xray настоящий адрес клиента.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/01-overview-dark.png">
-  <img alt="Overview" src="./media/01-overview-light.png">
-</picture>
+**Сертификаты и DNS**
+- **DNS-аккаунты** (Cloudflare, Technitium) настраиваются один раз, зоны и
+  поддомены находятся сами.
+- Сертификаты **ACME** (DNS-01 и HTTP-01) выпускаются, продлеваются и
+  отслеживаются панелью; сертификаты нод заказывает мастер и раздаёт на ноды;
+  один сертификат может обслуживать несколько нод.
+- **Переезд доменов**: план и применение переезда всего парка на новый базовый
+  домен (или копии в него).
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/02-add-inbound-dark.png">
-  <img alt="Inbounds" src="./media/02-add-inbound-light.png">
-</picture>
+**Несколько панелей вместе**
+- Соседние панели с проверкой здоровья, **подписанные подписки** с запасными
+  панелями и общая таблица, какая панель ведущая.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/03-add-client-dark.png">
-  <img alt="Add client" src="./media/03-add-client-light.png">
-</picture>
+## Ветки
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/05-add-nodes-dark.png">
-  <img alt="Configs" src="./media/05-add-nodes-light.png">
-</picture>
+| Ветка | Что в ней |
+| --- | --- |
+| `dev` | Панель в том виде, в каком она работает сейчас: 3x-ui плюс всё перечисленное. |
+| `native` | Следующее поколение, в разработке (ниже). |
 
-</details>
+### `native`: несколько мастеров и лёгкий агент на нодах
 
-## Быстрый старт
+В ветке `native` внутри того же репозитория постепенно растёт новое ядро:
 
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-```
+- **Несколько мастеров без единой точки отказа.** Мастера ведут журнал
+  операций, который реплицируется через встроенный кластер NATS (зеркала
+  JetStream); у каждого своя копия в PostgreSQL, записи сливаются по принципу
+  «побеждает последняя». При разрыве сети обе стороны продолжают работать.
+- **`fbnode`** — маленький статический агент (≈7,5 МБ, ≈11 МБ ОЗУ) вместо
+  полной панели на каждой ноде. Сам выбирает ближайший мастер по задержке,
+  скорости и нагрузке, забирает нужное состояние и отправляет отчёты.
+- **Изменения Xray на лету** через API Xray: пользователи, инбаунды и
+  маршрутизация меняются без перезапуска, открытые соединения не рвутся.
+- **Сертификаты и DNS силами мастеров**: ACME выпускает и продлевает тот
+  мастер, у которого аренда; `master.<zone>` — DNS-пул живых мастеров.
+- **Сетевая лаборатория**: тесты гоняют настоящие мастера, ноды, Xray и ACME-сервер
+  в виртуальной сети с правдоподобными адресами.
+- **В работе**: виртуальные сети пользователей внутри туннеля (участники видят
+  устройства друг друга по внутренним адресам) и публикация своих портов по
+  домену. Дизайн: [`docs/design/native-vnet.md`](https://github.com/lavrentijav/fb-ui/blob/native/docs/design/native-vnet.md).
 
-Чтобы установить конкретную версию, добавьте её тег (например, `v3.7.0`):
+Проектные документы — в `docs/design/` ветки `native`.
 
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v3.7.0
-```
+## Сборка
 
-Чтобы установить скользящую **dev**-сборку (новейший предварительный релиз по каждому коммиту из ветки `main`, а не стабильный релиз), передайте `dev-latest`:
-
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) dev-latest
-```
-
-Во время установки генерируются случайные имя пользователя, пароль и путь доступа. После установки выполните `x-ui`, чтобы открыть меню управления, где можно запускать/останавливать сервис, просматривать или сбрасывать учётные данные для входа, управлять SSL-сертификатами и многое другое.
-
-Каждый файл релиза публикуется вместе с контрольной суммой `.sha256`. И `install.sh`, и программа обновления сверяют архив с этой суммой и прерывают работу при несовпадении.
-
-Полную документацию — установка, настройка, эксплуатация и полный справочник API — смотрите на **[docs.sanaei.dev](https://docs.sanaei.dev/ru)**.
-
-### Автоматическая установка
-
-Установщик также работает в **неинтерактивном** режиме для cloud-init.
-Задайте `XUI_NONINTERACTIVE=1` (или передайте по конвейеру без TTY), и установка пройдёт от начала до конца
-без единого запроса: будут сгенерированы случайные учётные данные и записаны в
-`/etc/x-ui/install-result.env`. Смотрите [`deploy/`](deploy/) для:
-
-- [Cloud-init user-data](deploy/cloud-init/) — автоматическая установка в любом облаке (Hetzner/AWS/DO/Vultr/GCP/Azure/Oracle)
-- [Заметки по Hetzner Cloud](deploy/marketplace/hetzner/) — развёртывание на Hetzner на базе cloud-init
-
-## Поддерживаемые платформы
-
-**Операционные системы:** Ubuntu, Debian, Armbian, Fedora, CentOS, RHEL, AlmaLinux, Rocky Linux, Oracle Linux, Amazon Linux, Virtuozzo, Arch, Manjaro, Parch, openSUSE (Tumbleweed / Leap), Alpine и Windows.
-
-**Архитектуры:** `amd64` · `386` · `arm64` (aarch64) · `armv7` · `armv6` · `armv5` · `s390x`.
-
-## Варианты базы данных
-
-3X-UI поддерживает два бэкенда, выбираемых при установке:
-
-- **SQLite** (по умолчанию) — единый файл по пути `/etc/x-ui/x-ui.db`. Без настройки, идеально для небольших и средних развёртываний.
-- **PostgreSQL** — рекомендуется при большом числе клиентов или конфигурациях с несколькими узлами. Установщик может установить PostgreSQL локально за вас или принять DSN к существующему серверу.
-
-Во время выполнения бэкенд выбирается через переменные окружения (установщик записывает их за вас в `/etc/default/x-ui`):
-
-```
-XUI_DB_TYPE=postgres
-XUI_DB_DSN=postgres://xui:password@127.0.0.1:5432/xui?sslmode=disable
-```
-
-### Перенос существующей установки SQLite в PostgreSQL
+Готовых релизов fb-ui пока нет; скрипт установки по-прежнему ставит
+оригинальный 3x-ui. Собирайте из исходников:
 
 ```bash
-x-ui migrate-db --dsn "postgres://xui:password@127.0.0.1:5432/xui?sslmode=disable"
-# затем задайте XUI_DB_TYPE и XUI_DB_DSN в /etc/default/x-ui и перезапустите:
-systemctl restart x-ui
+make build                          # фронтенд (Node.js) + бинарник Go
+deploy/build/release-static.sh      # статическая сборка на musl, как на серверах
 ```
 
-Исходный файл SQLite остаётся нетронутым; удалите его вручную после проверки нового бэкенда.
+Нужны Go 1.27, Node.js для фронтенда и компилятор C (драйвер SQLite).
+Тесты и полная локальная проверка (`make verify`) — в [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Docker
+Не используйте встроенное «обновить панель» на сервере с fb-ui: оно поставит
+поверх оригинальный 3x-ui.
 
-Команда по умолчанию `docker compose up -d` продолжает использовать SQLite. Чтобы запустить со встроенным сервисом PostgreSQL, раскомментируйте две строки переменных окружения `XUI_DB_*` в `docker-compose.yml` и запустите с профилем:
+## Всё из 3x-ui
 
-```bash
-docker compose --profile postgres up -d
-```
+Протоколы (VLESS, VMess, Trojan, Shadowsocks, WireGuard, Hysteria2, TUIC,
+MTProto, AmneziaWG, HTTP, SOCKS, Tunnel, TUN), транспорты (TCP, mKCP, WebSocket,
+gRPC, HTTPUpgrade, XHTTP) с TLS и REALITY, квоты, сроки и лимиты IP на клиента,
+статистика трафика, подписки (raw, JSON, Clash), Telegram-бот, REST API со
+Swagger, SQLite или PostgreSQL, 13 языков интерфейса. Документация оригинала
+актуальна: [вики 3x-ui](https://github.com/MHSanaei/3x-ui/wiki).
 
-Образ включает Fail2ban (включён по умолчанию) для применения **лимитов IP** по каждому клиенту. Fail2ban блокирует нарушителей с помощью `iptables`, что требует возможности `NET_ADMIN`. `docker-compose.yml` уже предоставляет её через `cap_add`; если вы вместо этого запускаете контейнер через `docker run`, добавьте возможности самостоятельно, иначе блокировки будут регистрироваться, но никогда не применяться:
+## Лицензия и благодарности
 
-```bash
-docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
-```
-
-## Переменные окружения
-
-| Переменная | Описание | По умолчанию |
-| --- | --- | --- |
-| `XUI_DB_TYPE` | Бэкенд базы данных: `sqlite` или `postgres` | `sqlite` |
-| `XUI_DB_DSN` | Строка подключения PostgreSQL (когда `XUI_DB_TYPE=postgres`) | — |
-| `XUI_DB_FOLDER` | Каталог для файла базы данных SQLite | `/etc/x-ui` |
-| `XUI_DB_MAX_OPEN_CONNS` | Максимум открытых соединений (пул PostgreSQL) | — |
-| `XUI_DB_MAX_IDLE_CONNS` | Максимум простаивающих соединений (пул PostgreSQL) | — |
-| `XUI_INIT_WEB_BASE_PATH` | Начальный URI-путь для веб-панели | `/` |
-| `XUI_ENABLE_FAIL2BAN` | Включить применение лимитов IP на основе Fail2ban | `true` |
-| `XUI_LOG_LEVEL` | Уровень логирования (`debug`, `info`, `warning`, `error`) | `info` |
-| `XUI_DEBUG` | Включить режим отладки | `false` |
-| `XUI_TUNNEL_HEALTH_MONITOR` | Включить монитор состояния туннеля (опрашивает URL и перезапускает xray после многократных сбоев; перезапуск отключает всех клиентов) | `false` |
-| `XUI_TUNNEL_HEALTH_PROXY` | Прокси, через который отправляется проба; укажите локальный входящий xray, чтобы проба проверяла туннель (например, `socks5://127.0.0.1:1080`). Пустое значение означает, что проба проверяет только связь с хостом | — |
-| `XUI_TUNNEL_HEALTH_URL` | URL, опрашиваемый для проверки состояния туннеля | `https://www.cloudflare.com/cdn-cgi/trace` |
-| `XUI_TUNNEL_HEALTH_INTERVAL` | Интервал между пробами | `30s` |
-| `XUI_TUNNEL_HEALTH_TIMEOUT` | Таймаут на одну пробу | `10s` |
-| `XUI_TUNNEL_HEALTH_FAILURES` | Число последовательных сбоев до запуска перезапуска | `3` |
-| `XUI_TUNNEL_HEALTH_COOLDOWN` | Минимальная задержка между последовательными перезапусками | `5m` |
-| `NODE_TOKEN_ENCRYPTION` | Шифрование API-токенов узлов при хранении: `off`, `migration` или `required` (без префикса `XUI_`) | `off` |
-| `XUI_NODE_TOKEN_KEY_FILE` | JSON-связка ключей (режим `0600`) с идентификатором активного ключа и 32-байтными ключами в base64 | `/etc/x-ui/node_token_key.json` |
-| `XUI_NODE_TOKEN_KEY` | Один 32-байтный ключ в base64; используется, только если файл ключей не удалось загрузить | — |
-
-Полный список — в [справочнике переменных окружения](https://docs.sanaei.dev/ru/docs/reference/env-vars).
-
-## Поддерживаемые языки
-
-Интерфейс панели доступен на 13 языках:
-
-English · فارسی · العربية · 中文（简体） · 中文（繁體） · Español · Русский · Українська · Türkçe · Tiếng Việt · 日本語 · Bahasa Indonesia · Português (Brasil)
-
-## Участие в разработке
-
-Вклад приветствуется. Пожалуйста, прочитайте [руководство по участию](/CONTRIBUTING.md), прежде чем открывать issue или pull request.
-
-## Особая благодарность
-
-- [alireza0](https://github.com/alireza0/)
-
-## Благодарности
-
-- [Iran v2ray rules](https://github.com/chocolate4u/Iran-v2ray-rules) (Лицензия: **GPL-3.0**): _Улучшенные правила маршрутизации для v2ray/xray и v2ray/xray-clients со встроенными иранскими доменами и фокусом на безопасность и блокировку рекламы._
-- [Russia v2ray rules](https://github.com/runetfreedom/russia-v2ray-rules-dat) (Лицензия: **GPL-3.0**): _Этот репозиторий содержит автоматически обновляемые правила маршрутизации V2Ray на основе данных о заблокированных доменах и адресах в России._
-
-## Инструменты сообщества
-
-Инструменты и интеграции, созданные сообществом вокруг 3x-ui.
-
-- [terraform-provider-3x-ui](https://github.com/batonogov/terraform-provider-threexui) (Лицензия: **MIT**): _Управление входящими, клиентами, настройками панели и конфигурацией Xray через код с помощью Terraform / OpenTofu._
-- [3X-UI Manager](https://github.com/yukh975/3X-UI-Manager) (Лицензия: **MIT**): _Нативный Android-клиент для 3x-ui — дашборд, входящие, клиенты с QR, узлы и управление несколькими панелями. Доступен в F-Droid._
-
-## Поддержка проекта
-
-**Если этот проект полезен для вас, вы можете поставить ему**:star2:
-
-<a href="https://www.buymeacoffee.com/MHSanaei" target="_blank">
-<img src="./media/default-yellow.png" alt="Buy Me A Coffee" style="height: 70px !important;width: 277px !important;" >
-</a>
-
-</br>
-<a href="https://nowpayments.io/donation/hsanaei" target="_blank" rel="noreferrer noopener">
-   <img src="./media/donation-button-black.svg" alt="Crypto donation button by NOWPayments">
-</a>
-
-## История звёзд
-
-<a href="https://www.star-history.com/?repos=mhsanaei%2F3x-ui&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mhsanaei/3x-ui&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mhsanaei/3x-ui&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mhsanaei/3x-ui&type=date&legend=top-left" />
- </picture>
-</a>
-
-<p align="center">
- <a href="https://www.star-history.com/mhsanaei/3x-ui">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=rank&theme=dark" /><source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=rank" /><img alt="Star History Rank" src="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=rank" /></picture> <picture><source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=trending&theme=dark" /><source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=trending" /><img alt="GitHub Trending Repository of the Day" src="https://api.star-history.com/badge?repo=MHSanaei/3x-ui&type=trending" /></picture>
- </a>
-</p>
+GPL-3.0, как и у 3x-ui. Основано на [3x-ui](https://github.com/MHSanaei/3x-ui)
+(MHSanaei и участники) и [Xray-core](https://github.com/XTLS/Xray-core).
