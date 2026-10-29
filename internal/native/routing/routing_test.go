@@ -85,3 +85,16 @@ func TestResolveASN(t *testing.T) {
 		t.Fatal("one failed lookup must fail the whole resolve so the old prefixes stay")
 	}
 }
+
+func TestParseListReadsPublishedShapes(t *testing.T) {
+	body := []byte("# comment\n0.0.0.0 ads.example.com\n127.0.0.1 localhost\n||tracker.example.net^\n! adblock note\nPlain.Example.org.\nexample.com # trailing\nbad entry here\nregexp:\\.ru$\n")
+	got, skipped := routing.ParseList(routing.KindDomain, body)
+	want := []string{"ads.example.com", "tracker.example.net", "plain.example.org", "example.com", `regexp:\.ru$`}
+	if strings.Join(got, "|") != strings.Join(want, "|") || skipped != 1 {
+		t.Fatalf("got %v skipped=%d", got, skipped)
+	}
+	ips, skipped := routing.ParseList(routing.KindIP, []byte("1.2.3.0/24\n1.2.3.0/24\nnot-an-ip\n2001:db8::/32\n"))
+	if strings.Join(ips, "|") != "1.2.3.0/24|2001:db8::/32" || skipped != 1 {
+		t.Fatalf("ips %v skipped=%d", ips, skipped)
+	}
+}

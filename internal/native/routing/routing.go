@@ -178,3 +178,43 @@ func ResolveASN(ctx context.Context, fetch Fetcher, asns []string) (prefixes []s
 	}
 	return prefixes, skipped, nil
 }
+
+// ParseList reads the common published shapes: one entry per line, hosts files
+// ("0.0.0.0 ads.example.com") and adblock ("||ads.example.com^"). Comments are
+// skipped and a line Xray would reject is counted, not fatal.
+func ParseList(kind string, body []byte) (entries []string, skipped int) {
+	seen := map[string]struct{}{}
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if i := strings.IndexByte(line, '#'); i >= 0 {
+			line = strings.TrimSpace(line[:i])
+		}
+		if line == "" || strings.HasPrefix(line, "!") || strings.HasPrefix(line, "//") || strings.HasPrefix(line, "[") {
+			continue
+		}
+		if kind == KindDomain {
+			if f := strings.Fields(line); len(f) >= 2 && (f[0] == "0.0.0.0" || f[0] == "127.0.0.1" || f[0] == "::" || f[0] == "::1") {
+				line = f[1]
+			}
+			if rest, ok := strings.CutPrefix(line, "||"); ok {
+				line = strings.TrimSuffix(strings.SplitN(rest, "^", 2)[0], ".")
+			}
+			if !strings.Contains(line, ":") {
+				line = strings.ToLower(strings.TrimSuffix(line, "."))
+			}
+			if line == "localhost" || line == "localhost.localdomain" {
+				continue
+			}
+		}
+		if ValidateEntry(kind, line) != nil {
+			skipped++
+			continue
+		}
+		if _, dup := seen[line]; dup {
+			continue
+		}
+		seen[line] = struct{}{}
+		entries = append(entries, line)
+	}
+	return entries, skipped
+}
