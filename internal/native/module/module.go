@@ -1,0 +1,79 @@
+// Package module is the contract between a master and its optional parts. A
+// module sees the master only through Host, so it can be tested without a
+// bus and cut out of a build with a tag.
+package module
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/native/oplog"
+)
+
+// Scope is what an API token may do.
+type Scope string
+
+const (
+	ScopeAdmin   Scope = "admin"
+	ScopeMonitor Scope = "monitor"
+)
+
+// EventTable holds the events modules announce; delivery reads it.
+const EventTable = "event"
+
+// Event is something worth telling the outside world about.
+type Event struct {
+	Type   string          `json:"type"`
+	Source string          `json:"source,omitempty"`
+	At     int64           `json:"at"` // unix ms
+	Data   json.RawMessage `json:"data,omitempty"`
+}
+
+// Host is the master as a module sees it.
+type Host interface {
+	// Name is this master's name; it is the origin of what it writes.
+	Name() string
+	Set(ctx context.Context, table, key string, fields map[string]any) (oplog.Op, error)
+	Delete(ctx context.Context, table, key string) (oplog.Op, error)
+	Get(table, key string) (map[string]json.RawMessage, bool)
+	// Keys lists the live keys of a table, sorted.
+	Keys(table string) []string
+	// Leader reports whether this master holds the fleet-wide "leader" lease:
+	// the one that runs jobs that must happen once, not once per master.
+	Leader(ctx context.Context) bool
+	// Emit appends an event to EventTable under the key "<master>:<n>".
+	Emit(ctx context.Context, e Event) error
+	Now() time.Time
+}
+
+// Router registers a module's routes under /api/v1/<module>.
+type Router interface {
+	Handle(method, pattern string, scope Scope, h http.HandlerFunc)
+}
+
+// LegacyRoute maps an old panel route onto a module route. Old and New are
+// full paths; a {name} segment in Old is carried into New. Wrap, when set,
+// turns the new response body into the old "obj".
+type LegacyRoute struct {
+	Method, Old, New string
+	Wrap             func(newBody []byte) ([]byte, error)
+}
+
+// Module is one optional part of a master.
+type Module interface {
+	Name() string
+	Tables() []string
+	Mount(r Router, h Host)
+	Legacy() []LegacyRoute
+	// Run is the module's background work; it returns when ctx ends. It runs on
+	// every master, so work that must happen once checks Host.Leader.
+	Run(ctx context.Context, h Host)
+}
+
+// Middlewarer is implemented by a module that wraps every API request
+// (audit does).
+type Middlewarer interface {
+	Middleware(h Host) func(http.Handler) http.Handler
+}
