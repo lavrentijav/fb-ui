@@ -57,10 +57,13 @@ type Router interface {
 }
 
 // LegacyRoute maps an old panel route onto a module route. Old and New are
-// full paths; a {name} segment in Old is carried into New. Wrap, when set,
-// turns the new response body into the old "obj".
+// full paths; a {name} segment in Old is carried into New. The old panel used
+// POST for changes, so NewMethod names the method of the new route when it
+// differs from Method. Wrap, when set, turns the new response body into the
+// old "obj".
 type LegacyRoute struct {
 	Method, Old, New string
+	NewMethod        string
 	Wrap             func(newBody []byte) ([]byte, error)
 }
 
