@@ -35,7 +35,7 @@ main-line commit that has been reviewed. The main line is
 |---|---|
 | Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control); missing: edge 443, certs, drain, fail2ban, sidecars |
 | Master ↔ agent runtime | not started |
-| Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_compat`. Missing: the rest of the modules, session login |
+| Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_compat`. Missing: the rest of the modules, session login |
 | Go UI console | not started |
 | Multi-master core (`internal/native/{hlc,bus,pgstate,lww,master,oplog}`) | in progress: JetStream supercluster + Postgres projection, split/heal tested |
 
@@ -61,8 +61,8 @@ main-line commit that has been reviewed. The main line is
 | 95ab039d7 | fix(templates): send template requests as JSON | carry | merge 92f0cb5a7 (area not rewritten) |
 | 5bb19108e | fix(domains): rename the host of a URL during migration | carry | merge 92f0cb5a7 (area not rewritten) |
 | 08cb40991 | feat(webhooks,audit): signed event webhooks and an operator audit log | port | `feat(native): audit module`, `webhook module`, leader-only delivery (a0c64e6cb, 35c1dfaed, 760084f49); spec `~/doc/fbui-native-modules-design.md` |
-| ed5b62a3e | feat(filters): ASN lists resolved to announced prefixes via RIPEstat | carry | routing is not rewritten yet; becomes a `Route` source in `nodespec` later |
-| 678eec493 | feat(filters): route tester that shows which rule decides | carry | same: filters module not rewritten |
+| ed5b62a3e | feat(filters): ASN lists resolved to announced prefixes via RIPEstat | port | `internal/native/routing` (ResolveASN, Compile) and `routingmod`; rules reach the node as `nodespec.Spec.Rules` |
+| 678eec493 | feat(filters): route tester that shows which rule decides | port | `routing.Test` and `POST /api/v1/routing/test` |
 | 34f1172ed | feat(filters): move a rule earlier or later within its panel | skip | React-only; the page is replaced when the native UI exists |
 | 3d90c1325 | fix(routing): restart this panel's core when its own filter rules change | skip | the panel's own-core restart does not exist in `fbnode` (bundle apply restarts only on a changed hash) |
 | e258c000e | fix(certs): order a challenge in the account the zone is delegated to; keep the previous pair and add rollback | carry | certs: masters already issue (`internal/native/certs`); delegation check and rollback to be ported with the certs module pass |

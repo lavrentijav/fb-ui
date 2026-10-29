@@ -1,4 +1,4 @@
-//go:build no_audit && no_webhook && no_compat
+//go:build no_audit && no_webhook && no_compat && no_routing
 
 package masterd
 

@@ -11,6 +11,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 )
 
 // startModules hands the master to every registered module and, when asked
@@ -60,4 +61,13 @@ func (d *Daemon) bootstrapToken(ctx context.Context, h *mhost.Host) {
 		return
 	}
 	d.logf("api: first admin token (shown once): %s", token)
+}
+
+// contribute lets every module that wants to add to a node's spec do so.
+func contribute(mods []module.Module, r module.Reader, node string, spec *nodespec.Spec) {
+	for _, m := range mods {
+		if c, ok := m.(module.SpecContributor); ok {
+			c.ContributeSpec(r, node, spec)
+		}
+	}
 }

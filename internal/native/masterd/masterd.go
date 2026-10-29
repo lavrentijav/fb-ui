@@ -25,6 +25,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
@@ -306,6 +307,7 @@ func (d *Daemon) render(m *master.Master) desired.Render {
 		// nodes pull the new certificate with the next bundle
 		ids := append(slices.Clone(spec.CertIDs), certs.NodeID(node))
 		spec.Certs = append(spec.Certs, certs.Resolve(d.store.State, ids)...)
+		contribute(module.All(), d.store.State, node, &spec)
 		b, err := nodespec.Render(spec)
 		if err != nil {
 			return desired.State{}, err

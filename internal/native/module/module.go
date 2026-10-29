@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/oplog"
 )
 
@@ -82,4 +83,18 @@ type Module interface {
 // (audit does).
 type Middlewarer interface {
 	Middleware(h Host) func(http.Handler) http.Handler
+}
+
+// Reader is the read side of the projected state.
+type Reader interface {
+	Get(table, key string) (map[string]json.RawMessage, bool)
+	// Keys lists the live keys of a table, sorted.
+	Keys(table string) []string
+}
+
+// SpecContributor is implemented by a module that adds to a node's spec when a
+// master renders it (routing adds its rules). Anything already in the spec was
+// put there on purpose for that node, so a contributor appends after it.
+type SpecContributor interface {
+	ContributeSpec(r Reader, node string, spec *nodespec.Spec)
 }

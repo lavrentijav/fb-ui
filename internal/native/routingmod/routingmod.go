@@ -91,7 +91,7 @@ func strs(rec map[string]json.RawMessage, k string) (v []string) {
 }
 
 // Load reads every list and rule in the form routing.Compile wants.
-func Load(h module.Host) ([]routing.List, []routing.Rule) {
+func Load(h module.Reader) ([]routing.List, []routing.Rule) {
 	var lists []routing.List
 	for _, id := range h.Keys(ListTable) {
 		rec, ok := h.Get(ListTable, id)
@@ -387,6 +387,12 @@ func (m *Module) Mount(r module.Router, h module.Host) {
 		lists, rules := Load(h)
 		apiserver.JSON(w, http.StatusOK, routing.Test(lists, rules, in.Node, in.Inbound, def, in.Target))
 	})
+}
+
+// ContributeSpec appends the compiled rules for node to its spec.
+func (*Module) ContributeSpec(r module.Reader, node string, spec *nodespec.Spec) {
+	lists, rules := Load(r)
+	spec.Rules = append(spec.Rules, routing.Compile(lists, rules, node)...)
 }
 
 // defaultRoute is what an inbound does with traffic no rule names: the Route in
