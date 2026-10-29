@@ -27,6 +27,9 @@ type Spec struct {
 	// API is where Xray's stats API listens (default 127.0.0.1:10085).
 	API      string    `json:"api,omitempty"`
 	Inbounds []Inbound `json:"inbounds"`
+	// Rules are matched in order before an inbound's own Route, so a rule
+	// overrides the default for the traffic it names.
+	Rules []Rule `json:"rules,omitempty"`
 	// Exits are the proxy_<country> outbounds: cascades to exit nodes.
 	Exits []Exit `json:"exits,omitempty"`
 	// Reverse are edge routes to local services other than inbounds.
@@ -73,6 +76,17 @@ type Inbound struct {
 	Route string `json:"route"`
 	// VNet: the masters add every network user to this inbound.
 	VNet bool `json:"vnet,omitempty"`
+}
+
+// Rule sends traffic matching Domains or IPs (Xray matcher syntax) to Route:
+// direct, block or proxy_<country>. Inbounds narrows it to those inbound tags;
+// empty means every inbound. Traffic no rule names follows the inbound's Route.
+type Rule struct {
+	Name     string   `json:"name,omitempty"`
+	Inbounds []string `json:"inbounds,omitempty"`
+	Domains  []string `json:"domains,omitempty"`
+	IPs      []string `json:"ips,omitempty"`
+	Route    string   `json:"route"`
 }
 
 type Client struct {
@@ -193,6 +207,24 @@ func (s *Spec) Validate() error {
 			emails[c.Email] = true
 		}
 		tags[ib.Tag], ports[ib.Port] = true, true
+	}
+	for i, r := range s.Rules {
+		if !slices.Contains(outs, r.Route) {
+			return fmt.Errorf("nodespec: rule %d routes to unknown %q", i, r.Route)
+		}
+		if len(r.Domains)+len(r.IPs) == 0 {
+			return fmt.Errorf("nodespec: rule %d matches nothing", i)
+		}
+		for _, m := range append(slices.Clone(r.Domains), r.IPs...) {
+			if m == "" {
+				return fmt.Errorf("nodespec: rule %d has an empty matcher", i)
+			}
+		}
+		for _, tag := range r.Inbounds {
+			if tag == "api" || !tags[tag] {
+				return fmt.Errorf("nodespec: rule %d names unknown inbound %q", i, tag)
+			}
+		}
 	}
 	if s.Probe.Interval != "" {
 		if d, err := time.ParseDuration(s.Probe.Interval); err != nil || d < time.Second {

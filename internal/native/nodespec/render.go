@@ -65,6 +65,19 @@ func Render(s Spec) (Bundle, error) {
 		"settings": obj{"address": apiHost},
 	}}
 	rules := []any{obj{"type": "field", "inboundTag": []string{"api"}, "outboundTag": "api"}}
+	for _, r := range s.Rules {
+		rule := obj{"type": "field", "outboundTag": r.Route}
+		if len(r.Inbounds) > 0 {
+			rule["inboundTag"] = r.Inbounds
+		}
+		if len(r.Domains) > 0 {
+			rule["domain"] = r.Domains
+		}
+		if len(r.IPs) > 0 {
+			rule["ip"] = r.IPs
+		}
+		rules = append(rules, rule)
+	}
 	var edge Edge
 	terminated := map[string]bool{}
 	for _, ib := range s.Inbounds {
