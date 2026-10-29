@@ -159,7 +159,7 @@ func Render(s Spec) (Bundle, error) {
 		"policy":    obj{"levels": obj{"0": obj{"statsUserUplink": true, "statsUserDownlink": true, "statsUserOnline": true}}},
 		"inbounds":  inbounds,
 		"outbounds": outbounds,
-		"routing":   obj{"domainStrategy": "AsIs", "rules": rules},
+		"routing":   obj{"domainStrategy": domainStrategy(s), "rules": rules},
 	}
 	if len(balancers) > 0 {
 		cfg["routing"].(obj)["balancers"] = balancers
@@ -235,4 +235,17 @@ func splitHostPort(addr string) (string, int, error) {
 		}
 	}
 	return "", 0, fmt.Errorf("nodespec: bad API address %q", addr)
+}
+
+// domainStrategy is AsIs unless a rule matches IPs. Under AsIs Xray never
+// compares an IP matcher with a destination given as a name, so an IP or ASN
+// rule would only catch clients that connect by address. IPOnDemand resolves
+// the name when it first meets an IP rule, which costs a lookup on the node.
+func domainStrategy(s Spec) string {
+	for _, r := range s.Rules {
+		if len(r.IPs) > 0 {
+			return "IPOnDemand"
+		}
+	}
+	return "AsIs"
 }

@@ -73,3 +73,31 @@ func TestRuleValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestIPRulesNeedOnDemandResolution(t *testing.T) {
+	strategy := func(s Spec) any {
+		b, err := Render(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			Routing struct {
+				DomainStrategy any `json:"domainStrategy"`
+			} `json:"routing"`
+		}
+		_ = json.Unmarshal(b.Xray, &cfg)
+		return cfg.Routing.DomainStrategy
+	}
+	s := entrySpec()
+	if got := strategy(s); got != "AsIs" {
+		t.Fatalf("no rules: %v", got)
+	}
+	s.Rules = []Rule{{Domains: []string{"example.com"}, Route: Direct}}
+	if got := strategy(s); got != "AsIs" {
+		t.Fatalf("domain rules only: %v", got)
+	}
+	s.Rules = append(s.Rules, Rule{IPs: []string{"10.1.0.0/16"}, Route: Block})
+	if got := strategy(s); got != "IPOnDemand" {
+		t.Fatalf("an IP rule: %v", got)
+	}
+}
