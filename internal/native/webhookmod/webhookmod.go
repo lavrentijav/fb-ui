@@ -24,14 +24,15 @@ const (
 	CursorTable = "webhook_cursor" // key = id; after = key of the last delivered event
 )
 
-var checkURL = webhook.CheckPublicURL
-
 type Module struct {
 	// Sender delivers; tests tune its retry waits.
 	Sender *webhook.Sender
+	// CheckURL vets an address when a webhook is saved and again on each send;
+	// tests that point a webhook at a local receiver replace it.
+	CheckURL func(string) error
 }
 
-func New() *Module { return &Module{Sender: webhook.New(nil)} }
+func New() *Module { return &Module{Sender: webhook.New(nil), CheckURL: webhook.CheckPublicURL} }
 
 func (*Module) Name() string     { return "webhooks" }
 func (*Module) Tables() []string { return []string{Table, StatusTable, CursorTable} }
@@ -60,13 +61,13 @@ type input struct {
 	Secret string   `json:"secret"`
 }
 
-func (in *input) clean() error {
+func (in *input) clean(check func(string) error) error {
 	in.Name = strings.TrimSpace(in.Name)
 	if in.Name == "" {
 		return errors.New("a name is required")
 	}
 	in.Url = strings.TrimSpace(in.Url)
-	if err := checkURL(in.Url); err != nil {
+	if err := check(in.Url); err != nil {
 		return errors.New("address: " + err.Error())
 	}
 	events := make([]string, 0, len(in.Events))
@@ -79,13 +80,13 @@ func (in *input) clean() error {
 	return nil
 }
 
-func decode(w http.ResponseWriter, r *http.Request) (*input, bool) {
+func (m *Module) decode(w http.ResponseWriter, r *http.Request) (*input, bool) {
 	var in input
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&in); err != nil {
 		apiserver.Error(w, http.StatusBadRequest, "unreadable body")
 		return nil, false
 	}
-	if err := in.clean(); err != nil {
+	if err := in.clean(m.CheckURL); err != nil {
 		apiserver.Error(w, http.StatusBadRequest, err.Error())
 		return nil, false
 	}
@@ -126,7 +127,7 @@ func (m *Module) Mount(r module.Router, h module.Host) {
 		apiserver.JSON(w, http.StatusOK, out)
 	})
 	r.Handle("POST", "/", module.ScopeAdmin, func(w http.ResponseWriter, req *http.Request) {
-		in, ok := decode(w, req)
+		in, ok := m.decode(w, req)
 		if !ok {
 			return
 		}
@@ -149,7 +150,7 @@ func (m *Module) Mount(r module.Router, h module.Host) {
 			apiserver.Error(w, http.StatusNotFound, "no such webhook")
 			return
 		}
-		in, ok := decode(w, req)
+		in, ok := m.decode(w, req)
 		if !ok {
 			return
 		}
@@ -202,7 +203,7 @@ func (m *Module) Deliver(ctx context.Context, h module.Host, id string, ev webho
 		return errors.New("no such webhook")
 	}
 	url := str(rec, "url")
-	err := checkURL(url) // checked again: DNS may have moved since it was saved
+	err := m.CheckURL(url) // checked again: DNS may have moved since it was saved
 	if err == nil {
 		sctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 		err = m.Sender.Send(sctx, webhook.Target{URL: url, Secret: str(rec, "secret"), Delivery: delivery}, ev)

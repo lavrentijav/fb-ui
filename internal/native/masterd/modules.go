@@ -39,7 +39,7 @@ func (d *Daemon) APIHandler() http.Handler {
 	if h == nil {
 		return nil
 	}
-	return apiserver.New(h, module.All())
+	return withLegacy(module.All(), apiserver.New(h, module.All()))
 }
 
 // bootstrapToken gives a master with no tokens at all its first admin token.

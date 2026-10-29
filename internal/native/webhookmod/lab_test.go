@@ -23,7 +23,6 @@ func TestWebhookDeliveredOnceAcrossMasters(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts NATS fleets")
 	}
-	t.Cleanup(webhookmod.SetURLCheck(func(string) error { return nil }))
 	ctx := context.Background()
 
 	var cmu sync.Mutex
@@ -54,6 +53,7 @@ func TestWebhookDeliveredOnceAcrossMasters(t *testing.T) {
 		masters[name] = m
 		hosts[name] = mhost.New(m, store.State, mhost.Options{Now: now, LeaseTTL: 30 * time.Second, Settle: 2 * time.Second, Recheck: time.Millisecond})
 		mods[name] = webhookmod.New()
+		mods[name].CheckURL = func(string) error { return nil }
 	}
 	catchUp := func() {
 		t.Helper()

@@ -28,8 +28,8 @@ type env struct {
 
 func setup(t *testing.T) *env {
 	t.Helper()
-	t.Cleanup(webhookmod.SetURLCheck(func(string) error { return nil }))
 	e := &env{h: modtest.NewHost("m1"), mod: webhookmod.New()}
+	e.mod.CheckURL = func(string) error { return nil }
 	e.mod.Sender = webhook.New(nil)
 	e.mod.Sender.Sleep = func(time.Duration) {}
 	e.admin, _ = apiauth.Create(context.Background(), e.h, "root", module.ScopeAdmin, 0)
@@ -89,8 +89,7 @@ func TestUpdateWithEmptySecretKeepsStored(t *testing.T) {
 
 func TestCreateRefusesAPrivateAddress(t *testing.T) {
 	e := setup(t)
-	restore := webhookmod.SetURLCheck(webhook.CheckPublicURL)
-	defer restore()
+	e.mod.CheckURL = webhook.CheckPublicURL
 	rec := e.do("POST", "/api/v1/webhooks", map[string]any{"name": "a", "url": "http://169.254.169.254/x"})
 	if rec.Code != 400 {
 		t.Fatalf("create = %d %s", rec.Code, rec.Body)
