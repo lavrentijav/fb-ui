@@ -24,6 +24,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/dnsacct"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
@@ -61,6 +62,9 @@ type Config struct {
 	PublicIP  string         // this master's address in the pool
 	PoolRoots *x509.CertPool // what the pool check trusts (nil: the system's)
 	PoolEvery time.Duration  // default 20 s
+	// APIListen is where /api/v1 is served (for example "127.0.0.1:8443");
+	// empty serves no API and runs no modules' routes. Modules still run.
+	APIListen string
 	Logf      func(format string, args ...any)
 }
 
@@ -71,6 +75,8 @@ type Daemon struct {
 	store *master.Mem
 	m     atomic.Pointer[master.Master]
 	dns   atomic.Pointer[dnsacct.Accounts]
+	host  atomic.Pointer[mhost.Host]
+	api   *http.Server
 }
 
 // Start brings the master up; it serves nodes once the streams exist,
@@ -126,6 +132,7 @@ func (d *Daemon) boot(ctx context.Context) {
 	d.dns.Store(accounts)
 	d.m.Store(m)
 	d.logf("master %s ready", d.cfg.Name)
+	d.startModules(ctx, m)
 	if d.cfg.ACME != nil {
 		a := *d.cfg.ACME
 		if a.DNSFor == nil {
@@ -426,6 +433,9 @@ func (d *Daemon) Handler() http.Handler {
 }
 
 func (d *Daemon) Close() error {
+	if d.api != nil {
+		_ = d.api.Close()
+	}
 	d.bus.Close()
 	return errors.Join(d.edge.Close())
 }

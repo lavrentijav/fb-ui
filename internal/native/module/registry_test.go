@@ -62,7 +62,7 @@ func TestEmitWritesEventRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	keys := h.Keys("event")
-	if len(keys) != 1 || !strings.HasPrefix(keys[0], "m1:") {
+	if len(keys) != 1 || !strings.HasPrefix(keys[0], "m1:") || len(keys[0]) != len("m1:")+16 {
 		t.Fatalf("event keys = %v", keys)
 	}
 	rec, _ := h.Get("event", keys[0])

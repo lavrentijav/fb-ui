@@ -27,6 +27,7 @@ type Host struct {
 	clock *hlc.Clock
 	mu    sync.Mutex
 	seq   uint64
+	keys  uint64
 }
 
 func NewHost(name string) *Host {
@@ -46,25 +47,16 @@ func (h *Host) Now() time.Time {
 
 func (h *Host) Leader(context.Context) bool { return h.IsLeader }
 
-// write stamps and applies op; key, when set, derives the record key from the
-// sequence number the write gets.
-func (h *Host) write(op oplog.Op, key func(seq uint64) string) oplog.Op {
+func (h *Host) write(op oplog.Op) oplog.Op {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.seq++
-	if key != nil {
-		op.Key = key(h.seq)
-	}
 	op.Origin, op.Seq, op.Stamp = h.name, h.seq, h.clock.Now()
 	h.state.Apply(op)
 	return op
 }
 
 func (h *Host) Set(_ context.Context, table, key string, fields map[string]any) (oplog.Op, error) {
-	return h.set(table, key, nil, fields)
-}
-
-func (h *Host) set(table, key string, keyFn func(uint64) string, fields map[string]any) (oplog.Op, error) {
 	raw := make(map[string]json.RawMessage, len(fields))
 	for name, v := range fields {
 		b, err := json.Marshal(v)
@@ -73,11 +65,11 @@ func (h *Host) set(table, key string, keyFn func(uint64) string, fields map[stri
 		}
 		raw[name] = b
 	}
-	return h.write(oplog.Op{Table: table, Key: key, Fields: raw}, keyFn), nil
+	return h.write(oplog.Op{Table: table, Key: key, Fields: raw}), nil
 }
 
 func (h *Host) Delete(_ context.Context, table, key string) (oplog.Op, error) {
-	return h.write(oplog.Op{Table: table, Key: key, Delete: true}, nil), nil
+	return h.write(oplog.Op{Table: table, Key: key, Delete: true}), nil
 }
 
 func (h *Host) Get(table, key string) (map[string]json.RawMessage, bool) {
@@ -86,11 +78,18 @@ func (h *Host) Get(table, key string) (map[string]json.RawMessage, bool) {
 
 func (h *Host) Keys(table string) []string { return h.state.Keys(table) }
 
-func (h *Host) Emit(_ context.Context, e module.Event) error {
+func (h *Host) NextKey() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.keys++
+	return fmt.Sprintf("%s:%016x", h.name, h.keys)
+}
+
+func (h *Host) Emit(ctx context.Context, e module.Event) error {
 	fields := map[string]any{"type": e.Type, "source": e.Source, "at": e.At}
 	if len(e.Data) > 0 {
 		fields["data"] = e.Data
 	}
-	_, err := h.set(module.EventTable, "", func(seq uint64) string { return fmt.Sprintf("%s:%d", h.name, seq) }, fields)
+	_, err := h.Set(ctx, module.EventTable, h.NextKey(), fields)
 	return err
 }

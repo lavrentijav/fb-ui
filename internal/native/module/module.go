@@ -43,7 +43,10 @@ type Host interface {
 	// Leader reports whether this master holds the fleet-wide "leader" lease:
 	// the one that runs jobs that must happen once, not once per master.
 	Leader(ctx context.Context) bool
-	// Emit appends an event to EventTable under the key "<master>:<n>".
+	// NextKey is a record key no other write on any master will use and that
+	// sorts by creation time on one master: "<master>:<16 hex digits>".
+	NextKey() string
+	// Emit appends an event to EventTable under NextKey.
 	Emit(ctx context.Context, e Event) error
 	Now() time.Time
 }
