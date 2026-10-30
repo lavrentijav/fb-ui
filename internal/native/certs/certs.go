@@ -99,6 +99,9 @@ func (r *Renewer) due() []string {
 		rec, _ := r.State.Get(Table, id)
 		names, _ := field[[]string](rec, "names")
 		issuedFor, _ := field[[]string](rec, "issuedFor")
+		if HeldUntil(rec) > r.now().UnixMilli() {
+			continue
+		}
 		notAfter, ok := field[int64](rec, "notAfter")
 		if !ok || !slices.Equal(names, issuedFor) || time.UnixMilli(notAfter).Sub(r.now()) < before {
 			out = append(out, id)
@@ -152,10 +155,18 @@ func (r *Renewer) renew(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.Master.Set(ctx, Table, id, map[string]any{
+	fields := map[string]any{
 		"certPem": res.CertPEM, "keyPem": res.KeyPEM,
 		"notAfter": res.NotAfter.UnixMilli(), "issuedFor": names,
-	})
+	}
+	// the pair being replaced stays reachable for a rollback
+	if old, ok := field[string](rec, "certPem"); ok && old != "" {
+		fields["prevCertPem"], _ = field[string](rec, "certPem")
+		fields["prevKeyPem"], _ = field[string](rec, "keyPem")
+		fields["prevIssuedFor"], _ = field[[]string](rec, "issuedFor")
+		fields["prevNotAfter"], _ = field[int64](rec, "notAfter")
+	}
+	_, err = r.Master.Set(ctx, Table, id, fields)
 	if err == nil {
 		r.logf("certs: %s issued for %v until %s", id, names, res.NotAfter.Format(time.DateOnly))
 	}

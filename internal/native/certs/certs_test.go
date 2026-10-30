@@ -2,6 +2,7 @@ package certs_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -193,5 +194,27 @@ func TestWantForNode(t *testing.T) {
 	}
 	if got := names(); got != "none" {
 		t.Fatalf("node certificate kept for %s", got)
+	}
+}
+
+// A renewal keeps the pair it replaced, so a bad one can be rolled back.
+func TestRenewKeepsThePreviousPair(t *testing.T) {
+	f := newFleet(t)
+	ctx := context.Background()
+	if err := certs.Want(ctx, f.masters["ru2"], "g", []string{"a.example"}); err != nil {
+		t.Fatal(err)
+	}
+	waitAll(t, f, func(name string) bool { return len(f.renewers[name].State.Keys(certs.Table)) == 1 })
+	f.tickAll(t)
+	waitAll(t, f, func(name string) bool { return certOn(f, name, "g") != "" })
+	first := certOn(f, "fi1", "g")
+	f.now.Add((61 * 24 * time.Hour).Milliseconds())
+	f.tickAll(t)
+	waitAll(t, f, func(name string) bool { return certOn(f, name, "g") != first })
+	rec, _ := f.renewers["fi1"].State.Get(certs.Table, "g")
+	var prev string
+	_ = json.Unmarshal(rec["prevCertPem"], &prev)
+	if prev != first {
+		t.Fatalf("previous pair = %q, want the first one %q", prev, first)
 	}
 }
