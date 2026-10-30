@@ -103,6 +103,11 @@ func (a *Accounts) List() map[string]Account {
 func (a *Accounts) best(name string) (Account, string) {
 	var best Account
 	zone := ""
+	type holder struct {
+		acc  Account
+		zone string
+	}
+	var holders []holder
 	ids := a.State.Keys(Table)
 	slices.Sort(ids)
 	for _, id := range ids {
@@ -110,8 +115,21 @@ func (a *Accounts) best(name string) (Account, string) {
 		if !ok {
 			continue
 		}
-		if z := dnsprovider.ZoneFor(name, acc.Zones); len(z) > len(zone) {
+		z := dnsprovider.ZoneFor(name, acc.Zones)
+		if z != "" {
+			holders = append(holders, holder{acc, z})
+		}
+		if len(z) > len(zone) {
 			best, zone = acc, z
+		}
+	}
+	// A name two accounts hold (an old copy of a moved zone) goes to the one the
+	// internet is delegated to; only then is a lookup worth its cost.
+	if len(holders) > 1 {
+		for _, h := range holders {
+			if ok, known := delegatedTo(h.acc, h.zone); known && ok {
+				return h.acc, h.zone
+			}
 		}
 	}
 	return best, zone
