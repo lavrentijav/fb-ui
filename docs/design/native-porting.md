@@ -35,7 +35,7 @@ main-line commit that has been reviewed. The main line is
 |---|---|
 | Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control); missing: edge 443, certs, drain, fail2ban, sidecars |
 | Master ↔ agent runtime | not started |
-| Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_compat`. Missing: the rest of the modules, session login |
+| Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `certs` (status, rollback), `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_certs`, `no_compat`. Missing: the rest of the modules, session login |
 | Go UI console | not started |
 | Multi-master core (`internal/native/{hlc,bus,pgstate,lww,master,oplog}`) | in progress: JetStream supercluster + Postgres projection, split/heal tested |
 
@@ -65,8 +65,8 @@ main-line commit that has been reviewed. The main line is
 | 678eec493 | feat(filters): route tester that shows which rule decides | port | `routing.Test` and `POST /api/v1/routing/test` |
 | 34f1172ed | feat(filters): move a rule earlier or later within its panel | skip | React-only; the page is replaced when the native UI exists |
 | 3d90c1325 | fix(routing): restart this panel's core when its own filter rules change | skip | the panel's own-core restart does not exist in `fbnode` (bundle apply restarts only on a changed hash) |
-| e258c000e | fix(certs): order a challenge in the account the zone is delegated to; keep the previous pair and add rollback | carry | certs: masters already issue (`internal/native/certs`); delegation check and rollback to be ported with the certs module pass |
-| f79f2f330 | fix(certs): decide DNS delegation from public resolvers, not the host's own | carry | same pass; note: the host's own resolver may be an authoritative copy of a zone |
+| e258c000e | fix(certs): order a challenge in the account the zone is delegated to; keep the previous pair and add rollback | port | `dnsacct` picks the delegated account; `certs.Rollback`, `prev*` fields on renewal, `POST /api/v1/certs/{id}/rollback` (`certsmod`) |
+| f79f2f330 | fix(certs): decide DNS delegation from public resolvers, not the host's own | port | `dnsacct/delegation.go` (public resolvers) |
 
 Note (2026-10-29): the main line was rebased after the ledger above was written, so most
 commits between `.native-sync` and the main-line head carry new hashes for work that is already
