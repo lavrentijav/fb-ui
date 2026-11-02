@@ -85,11 +85,12 @@ else can wait; this cannot.
 - [x] CA distribution: the joining master receives the CA certificate; it
       needs no CA key to serve or connect. (A master that must issue shares
       the key, as today; a per-master "issuer" flag is still open.)
-- [ ] Document the trust model in full: which masters may issue node
-      certificates, which may issue gateway certificates.
-- [ ] Pool DNS: first-run guidance for the pool name, the DNS account
-      (`PUT /dns/{id}`) and the certificate; a check that warns when the pool
-      name has no certificate or no A record.
+- [x] Trust model documented in `native-trust.md`: which masters hold the CA
+      key, what a certificate may do, rotation and the pool/DNS runbook. A
+      joined master starts as a non-issuer (verified and tested).
+- [ ] Pool DNS: a first-run check that warns when the pool name has no
+      certificate or no A record (the procedure is in `native-trust.md`; the
+      warning is not implemented).
 - [ ] Multi-address already exists (`ips`, `iphealth`, `PUT /net/ips`); add the
       runbook: detect → announce → verify with `GET /net/ips`.
 - Acceptance: start master A, join master B with one token, both serve

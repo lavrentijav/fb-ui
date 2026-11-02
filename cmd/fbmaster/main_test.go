@@ -107,10 +107,10 @@ func TestFirstRunCreatesTheCAAndIdentity(t *testing.T) {
 	}
 	logger := testLogger(t)
 	// without -create-ca the master refuses to mint a CA
-	if _, err := ensureCA(c, false, logger); err == nil {
+	if _, _, err := ensureCA(c, false, logger); err == nil {
 		t.Fatal("a missing CA was accepted without -create-ca")
 	}
-	ca, err := ensureCA(c, true, logger)
+	ca, _, err := ensureCA(c, true, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestFirstRunCreatesTheCAAndIdentity(t *testing.T) {
 		t.Fatalf("CA key permissions: %v %v", st, err)
 	}
 	// a second run loads the same CA instead of minting another
-	again, err := ensureCA(c, false, logger)
+	again, _, err := ensureCA(c, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,5 +343,51 @@ func TestImportApplySendsThePlanWithTheToken(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "imported: 1 inbound(s)") {
 		t.Fatalf("stdout %q", out.String())
+	}
+}
+
+// A joined master has the CA certificate but not its key: it verifies the
+// fleet, loads its own certificate, and cannot issue new members.
+func TestAMasterWithoutTheCAKeyVerifiesButDoesNotIssue(t *testing.T) {
+	dir := t.TempDir()
+	c, err := load(writeConfig(t, dir, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger := testLogger(t)
+	ca, _, err := ensureCA(c, true, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	own, err := ensureIdentity(c, ca, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = own
+	// only the certificate remains, as `fbmaster join` writes it
+	if err := os.Remove(c.CAKey); err != nil {
+		t.Fatal(err)
+	}
+	noCA, roots, err := ensureCA(c, false, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if noCA != nil {
+		t.Fatal("a master without the CA key still reports an issuer")
+	}
+	if roots == nil || len(roots.Subjects()) == 0 {
+		t.Fatal("no trust pool")
+	}
+	// the identity still loads, so the master serves
+	if _, err := ensureIdentity(c, noCA, logger); err != nil {
+		t.Fatalf("a joined master cannot load its certificate: %v", err)
+	}
+	// a CA key without its certificate is an error, never a regeneration
+	if err := os.WriteFile(c.CAKey, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Remove(c.CACert)
+	if _, _, err := ensureCA(c, false, logger); err == nil {
+		t.Fatal("a key without a certificate was accepted")
 	}
 }

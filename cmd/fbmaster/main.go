@@ -258,7 +258,7 @@ func serve(ctx context.Context, c *Config, createCA bool, logger *log.Logger) er
 	if err := checkConfig(c); err != nil {
 		return err
 	}
-	ca, err := ensureCA(c, createCA, logger)
+	ca, roots, err := ensureCA(c, createCA, logger)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func serve(ctx context.Context, c *Config, createCA bool, logger *log.Logger) er
 	if err != nil {
 		return err
 	}
-	mtls := ca.MutualTLS(own)
+	mtls := mutualTLS(ca, roots, own)
 
 	peers := map[string]string{}
 	for name, url := range c.Peers {
@@ -311,39 +311,71 @@ func serve(ctx context.Context, c *Config, createCA bool, logger *log.Logger) er
 	}
 }
 
-// ensureCA loads the fleet CA, or creates it when asked and none exists.
-func ensureCA(c *Config, create bool, logger *log.Logger) (*fleetca.CA, error) {
+// ensureCA loads the fleet CA, or creates it when asked and none exists. A
+// master that has only the CA certificate (a joined master) starts as a
+// non-issuer: it can verify the fleet but cannot sign new members, which is
+// the trust model's whole point.
+func ensureCA(c *Config, create bool, logger *log.Logger) (*fleetca.CA, *x509.CertPool, error) {
 	certPEM, certErr := os.ReadFile(c.CACert)
 	keyPEM, keyErr := os.ReadFile(c.CAKey)
 	switch {
 	case certErr == nil && keyErr == nil:
-		return fleetca.Load(certPEM, keyPEM)
+		ca, err := fleetca.Load(certPEM, keyPEM)
+		if err != nil {
+			return nil, nil, err
+		}
+		pool := x509.NewCertPool()
+		pool.AddCert(ca.Cert)
+		return ca, pool, nil
+	case certErr == nil && errors.Is(keyErr, os.ErrNotExist):
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(certPEM) {
+			return nil, nil, fmt.Errorf("no certificate in %s", c.CACert)
+		}
+		logger.Printf("fleet CA loaded from %s without its key: this master verifies but does not issue", c.CACert)
+		return nil, pool, nil
 	case errors.Is(certErr, os.ErrNotExist) && errors.Is(keyErr, os.ErrNotExist):
 		if !create {
-			return nil, fmt.Errorf("no fleet CA at %s; run with -create-ca on the first master", c.CACert)
+			return nil, nil, fmt.Errorf("no fleet CA at %s; run with -create-ca on the first master, or fbmaster join on a member", c.CACert)
 		}
 		ca, err := fleetca.New(c.Name + "-fleet")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		certPEM, keyPEM, err = ca.PEM()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := os.MkdirAll(filepath.Dir(c.CACert), 0o700); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := os.WriteFile(c.CACert, certPEM, 0o644); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := os.WriteFile(c.CAKey, keyPEM, 0o600); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		pool := x509.NewCertPool()
+		pool.AddCert(ca.Cert)
 		sum := sha256.Sum256(certPEM)
 		logger.Printf("created the fleet CA in %s (sha256 %s)", c.CACert, hex.EncodeToString(sum[:8]))
-		return ca, nil
+		return ca, pool, nil
+	case errors.Is(certErr, os.ErrNotExist) && keyErr == nil:
+		return nil, nil, fmt.Errorf("the CA key exists but %s is missing; a CA is never regenerated silently", c.CACert)
 	default:
-		return nil, fmt.Errorf("fleet CA is incomplete: cert=%v key=%v", certErr, keyErr)
+		return nil, nil, fmt.Errorf("fleet CA is unreadable: cert=%v key=%v", certErr, keyErr)
+	}
+}
+
+// mutualTLS builds the fleet's mTLS config from whichever half of the CA this
+// master holds.
+func mutualTLS(ca *fleetca.CA, roots *x509.CertPool, own tls.Certificate) *tls.Config {
+	if ca != nil {
+		return ca.MutualTLS(own)
+	}
+	return &tls.Config{
+		MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{own},
+		RootCAs: roots, ClientCAs: roots, ClientAuth: tls.RequireAndVerifyClientCert,
 	}
 }
 
@@ -356,6 +388,9 @@ func ensureIdentity(c *Config, ca *fleetca.CA, logger *log.Logger) (tls.Certific
 		if _, statErr := os.Stat(c.Cert); statErr == nil {
 			return tls.Certificate{}, err
 		}
+	}
+	if ca == nil {
+		return tls.Certificate{}, fmt.Errorf("no CA key to issue this master's certificate; run fbmaster join, or copy cert/key in place")
 	}
 	hosts := append([]string{c.Name, c.PublicName}, c.Hosts...)
 	if c.Advertise != "" {
