@@ -99,3 +99,33 @@ audit, sessions/tokens, virtual networks).
 never echoes the token, logout, a revoked token ending its session, and
 expiry. `internal/native/masterd` covers static serving, the client-route
 fallback and a missing build.
+
+## Settings and notifications (done 2026-11-02)
+
+- `internal/native/settings` — typed key/value settings in the op log
+  (`setting` table): a schema names each key's kind (string/bool/int/list/
+  secret), default and optional check, so a bad value is refused on write.
+  `Get/Set/SetMany/All`; a secret is never returned (only `hasSecret`) and an
+  empty secret keeps the stored one, so a masked form saves safely.
+  The fleet schema (`settings.Fleet`) covers the panel name and the three
+  notification transports; it grows only when a module needs a key.
+- `internal/native/notify` — transports with injectable HTTP and SMTP dialers:
+  - Telegram: `sendMessage` to every configured chat;
+  - Discord: one webhook, mentions suppressed;
+  - Email: SMTP with implicit TLS or STARTTLS, AUTH PLAIN, header values
+    sanitised so a field cannot inject a header line.
+- `internal/native/notifymod` — module `notifymod`:
+  - `GET /status` (each transport's last attempt), `POST /test/{transport}`;
+  - on the **leader** it reads the event table past a daily cursor per
+    transport, filters by that transport's `notify.<name>.events` list (empty
+    = all), sends, and advances the cursor only after success — a failed
+    transport retries the same event next pass instead of skipping it. A
+    transport enabled for the first time starts at the newest event, so it
+    never floods the operator with old history.
+- `internal/native/settingsmod` — `GET/PUT /api/v1/settings` plus `Legacy()`
+  mappings for the old panel routes.
+- Tags `no_settings`, `no_notify` cut the modules.
+
+The lab runs the real thing end to end in unit tests: the event path on a
+`modtest` host (leader-only, no replay, filter, retry, no double send) and the
+transports against an `httptest` receiver and an in-process SMTP server.

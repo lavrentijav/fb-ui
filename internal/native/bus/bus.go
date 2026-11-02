@@ -109,7 +109,8 @@ func Start(cfg Config) (*Bus, error) {
 		srv.SetLogger(cfg.Logger, false, false)
 	}
 	go srv.Start()
-	if !srv.ReadyForConnections(10 * time.Second) {
+	// a busy CI box can take a while to open the listeners and the store
+	if !srv.ReadyForConnections(60 * time.Second) {
 		srv.Shutdown()
 		return nil, errors.New("bus: server did not start")
 	}
