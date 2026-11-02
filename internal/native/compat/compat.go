@@ -30,7 +30,24 @@ func Handler(mods []module.Module, api http.Handler) http.Handler {
 			mux.Handle(lr.Method+" "+lr.Old, serve(lr, api))
 		}
 	}
+	// Anything else the old page calls (the panel-local Xray view, server
+	// metrics, and the pages whose sections the native master simply does not
+	// have) answers the old envelope with a clear refusal, so a screen shows a
+	// message instead of an empty 404.
+	mux.Handle("/panel/api/", unsupported())
 	return mux
+}
+
+// unsupported is the answer for an old route no module maps.
+func unsupported() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		out := envelope{
+			Msg: "this section is not available on a native master; the panel sections that exist are served at /api/v1",
+			Obj: json.RawMessage("null"),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(out)
+	})
 }
 
 // refuse answers an old-panel failure the old way: 200 with success=false.

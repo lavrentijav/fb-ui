@@ -112,6 +112,27 @@ only; notifications moved to their own entry.
 `accessmod` is the module (`no_access` cuts it); tokens gained an `at` stamp
 and sessions already carried name, scope, expiry and their token's hash.
 
+## Old pages on a native master
+
+The React app still calls `/panel/api/*` (the compat adapter). Modules map
+every section the native fleet has: clients (create/delete/list, groups), the
+subscription page and its management, hosts, templates, inbounds per node,
+certs (list/rollback), routing (lists, rules, tester), settings, usage,
+dashboard, webhooks, audit, access and the fleet pool.
+
+Everything else the old app asks for — the panel-local Xray view
+(`/panel/api/xray/*`), server metrics and actions (`/panel/api/server/*`), the
+old node/peer/cluster model, the old cascade graph, DNS accounts, subscription
+balancers, and firmware-like provisioning helpers — has no native equivalent:
+a native master runs no core of its own and keeps no panel-local database. The
+compat adapter answers those with the old envelope, `success: false` and
+"this section is not available on a native master", so a screen shows a
+message instead of an empty error.
+
+Porting those screens means moving them to `/api/v1` against the modules above
+(or removing them, for features the native model does not have), one section
+at a time; that is the remaining work in this file.
+
 ## Still to do
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for
