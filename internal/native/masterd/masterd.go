@@ -1115,9 +1115,17 @@ func (d *Daemon) registerNode(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
 	_, _ = m.CatchUp(ctx)
-	if _, exists := d.store.State.Get(SpecTable, body.Node); exists && !body.Overwrite {
-		http.Error(w, "a spec for "+body.Node+" already exists (set overwrite)", http.StatusConflict)
-		return
+	if !body.Overwrite {
+		_, exists := d.store.State.Get(SpecTable, body.Node)
+		// a spec written a moment ago on another master may still be in the
+		// mirror; give it a short window so a second register is a conflict
+		if !exists {
+			exists = d.waitSpec(ctx, m, body.Node, 2*time.Second)
+		}
+		if exists {
+			http.Error(w, "a spec for "+body.Node+" already exists (set overwrite)", http.StatusConflict)
+			return
+		}
 	}
 	serversID, err := d.serversID(ctx, m)
 	if err != nil {

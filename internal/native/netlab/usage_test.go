@@ -35,7 +35,8 @@ func TestUsageDisablesAnExhaustedClient(t *testing.T) {
 	f.startNode(t, "ru4")
 
 	// a tiny allowance, so a single page load exhausts it
-	body := fmt.Sprintf(`{"node":"ru4","inbound":"vpn","email":"spot","uuid":%q,"enable":true,"totalBytes":1024}`, aliceID)
+	// one byte of allowance: any traffic through the tunnel exhausts it
+	body := fmt.Sprintf(`{"node":"ru4","inbound":"vpn","email":"spot","uuid":%q,"enable":true,"totalBytes":1}`, aliceID)
 	resp, err := http.Post("http://"+ipOf("fi1m")+":8080/clients", "application/json", bytes.NewReader([]byte(body)))
 	if err != nil {
 		t.Fatal(err)
@@ -46,9 +47,17 @@ func TestUsageDisablesAnExhaustedClient(t *testing.T) {
 	}
 
 	f.socksOn(t, "client", 1086, "/ws-use")
-	// any request through the tunnel moves bytes the node reports
+	// keep traffic flowing until the client is disabled, so a slow first
+	// request cannot make the test depend on timing
+	stop := make(chan struct{})
+	t.Cleanup(func() { close(stop) })
 	go func() {
-		for range 5 {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
 			_, _ = getViaFrom("client", 1086, "http://web.lab.test/ip")
 			time.Sleep(300 * time.Millisecond)
 		}
