@@ -81,7 +81,7 @@ access, pool, vnet, certs, routing), but the deployment story is missing:
 | ~~No production entrypoint~~ | done: `cmd/fbmaster` owns config, `--check`, `--version`, `-create-ca`, signals and logging. |
 | ~~No admin listen setting / unauthenticated admin~~ | done: `AdminListen` defaults to loopback, a public bind needs `AdminAllowPublic`, and `AdminHandler` requires a token or the panel session (phase 0). |
 | ~~Master join/bootstrap~~ | mostly done: `fbmaster` creates/persists the CA, `POST /master/tokens` + `POST /master/join` and `fbmaster join` give a new master its CA and certificate without copying keys. Open: a per-master "issuer" flag and the full trust-model write-up. |
-| No DB migration | The old panel's SQLite (inbounds, clients, settings, nodes) has no importer. A master starting fresh means re-creating every inbound and client. |
+| ~~No DB migration~~ | partly done: `fbmaster import` plans and applies inbounds, clients and groups from the old SQLite (VLESS ws/xhttp); other protocols/transports and settings/hosts/templates are reported and re-created through their modules. See `native-migration.md`. |
 | UI not shipped | `UIDir` is a directory of built assets; nothing builds or ships it in CI, and the login needs a bootstrap API token (logged once) — an operator workflow around that is needed. |
 | Cert/ACME bootstrap | DNS accounts are created through the admin API (`PUT /dns/{id}`) and the pool certificate depends on them; there is no first-run wizard. |
 | Backup/DR | JetStream store and the optional Postgres projections have no backup/restore procedure. |

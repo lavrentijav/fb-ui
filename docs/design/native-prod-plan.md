@@ -173,15 +173,20 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 
 ## Phase 4 — Migration from the old panel
 
-- [ ] Importer: read the panel SQLite (inbounds, clients, hosts, settings,
-      nodes, subscriptions) into op-log records; a pure mapping package with
-      unit tests on a fixture DB.
-- [ ] Dry run: report every entity that maps, every one that does not (with the
-      reason), and every conflict (same email on two inbounds, duplicate tags).
-- [ ] Cutover runbook: old panel read-only → import → start masters → enrol
-      nodes one by one → verify traffic/subscription → retire old.
-- [ ] Rollback: keep the old DB untouched; a node can be pointed back while the
-      old panel still holds its config.
+- [x] Importer (`internal/native/importpanel`): opens the old SQLite read-only
+      and reads inbounds, clients, `client_inbounds`, nodes and groups; the
+      plan maps VLESS ws/xhttp inbounds to native inbounds and one client
+      record per client and inbound. Pure, unit-tested on a fixture database.
+- [x] Dry run: `fbmaster import -db ... -json` prints every planned record and
+      every skip with its reason (other protocols/transports, an inbound of
+      the old panel itself without `-local-node`, a client with no link row),
+      plus notes for settings/templates/hosts/certs that are re-created
+      through their modules.
+- [x] Apply: `fbmaster import ... -apply -master URL -token T` posts inbounds,
+      clients and groups to the authenticated admin surface; an existing
+      record is kept (409) so a rerun is safe.
+- [x] Cutover runbook and rollback in `native-migration.md` (snapshot, plan,
+      fleet, apply, verify, switch, retire; the old DB is never written).
 - [ ] Dual-run period: a node may report to both (or the old panel keeps the
       subscription while the new master serves traffic).
 - Acceptance: import the lab's or a copy of the real DB, every inbound/client

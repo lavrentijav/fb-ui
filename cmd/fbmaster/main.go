@@ -127,12 +127,21 @@ func (c *Config) normalize() error {
 }
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "join" {
-		if err := runJoin(os.Args[2:], os.Stderr); err != nil {
-			fmt.Fprintln(os.Stderr, "fbmaster join:", err)
-			os.Exit(1)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "join":
+			if err := runJoin(os.Args[2:], os.Stderr); err != nil {
+				fmt.Fprintln(os.Stderr, "fbmaster join:", err)
+				os.Exit(1)
+			}
+			return
+		case "import":
+			if err := runImport(os.Args[2:], os.Stdout, os.Stderr); err != nil {
+				fmt.Fprintln(os.Stderr, "fbmaster import:", err)
+				os.Exit(1)
+			}
+			return
 		}
-		return
 	}
 	path := flag.String("c", "/etc/fbmaster/config.json", "config file")
 	check := flag.Bool("check", false, "validate the config and exit")

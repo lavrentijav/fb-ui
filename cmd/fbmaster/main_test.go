@@ -11,10 +11,16 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"database/sql"
+
+	_ "modernc.org/sqlite"
+
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/importpanel"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/masterjoin"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module/modtest"
 )
@@ -260,4 +266,82 @@ func (w writer) Set(ctx context.Context, table, key string, fields map[string]an
 func (w writer) Delete(ctx context.Context, table, key string) error {
 	_, err := w.h.Delete(ctx, table, key)
 	return err
+}
+
+// importFixture builds a minimal old-panel database.
+func importFixture(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "x-ui.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, q := range []string{
+		`CREATE TABLE inbounds (id INTEGER PRIMARY KEY, tag TEXT, remark TEXT, port INTEGER,
+		 protocol TEXT, settings TEXT, stream_settings TEXT, node_id INTEGER, enable INTEGER,
+		 share_addr_strategy TEXT, share_addr TEXT)`,
+		`CREATE TABLE clients (id INTEGER PRIMARY KEY, email TEXT, uuid TEXT, total_gb INTEGER,
+		 expiry_time INTEGER, limit_ip INTEGER, enable INTEGER, group_name TEXT, sub_id TEXT)`,
+		`CREATE TABLE client_inbounds (client_id INTEGER, inbound_id INTEGER)`,
+		`CREATE TABLE nodes (id INTEGER PRIMARY KEY, name TEXT)`,
+		`CREATE TABLE client_groups (id INTEGER PRIMARY KEY, name TEXT)`,
+		`INSERT INTO nodes VALUES(2,'ru4')`,
+		`INSERT INTO inbounds VALUES(1,'in-443','RU',443,'vless','{}',
+		 '{"network":"ws","wsSettings":{"path":"/ws","headers":{"Host":"ru.example"}}}',2,1,'node','')`,
+		`INSERT INTO clients VALUES(1,'alice','uuid-a',0,0,1,1,'','s1')`,
+		`INSERT INTO client_inbounds VALUES(1,1)`,
+		`INSERT INTO client_groups VALUES(1,'friends')`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	return path
+}
+
+func TestImportDryRunPrintsThePlan(t *testing.T) {
+	var out, errBuf strings.Builder
+	if err := runImport([]string{"-db", importFixture(t), "-json"}, &out, &errBuf); err != nil {
+		t.Fatal(err)
+	}
+	var rep importpanel.Report
+	if err := json.Unmarshal([]byte(out.String()), &rep); err != nil {
+		t.Fatalf("output is not the report: %v\n%s", err, out.String())
+	}
+	if len(rep.Inbounds) != 1 || len(rep.Clients) != 1 || len(rep.Groups) != 1 {
+		t.Fatalf("plan %+v", rep)
+	}
+	if !strings.Contains(errBuf.String(), "run again with -apply") {
+		t.Fatalf("stderr %q", errBuf.String())
+	}
+}
+
+func TestImportApplySendsThePlanWithTheToken(t *testing.T) {
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer secret-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		got = append(got, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+	var out, errBuf strings.Builder
+	err := runImport([]string{
+		"-db", importFixture(t), "-apply", "-master", srv.URL, "-token", "secret-token",
+	}, &out, &errBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(got, ",")
+	for _, want := range []string{"POST /inbounds/ru4", "PUT /clients", "POST /groups"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("%q missing from %v", want, got)
+		}
+	}
+	if !strings.Contains(out.String(), "imported: 1 inbound(s)") {
+		t.Fatalf("stdout %q", out.String())
+	}
 }
