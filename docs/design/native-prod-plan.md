@@ -52,19 +52,20 @@ else can wait; this cannot.
 
 ## Phase 1 — Master entrypoint and first run
 
-- [ ] `cmd/fbmaster`: config file (`/etc/fbmaster/config.json`), flags for
-      `-c`, `--check`, `--version`; signal handling; structured logs; one
-      process, one directory.
-- [ ] `--check` validates config, listeners, store dirs and prints what it
-      would bind.
+- [x] `cmd/fbmaster`: config file (`/etc/fbmaster/config.json`), flags `-c`,
+      `--check`, `--version`, `-create-ca`; signal handling; logs; one process.
+- [x] `--check` validates the config, peer URLs, admin loopback rule, that the
+      data directories are writable, and prints every address it would bind.
 - [ ] Store choice: JetStream dir always; Postgres projection optional behind a
-      DSN; document which data lives where.
-- [ ] Fleet CA: load from a file, or generate on first run and print the
-      fingerprint; persist it; never regenerate silently.
-- [ ] Bootstrap admin token: print once (to stderr and a root-only file),
-      refuse to mint a second on restart while one lives.
-- [ ] First-run wizard text: listen addresses, CA fingerprint, admin URL,
-      token, and the exact `fbnode enroll` command for the first node.
+      DSN; document which data lives where. (JetStream only so far.)
+- [x] Fleet CA: loaded from `caCert`/`caKey`, or generated once with
+      `-create-ca` and logged by fingerprint; never regenerated silently, and a
+      half-present pair is an error.
+- [x] Bootstrap admin token: the existing `bootstrapToken` logs it once on the
+      leader and refuses while any token exists.
+- [x] First-run text: the master logs the interface directory (or says there
+      is none), the admin address and the intended flow; the token line is the
+      credential for `fbnode enroll`.
 - [ ] `GET /healthz` and `GET /ready` semantics documented (bus attached,
       projection caught up, leader state).
 - Acceptance: a clean VM with one config file serves the admin API on
@@ -73,7 +74,9 @@ else can wait; this cannot.
 ## Phase 2 — Fleet join, CA distribution, pool
 
 - [ ] Master join token: minted by a master, redeems into a gateway
-      certificate signed by the fleet CA (mirror `enroll` for nodes).
+      certificate signed by the fleet CA (mirror `enroll` for nodes). Until
+      then a joining master needs `caCert`, `caKey` (or a CA-signed
+      `cert`/`key` pair) copied by hand.
 - [ ] CA distribution: a joining master gets the CA certificate; it must not
       need the CA key unless it is allowed to issue (flag per master).
 - [ ] Document the trust model: which masters may issue node certificates,
