@@ -132,3 +132,46 @@ func TestSubscriptionLinkConnects(t *testing.T) {
 		return got == "/ip "+ipOf("ru4"), got
 	})
 }
+
+// An advertised address replaces the node's own name in the subscription, so
+// a client can be handed a CDN name or a spare IP without touching the spec.
+func TestSubscriptionUsesAdvertisedAddresses(t *testing.T) {
+	f := &fleet{lab: newLab(t)}
+	f.newFleetCA(t)
+	f.startMasters(t)
+	ru4 := nodespec.Spec{
+		Node: "ru4",
+		Inbounds: []nodespec.Inbound{{
+			Tag: "vpn", Port: 12054, Network: "ws", Path: "/ws-vpn", Host: "ru.lab.firewalk.test",
+			Route: nodespec.Direct, Clients: []nodespec.Client{{Email: "alice", ID: aliceID}},
+		}},
+		Certs: []nodespec.Cert{f.cert(t, "ru.lab.firewalk.test")}, DirectAllow: []string{"10.0.0.0/16"},
+	}
+	f.putSpec(t, "fi1", ru4)
+	f.startNode(t, "ru4")
+	token := f.subToken(t, "fi1", "alice")
+
+	// save the advertised address through the module's admin path on a master
+	body := `{"node":"ru4","inbound":"vpn","address":"10.0.2.4","remark":"direct ip","enable":true}`
+	resp, err := http.Post("http://"+ipOf("ru2m")+":8080/hosts", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("save host: %d %s", resp.StatusCode, raw)
+	}
+
+	eventually(t, 30*time.Second, "the advertised address reaches the subscription", func() (bool, string) {
+		links, err := f.subLinks("fi1", token)
+		if err != nil || len(links) != 1 {
+			return false, fmt.Sprintf("%v %v", links, err)
+		}
+		u, err := url.Parse(links[0])
+		if err != nil {
+			return false, err.Error()
+		}
+		return u.Hostname() == "10.0.2.4" && strings.HasSuffix(u.Fragment, "direct ip"), links[0]
+	})
+}

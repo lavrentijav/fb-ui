@@ -158,3 +158,22 @@ picks it up on its next pull and its certificate is requested for the names
 it terminates. A node whose `{{NODE_DOMAIN}}` was not supplied is reported
 (`missing`) and left alone; `dryRun` renders and validates without writing.
 The same operations are mirrored in `templatesmod` under `/api/v1/templates`.
+
+## Advertised addresses (hosts)
+
+A subscription usually hands out the node's own public name, but an operator
+may want a CDN name, a spare IP or another port for an inbound. An entry in
+`subhost` (`node`, `inbound`, `address`, `port`, `security`, `sni`, `host`,
+`path`, `remark`, `enable` — keyed `<node>/<inbound>/<id>`) **replaces** the
+default endpoint for that inbound: the subscription emits one link per
+enabled entry instead of the spec's own `Host`, with the inbound's path as a
+fallback. Disabled entries are ignored; deleting the last entry restores the
+default.
+
+`GET|POST /hosts`, `DELETE /hosts/{id}` on the master's admin API and
+`/api/v1/hosts` through `hostsmod` (with `Legacy()` mappings for the old
+panel). Validation rejects a scheme in the address, a port outside 1–65535
+and a security other than `tls`/`none`.
+
+`TestSubscriptionUsesAdvertisedAddresses` saves an address through ru2 and
+checks the subscription served by fi1 hands it out instead of the node name.

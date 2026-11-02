@@ -68,14 +68,25 @@ func TestAnswersOnlyItsNetwork(t *testing.T) {
 	}
 }
 
+// freePort returns a port free for both UDP and TCP, which the resolver needs.
 func freePort(t *testing.T) int {
 	t.Helper()
-	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	for range 20 {
+		pc, err := net.ListenPacket("udp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		port := pc.LocalAddr().(*net.UDPAddr).Port
+		ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		pc.Close()
+		if err != nil {
+			continue
+		}
+		ln.Close()
+		return port
 	}
-	defer pc.Close()
-	return pc.LocalAddr().(*net.UDPAddr).Port
+	t.Fatal("no port free for both UDP and TCP")
+	return 0
 }
 
 func queryPacket(t *testing.T, name string) []byte {

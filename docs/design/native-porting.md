@@ -38,6 +38,7 @@ main-line commit that has been reviewed. The main line is
 | Virtual networks (phase 1) | in progress: users, addresses, names, per-network DNS resolver (`internal/native/vdns`), networks, invites, presence, in-network routing, client config; lab `TestMembersOnDifferentNodes` passes; missing: exposes by name/allocated port |
 | Master ↔ agent runtime | in progress: `GET /nodes/state` merges spec registry with the newest reports (online, last seen, drain, online users); agents send heartbeats when idle |
 | Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `certs` (status, rollback), `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_certs`, `no_compat`. Missing: the rest of the modules, session login |
+| Subscription hosts | in progress: `hosts`/`hostsmod` advertise alternative addresses per node+inbound and `sub` hands them out instead of the spec's Host |
 | Interface (separate module) | in progress: `uimod` session login (cookie over `/api/v1/ui`), `UIDir` serves the built app at `/panel` with the `compat` adapter; missing: React login against the new session, per-section legacy routes, migration to `/api/v1` |
 | Multi-master core (`internal/native/{hlc,bus,pgstate,lww,master,oplog}`) | in progress: JetStream supercluster + Postgres projection, split/heal tested |
 

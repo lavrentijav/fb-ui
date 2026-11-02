@@ -32,6 +32,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/enroll"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/hosts"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
@@ -516,6 +517,29 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
 	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
+	mux.HandleFunc("GET /hosts", func(w http.ResponseWriter, _ *http.Request) {
+		apiserver.JSON(w, http.StatusOK, hosts.List(d.store.State))
+	})
+	mux.HandleFunc("POST /hosts", d.saveHost)
+	mux.HandleFunc("DELETE /hosts/{id}", func(w http.ResponseWriter, r *http.Request) {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		id := r.PathValue("id")
+		for _, e := range hosts.List(d.store.State) {
+			if e.ID == id {
+				if err := hosts.Delete(r.Context(), h, e); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+				return
+			}
+		}
+		http.Error(w, "no such host entry", http.StatusNotFound)
+	})
 	mux.HandleFunc("GET /templates", func(w http.ResponseWriter, _ *http.Request) {
 		apiserver.JSON(w, http.StatusOK, templates.List(d.store.State))
 	})
@@ -695,6 +719,29 @@ func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = io.WriteString(w, html)
+}
+
+// saveHost stores one advertised address for a node's inbound.
+func (d *Daemon) saveHost(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var e hosts.Entry
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&e); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if m := d.m.Load(); m != nil {
+		_, _ = m.CatchUp(r.Context())
+	}
+	saved, err := hosts.Save(r.Context(), h, e)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, saved)
 }
 
 // saveTemplate stores a spec template (a shape without clients).
@@ -1135,7 +1182,7 @@ func (d *Daemon) serveSub(w http.ResponseWriter, r *http.Request) {
 	}
 	var email string
 	_ = json.Unmarshal(rec["email"], &email)
-	links := sub.Links(d.specs(), email)
+	links := sub.LinksWith(d.specs(), email, hosts.Endpoints(hosts.List(d.store.State)))
 	if len(links) == 0 {
 		http.Error(w, "no inbounds for "+email, http.StatusNotFound)
 		return

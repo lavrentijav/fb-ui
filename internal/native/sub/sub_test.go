@@ -43,7 +43,7 @@ func TestLinksBelongToTheClient(t *testing.T) {
 }
 
 func TestLinkIsAWorkingWsTLSURL(t *testing.T) {
-	raw := sub.Link(uid, "ru.lab.test", "/ws-vpn", "ru4-vpn")
+	raw := sub.Link(uid, sub.Endpoint{Address: "ru.lab.test", Path: "/ws-vpn", Remark: "ru4-vpn"})
 	u, err := url.Parse(raw)
 	if err != nil {
 		t.Fatal(err)
@@ -73,5 +73,25 @@ func TestBase64KeepsOneLinkPerLine(t *testing.T) {
 	}
 	if string(raw) != "vless://a\nvless://b" {
 		t.Fatalf("body %q", raw)
+	}
+}
+
+func TestHostsOverrideTheEndpoint(t *testing.T) {
+	hosts := sub.Hosts{"ru4/vpn": {
+		{Address: "cdn.example", SNI: "ru.lab.test", Port: 8443, Remark: "cdn"},
+		{Address: "1.2.3.4", Security: "none"},
+	}}
+	got := sub.LinksWith(specs(), "alice", hosts)
+	// de2 is untouched, ru4's inbound yields two advertised links
+	if len(got) != 3 {
+		t.Fatalf("links %v", got)
+	}
+	if !strings.Contains(got[1], "@cdn.example:8443?") || !strings.Contains(got[1], "sni=ru.lab.test") ||
+		!strings.Contains(got[1], "path=%2Fws") || !strings.HasSuffix(got[1], "cdn") {
+		t.Fatalf("cdn link %s", got[1])
+	}
+	if !strings.Contains(got[2], "@1.2.3.4:443?") || !strings.Contains(got[2], "security=none") ||
+		strings.Contains(got[2], "sni=") {
+		t.Fatalf("plain link %s", got[2])
 	}
 }
