@@ -45,6 +45,24 @@ master at `/sub/<token>` for browsers (raw links for clients), with the login
 and the virtual network in a **Manage** tab backed by `/api/v1/sub/*`. See
 `native-nodes.md` for the API.
 
+## Subscriptions and virtual networks (done 2026-11-02)
+
+Two operator pages under **Доступ**:
+
+- **Subscriptions** (`/subscriptions`) lists every subscription with its
+  login, enabled state, link count, traffic and expiry. It creates one per
+  client email (`PUT /sub/<email>`), shows the generated password once, and
+  can copy the link, reset the password, switch the link list off and delete.
+  The list is `GET /sub`; the switch is `POST /sub/<token>/enable`.
+- **Virtual networks** (`/vnet`) observes the networks subscribers create:
+  title, owner and members with their internal addresses. It is read-only --
+  subscribers manage their own networks from the subscription page -- and
+  reads `GET /vnet/networks`.
+
+Both talk to the master's admin API on the same origin as the panel, so they
+work against a native master today; the lab covers the list, the switch and
+the network view.
+
 ## Still to do
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for

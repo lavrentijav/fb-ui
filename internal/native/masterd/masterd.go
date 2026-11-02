@@ -488,8 +488,11 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
+	mux.HandleFunc("GET /sub", d.listSubscriptions)
 	mux.HandleFunc("PUT /sub/{email}", d.createSubscription)
 	mux.HandleFunc("POST /sub/{email}/password", d.resetSubPassword)
+	mux.HandleFunc("POST /sub/{token}/enable", d.setSubEnabled)
+	mux.HandleFunc("GET /vnet/networks", d.listNetworks)
 	mux.HandleFunc("DELETE /sub/{token}", func(w http.ResponseWriter, r *http.Request) {
 		m := d.m.Load()
 		if m == nil {

@@ -185,4 +185,72 @@ func TestSubscriptionPageAndAccount(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(string(raw), `"id":"alice"`) {
 		t.Fatalf("bob's members: %d %.400s", code, raw)
 	}
+
+	// the operator lists subscriptions with their login and links
+	eventually(t, 60*time.Second, "both subscriptions are listed", func() (bool, string) {
+		code, raw, _ := call("GET", "fi1", "/sub", "", nil, "")
+		if code != http.StatusOK {
+			return false, fmt.Sprintf("%d %s", code, raw)
+		}
+		var list []struct {
+			Email string `json:"email"`
+			User  string `json:"user"`
+			Links int    `json:"links"`
+		}
+		if json.Unmarshal(raw, &list) != nil || len(list) != 2 {
+			return false, string(raw)
+		}
+		for _, it := range list {
+			if it.User == "" {
+				return false, string(raw)
+			}
+			if it.Email == "alice" && it.Links == 0 {
+				return false, string(raw)
+			}
+		}
+		return list[0].Email == "alice" && list[1].Email == "bob", string(raw)
+	})
+
+	// the operator can switch a link list off without touching the login
+	code, raw, _ = call("GET", "fi1", "/sub", "", nil, "")
+	var listed []struct {
+		Token string `json:"token"`
+		Email string `json:"email"`
+	}
+	if err := json.Unmarshal(raw, &listed); err != nil {
+		t.Fatalf("list: %s", raw)
+	}
+	aliceToken := ""
+	for _, it := range listed {
+		if it.Email == "alice" {
+			aliceToken = it.Token
+		}
+	}
+	if code, raw, _ := call("POST", "fi1", "/sub/"+aliceToken+"/enable", `{"enable":false}`, nil, ""); code != http.StatusOK {
+		t.Fatalf("disable: %d %s", code, raw)
+	}
+	if code, _, _ := call("GET", "fi1", "/sub/"+aliceToken, "", nil, "*/*"); code != http.StatusNotFound {
+		t.Fatalf("a disabled subscription answered %d", code)
+	}
+	if code, raw, _ := call("POST", "fi1", "/sub/"+aliceToken+"/enable", `{"enable":true}`, nil, ""); code != http.StatusOK {
+		t.Fatalf("enable: %d %s", code, raw)
+	}
+
+	// the operator sees the network both subscribers joined
+	eventually(t, 60*time.Second, "the network is listed with both members", func() (bool, string) {
+		code, raw, _ := call("GET", "de2", "/vnet/networks", "", nil, "")
+		if code != http.StatusOK {
+			return false, fmt.Sprintf("%d %s", code, raw)
+		}
+		var nets []struct {
+			Members []struct {
+				User string `json:"user"`
+				IP   string `json:"ip"`
+			} `json:"members"`
+		}
+		if json.Unmarshal(raw, &nets) != nil || len(nets) != 1 || len(nets[0].Members) != 2 {
+			return false, string(raw)
+		}
+		return nets[0].Members[0].IP != "" && nets[0].Members[1].IP != "", string(raw)
+	})
 }

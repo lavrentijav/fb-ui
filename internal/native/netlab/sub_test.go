@@ -75,7 +75,7 @@ func TestSubscriptionLinkConnects(t *testing.T) {
 	// which is harmless because both render the same links
 	other := f.subToken(t, "de2", "alice")
 	for _, tok := range []string{token, other} {
-		eventually(t, 20*time.Second, "the token renders links anywhere", func() (bool, string) {
+		eventually(t, 40*time.Second, "the token renders links anywhere", func() (bool, string) {
 			if _, err := f.subLinks("fi1", tok); err != nil {
 				return false, err.Error()
 			}

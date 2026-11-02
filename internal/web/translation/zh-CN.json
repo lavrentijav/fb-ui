@@ -152,7 +152,9 @@
       "entry": "Entry (443)",
       "routing": "Routing",
       "system": "System"
-    }
+    },
+    "subscriptions": "Subscriptions",
+    "vnet": "Virtual networks"
   },
   "pages": {
     "login": {
@@ -2707,6 +2709,33 @@
         "apply": "Apply template",
         "delete": "Delete template"
       }
+    },
+    "subscriptions": {
+      "title": "Subscriptions",
+      "intro": "A subscription is a link list and a page for one client email. Give it a login so the subscriber can sign in, see their traffic and manage their virtual network; the password is shown once.",
+      "create": "New subscription",
+      "empty": "No subscriptions yet",
+      "email": "Client email",
+      "emailHint": "The email of an existing client; its links are what the subscription serves.",
+      "user": "Login",
+      "userHint": "Defaults to the email. 3-32 letters, digits, dots, dashes or underscores.",
+      "password": "Password",
+      "passwordHint": "At least 8 characters. Leave it empty to generate one.",
+      "links": "Links",
+      "expire": "Expires",
+      "actions": "Actions",
+      "resetPassword": "Reset password",
+      "deleteConfirm": "Delete the subscription for {email}? Clients already using its links keep working until they refresh.",
+      "secretOnce": "The password is shown once and is not stored in readable form.",
+      "subUrl": "Subscription URL"
+    },
+    "vnet": {
+      "title": "Virtual networks",
+      "intro": "Subscribers run their own networks: one owner invites members, each gets an internal address on a private subnet. Here you only observe them.",
+      "network": "Network",
+      "owner": "Owner",
+      "members": "Members",
+      "empty": "No virtual networks yet"
     }
   },
   "tgbot": {

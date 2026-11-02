@@ -8,6 +8,8 @@ const IndexPage = lazy(() => import('@/pages/index/IndexPage'));
 const InboundsPage = lazy(() => import('@/pages/inbounds/InboundsPage'));
 const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
 const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
+const SubscriptionsPage = lazy(() => import('@/pages/subscriptions/SubscriptionsPage'));
+const VirtualNetworksPage = lazy(() => import('@/pages/vnet/VirtualNetworksPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const NetworkPage = lazy(() => import('@/pages/network/NetworkPage'));
 const FiltersPage = lazy(() => import('@/pages/filters/FiltersPage'));
@@ -49,6 +51,8 @@ const routes: RouteObject[] = [
       { path: 'inbounds', element: withSuspense(<InboundsPage />) },
       { path: 'clients', element: withSuspense(<ClientsPage />) },
       { path: 'groups', element: withSuspense(<GroupsPage />) },
+      { path: 'subscriptions', element: withSuspense(<SubscriptionsPage />) },
+      { path: 'vnet', element: withSuspense(<VirtualNetworksPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
       { path: 'peers', element: <Navigate to="/nodes?role=master" replace /> },
       { path: 'cascades', element: withSuspense(<NetworkPage />) },

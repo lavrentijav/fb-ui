@@ -305,6 +305,12 @@ master sets it):
   the subscriber manages their own network: members, invite codes and joining,
   never anyone else's.
 
+The operator gets `GET /sub` (every subscription with login, links, traffic,
+expiry), `POST /sub/<token>/enable` (switch the link list off without touching
+the login) and `GET /vnet/networks` (networks, owners and members with their
+addresses). The interface's **Subscriptions** and **Virtual networks** pages
+under Доступ use them; see `native-ui.md`.
+
 `TestSubscriptionPageAndAccount` covers it end to end: create a subscription
 with a login, open its URL as a browser (page with data and rewritten assets)
 and as a client (links), log in from another master, create a network, invite,

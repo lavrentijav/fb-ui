@@ -7,6 +7,7 @@ import type { MenuProps } from 'antd';
 import {
   ApiOutlined,
   ApartmentOutlined,
+  LinkOutlined,
   CloseOutlined,
   CloudServerOutlined,
   ClusterOutlined,
@@ -71,6 +72,8 @@ type IconName =
   | 'inbound'
   | 'team'
   | 'groups'
+  | 'subscriptions'
+  | 'vnet'
   | 'setting'
   | 'tool'
   | 'cluster'
@@ -90,6 +93,8 @@ const iconByName: Record<IconName, ComponentType> = {
   inbound: ImportOutlined,
   team: TeamOutlined,
   groups: TagsOutlined,
+  subscriptions: LinkOutlined,
+  vnet: ApartmentOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -242,6 +247,8 @@ export default function AppSidebar() {
       { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
       { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
       { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
+      { key: '/subscriptions', icon: 'subscriptions', title: t('menu.subscriptions'), section: 'access' },
+      { key: '/vnet', icon: 'vnet', title: t('menu.vnet'), section: 'access' },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
       { key: '/cascades', icon: 'network', title: t('menu.network'), section: 'fleet' },
       { key: '/templates', icon: 'templates', title: t('menu.templates'), section: 'fleet' },
