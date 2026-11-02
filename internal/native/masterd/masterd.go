@@ -783,7 +783,7 @@ func (d *Daemon) applyTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := r.PathValue("name")
-	if !d.waitKey(r.Context(), m, templates.Table, name, 15*time.Second) {
+	if !d.waitKey(r.Context(), m, templates.Table, name, 60*time.Second) {
 		http.Error(w, "no such template (not replicated here yet)", http.StatusNotFound)
 		return
 	}
@@ -934,7 +934,7 @@ func (d *Daemon) registerNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if body.CascadeTo != "" && !d.waitSpec(ctx, m, body.CascadeTo, 30*time.Second) {
+	if body.CascadeTo != "" && !d.waitSpec(ctx, m, body.CascadeTo, 60*time.Second) {
 		http.Error(w, "no spec for exit "+body.CascadeTo+" (not registered or not replicated yet)", http.StatusUnprocessableEntity)
 		return
 	}
