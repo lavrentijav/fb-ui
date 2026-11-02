@@ -5,8 +5,10 @@ package masterd
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,11 +32,15 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
 
 // SpecTable holds each node's spec as field "spec".
 const SpecTable = "nodespec"
+
+// SubTokenTable maps a subscription token to the client's email.
+const SubTokenTable = "subtoken"
 
 type Config struct {
 	Name     string
@@ -269,6 +275,7 @@ func (d *Daemon) Public() http.Handler {
 		fmt.Fprintln(w, "ok", d.cfg.Name)
 	})
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
+	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	return mux
 }
 
@@ -314,12 +321,8 @@ func (d *Daemon) render(m *master.Master) desired.Render {
 		}
 		if s := d.vnets.Load(); s != nil {
 			specs := map[string]nodespec.Spec{}
-			for _, other := range d.store.State.Keys(SpecTable) {
-				rec, _ := d.store.State.Get(SpecTable, other)
-				var o nodespec.Spec
-				if json.Unmarshal(rec["spec"], &o) == nil {
-					specs[other] = o
-				}
+			for _, other := range d.specs() {
+				specs[other.Node] = other
 			}
 			s.Fill(&spec, specs)
 		}
@@ -451,6 +454,35 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
+	mux.HandleFunc("PUT /sub/{email}", func(w http.ResponseWriter, r *http.Request) {
+		m := d.m.Load()
+		if m == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		email := r.PathValue("email")
+		if email == "" {
+			http.Error(w, "an email is required", http.StatusBadRequest)
+			return
+		}
+		token, err := d.subToken(r.Context(), m, email)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
+	})
+	mux.HandleFunc("DELETE /sub/{token}", func(w http.ResponseWriter, r *http.Request) {
+		m := d.m.Load()
+		if m == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		if _, err := m.Delete(r.Context(), SubTokenTable, r.PathValue("token")); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -466,6 +498,60 @@ func (d *Daemon) Handler() http.Handler {
 	})
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	return mux
+}
+
+// specs is every node's spec from the projection.
+func (d *Daemon) specs() []nodespec.Spec {
+	var out []nodespec.Spec
+	for _, node := range d.store.State.Keys(SpecTable) {
+		rec, ok := d.store.State.Get(SpecTable, node)
+		var s nodespec.Spec
+		if ok && json.Unmarshal(rec["spec"], &s) == nil {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// subToken is the token an email already has, or a new one.
+func (d *Daemon) subToken(ctx context.Context, m *master.Master, email string) (string, error) {
+	// a token minted on another master may not have replicated here yet
+	_, _ = m.CatchUp(ctx)
+	for _, token := range d.store.State.Keys(SubTokenTable) {
+		rec, ok := d.store.State.Get(SubTokenTable, token)
+		var have string
+		if ok && json.Unmarshal(rec["email"], &have) == nil && have == email {
+			return token, nil
+		}
+	}
+	buf := make([]byte, 24)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(buf)
+	_, err := m.Set(ctx, SubTokenTable, token, map[string]any{"email": email})
+	return token, err
+}
+
+// serveSub is a client's subscription: the link list, base64-encoded.
+func (d *Daemon) serveSub(w http.ResponseWriter, r *http.Request) {
+	if m := d.m.Load(); m != nil {
+		_, _ = m.CatchUp(r.Context())
+	}
+	rec, ok := d.store.State.Get(SubTokenTable, r.PathValue("token"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	var email string
+	_ = json.Unmarshal(rec["email"], &email)
+	links := sub.Links(d.specs(), email)
+	if len(links) == 0 {
+		http.Error(w, "no inbounds for "+email, http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = io.WriteString(w, sub.Base64(links))
 }
 
 // vnetAPI is the users' side of the network, under /api/v1/.

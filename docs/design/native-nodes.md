@@ -24,6 +24,19 @@ an inbound that is not listening yet.
 | `Client.LimitIP` | an IP limit per user, rendered into `Bundle.Limits` (the strictest, if the user is on several inbounds). The **node** enforces it with `internal/native/failban`: every `banEvery` (default 10 s) it reads `xray api statsonlineiplist -all`, keeps the user's newest `LimitIP` addresses and bans the rest as a `sourceIP → block` rule applied live (`adrules`); an address counts as live for `banHold` (default 2 min) after it was last seen, so a banned device does not come back as the newest one |
 | always | `direct`, `block`, stats API on 127.0.0.1:10085, per-user traffic counters |
 
+## Subscriptions
+
+`PUT /sub/<email>` on a master's admin API writes `subtoken` (key = token,
+field `email`) and answers `{token}`; it reuses the email's token when the
+projection already has one. `GET /sub/<token>` (admin API and the pool name)
+answers the client's links, one per line, base64-encoded:
+
+`vless://<uuid>@<host>:443?encryption=none&security=tls&sni=<host>&type=ws&host=<host>&path=<path>&alpn=http/1.1#<node>-<tag>`
+
+A link exists for every inbound with `Host != ""` across every node's spec
+whose client list holds the email (reverse `#rev` users are skipped). Unknown
+tokens answer 404; a token is valid on every master once it replicates.
+
 Inbounds behind the edge trust `X-Edge-Proxy` in `trustedXForwardedFor`, so
 Xray sees the client's real address (IP limits, fail2ban), not 127.0.0.1.
 
@@ -108,4 +121,10 @@ Found by the lab, now handled:
    devices of one user, `limitIp: 1`; the one that connected first is blocked
    on the node within seconds, the newer one keeps working). The master only
    carries the limit in the spec; nothing is reported back.
-7. Subscriptions served by masters, pointing at group names.
+7. ~~Subscriptions served by masters~~ — done for the link list
+   (`TestSubscriptionLinkConnects`): `PUT /sub/<email>` mints (or reuses) a
+   token in the op log, any master serves `GET /sub/<token>` (also on
+   `master.<zone>`) as base64 VLESS links built from the specs — one per
+   inbound with a `Host`, connecting to the edge on 443 with the inbound's
+   path. Group names are a later step: a `Host` is already whatever name the
+   spec puts there, so a group name needs only the DNS pool that resolves it.
