@@ -163,3 +163,28 @@ Found by the lab, now handled:
    and a config; the CA is pinned by the token's fingerprint.
 9. Sidecars (TUIC, MTProto, AmneziaWG) and the master's view of node state
    (reports → API) are the rest of the fbnode track.
+
+## Clients
+
+A client is a record per node, inbound and email (`client` table, key
+`<node>/<inbound>/<email>`): uuid, `enable`, `totalBytes` (0 = unlimited),
+`expiresAt` (unix ms, 0 = never), `limitIp`, `remark`.
+
+When a master renders a node it adds the node's **active** clients (enabled,
+not expired) to the inbound with that tag; a client whose inbound no longer
+exists is simply not attached, and the record outlives the port. A client a
+virtual network already added to an inbound is not added twice. Traffic
+exhaustion is not enforced yet: the node's counters would have to flow back
+into a per-client usage table, which is the next step.
+
+API: `GET|POST|PUT /api/v1/clients`, `GET|DELETE /api/v1/clients/{node}/
+{inbound}/{email}` (`POST` creates or replaces, `PUT` refuses a duplicate,
+201 on create), and the same operations on the master's admin API
+(`/clients`). `expiry` accepts RFC3339 or unix ms. The subscription renders
+from the effective specs, so a client reaches its links as soon as the record
+replicates; disabling it removes it from both the node's config and the
+subscription while the record stays.
+
+`TestClientsReachNodesAndSubscriptions` creates a client through ru2, sees it
+in ru4's Xray config and in the subscription from de2, then disables it and
+sees it leave both.

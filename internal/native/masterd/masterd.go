@@ -27,6 +27,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/certs"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/clients"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/dnsacct"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
@@ -517,6 +518,12 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
 	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
+	mux.HandleFunc("GET /clients", func(w http.ResponseWriter, _ *http.Request) {
+		apiserver.JSON(w, http.StatusOK, clients.List(d.store.State))
+	})
+	mux.HandleFunc("PUT /clients", d.createClient)
+	mux.HandleFunc("POST /clients", d.saveClient)
+	mux.HandleFunc("DELETE /clients/{node}/{inbound}/{email}", d.deleteClient)
 	mux.HandleFunc("GET /hosts", func(w http.ResponseWriter, _ *http.Request) {
 		apiserver.JSON(w, http.StatusOK, hosts.List(d.store.State))
 	})
@@ -719,6 +726,91 @@ func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = io.WriteString(w, html)
+}
+
+// clientInput is the admin API's shape; expiry accepts RFC3339 or unix ms.
+type clientInput struct {
+	clients.Client
+	Expiry string `json:"expiry"`
+}
+
+func (in clientInput) client() (clients.Client, error) {
+	c := in.Client
+	if in.Expiry != "" {
+		ms, err := clients.ParseExpiry(in.Expiry)
+		if err != nil {
+			return clients.Client{}, err
+		}
+		c.ExpiresAt = ms
+	}
+	return c, nil
+}
+
+// createClient refuses an email already on that inbound.
+func (d *Daemon) createClient(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var in clientInput
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	c, err := in.client()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	saved, err := clients.Create(r.Context(), h, c)
+	if err != nil {
+		code := http.StatusBadRequest
+		if err == clients.ErrExists {
+			code = http.StatusConflict
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	apiserver.JSON(w, http.StatusCreated, saved)
+}
+
+// saveClient creates or replaces one record.
+func (d *Daemon) saveClient(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var in clientInput
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	c, err := in.client()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	saved, _, err := clients.Save(r.Context(), h, c)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, saved)
+}
+
+func (d *Daemon) deleteClient(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	if err := clients.Delete(r.Context(), h, r.PathValue("node"), r.PathValue("inbound"), r.PathValue("email")); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // saveHost stores one advertised address for a node's inbound.
@@ -1137,6 +1229,26 @@ func (s enrollStore) Delete(ctx context.Context, table, key string) error {
 	return err
 }
 
+// effectiveSpecs is every node's spec with what the modules add when a master
+// renders it (network members, clients, routing rules), so the subscription
+// sees the same inbounds the node runs.
+func (d *Daemon) effectiveSpecs() []nodespec.Spec {
+	raw := d.specs()
+	byNode := make(map[string]nodespec.Spec, len(raw))
+	for _, s := range raw {
+		byNode[s.Node] = s
+	}
+	out := make([]nodespec.Spec, 0, len(raw))
+	for _, s := range raw {
+		if st := d.vnets.Load(); st != nil {
+			st.Fill(&s, byNode)
+		}
+		contribute(module.All(), d.store.State, s.Node, &s)
+		out = append(out, s)
+	}
+	return out
+}
+
 // specs is every node's spec from the projection.
 func (d *Daemon) specs() []nodespec.Spec {
 	var out []nodespec.Spec
@@ -1182,7 +1294,7 @@ func (d *Daemon) serveSub(w http.ResponseWriter, r *http.Request) {
 	}
 	var email string
 	_ = json.Unmarshal(rec["email"], &email)
-	links := sub.LinksWith(d.specs(), email, hosts.Endpoints(hosts.List(d.store.State)))
+	links := sub.LinksWith(d.effectiveSpecs(), email, hosts.Endpoints(hosts.List(d.store.State)))
 	if len(links) == 0 {
 		http.Error(w, "no inbounds for "+email, http.StatusNotFound)
 		return
