@@ -13,6 +13,17 @@ type Report struct {
 	At     int64 // unix ms
 	Online []string
 	Drain  *Drain
+	Health *Health
+}
+
+// Health is the node's vitals from its report.
+type Health struct {
+	Load1    float64 `json:"load1,omitempty"`
+	MemUsed  int64   `json:"memUsed,omitempty"`
+	MemTotal int64   `json:"memTotal,omitempty"`
+	DiskFree int64   `json:"diskFree,omitempty"`
+	Uptime   int64   `json:"uptime,omitempty"`
+	Version  string  `json:"version,omitempty"`
 }
 
 // Drain is a node in maintenance.
@@ -31,6 +42,7 @@ type State struct {
 	Draining    bool     `json:"draining,omitempty"`
 	DrainSince  int64    `json:"drainSince,omitempty"`
 	DrainActive int      `json:"drainActive,omitempty"`
+	Health      *Health  `json:"health,omitempty"`
 }
 
 // DefaultStale is how long after its last report a node stops counting as
@@ -87,6 +99,10 @@ func state(node string, r Report, now time.Time, stale time.Duration) State {
 		s.Draining = true
 		s.DrainSince = r.Drain.Since
 		s.DrainActive = r.Drain.Active
+	}
+	if r.Health != nil {
+		h := *r.Health
+		s.Health = &h
 	}
 	return s
 }

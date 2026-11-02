@@ -30,10 +30,14 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vdns"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
 )
+
+// version is stamped at build time with -ldflags "-X main.version=...".
+var version = "dev"
 
 type duration struct{ time.Duration }
 
@@ -215,6 +219,7 @@ func run(path string, logger *log.Logger) error {
 	sel := pick.New(masters, prober, pick.Settings{RebindEvery: c.RebindEvery.Duration, MinPacket: c.MinPacket})
 	node := &agent.Node{
 		Name: c.Node, Applier: app, Xray: xr, Log: logger.Printf, DrainState: edge.DrainState,
+		Health: reports.HealthOf, Version: version,
 		ReportEvery: c.ReportEvery.Duration, PullEvery: c.PullEvery.Duration, Heartbeat: c.Heartbeat.Duration,
 		Sender: &agent.Sender{
 			Journal: journal, Select: sel,

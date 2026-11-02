@@ -149,3 +149,58 @@ func TestRegisterBuildsTheFleet(t *testing.T) {
 		return !ok, got
 	})
 }
+
+// The dashboard summarizes the fleet: both registered nodes count, both are
+// online, and each carries its vitals in GET /nodes/state.
+func TestDashboardSummarizesTheFleet(t *testing.T) {
+	f := &fleet{lab: newLab(t)}
+	f.newFleetCA(t)
+	f.startMasters(t)
+	f.startEnrolledNode(t, "de2", "fi1")
+	f.startEnrolledNode(t, "ru4", "ru2")
+	f.register(t, "fi1", map[string]any{"node": "de2", "role": "exit", "host": "de2.lab.firewalk.test"})
+	f.register(t, "ru2", map[string]any{"node": "ru4", "role": "entry", "host": "ru.lab.firewalk.test", "cascadeTo": "de2"})
+
+	eventually(t, 90*time.Second, "the dashboard sees both nodes online", func() (bool, string) {
+		resp, err := http.Get("http://" + ipOf("de2m") + ":8080/dashboard")
+		if err != nil {
+			return false, err.Error()
+		}
+		defer resp.Body.Close()
+		var s struct {
+			Nodes struct {
+				Total  int `json:"total"`
+				Online int `json:"online"`
+			} `json:"nodes"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+			return false, err.Error()
+		}
+		return s.Nodes.Total == 2 && s.Nodes.Online == 2, fmt.Sprintf("%+v", s.Nodes)
+	})
+
+	eventually(t, 60*time.Second, "a node reports its vitals", func() (bool, string) {
+		resp, err := http.Get("http://" + ipOf("fi1m") + ":8080/nodes/state")
+		if err != nil {
+			return false, err.Error()
+		}
+		defer resp.Body.Close()
+		var states []struct {
+			Node   string `json:"node"`
+			Health *struct {
+				MemTotal int64  `json:"memTotal"`
+				Uptime   int64  `json:"uptime"`
+				Version  string `json:"version"`
+			} `json:"health"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&states); err != nil {
+			return false, err.Error()
+		}
+		for _, s := range states {
+			if s.Node == "ru4" && s.Health != nil && s.Health.MemTotal > 0 && s.Health.Uptime > 0 {
+				return true, ""
+			}
+		}
+		return false, fmt.Sprint(states)
+	})
+}

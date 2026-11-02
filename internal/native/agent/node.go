@@ -35,6 +35,10 @@ type Node struct {
 	// Heartbeat sends an empty report when nothing moved, so masters can tell
 	// a quiet node from a dead one (0 = 30s).
 	Heartbeat time.Duration
+	// Health, when set, is read on each report (load, memory, uptime).
+	Health func() reports.Health
+	// Version is the agent's build version, reported with health.
+	Version string
 
 	lastReport time.Time
 }
@@ -53,6 +57,13 @@ func (n *Node) Collect(ctx context.Context) {
 		return
 	}
 	r := reports.Report{At: time.Now().UnixMilli()}
+	if n.Health != nil {
+		h := n.Health()
+		if n.Version != "" {
+			h.Version = n.Version
+		}
+		r.Health = &h
+	}
 	if n.DrainState != nil {
 		// while draining, report even without traffic: the master watches Active fall
 		if st := n.DrainState(); st.Enable {
@@ -62,6 +73,8 @@ func (n *Node) Collect(ctx context.Context) {
 	if n.lastReport.IsZero() {
 		n.lastReport = time.Now() // a fresh start is not yet a missed heartbeat
 	}
+	// a heartbeat carries health even with no traffic; a busy node sends its
+	// vitals with the traffic it already has
 	if len(traffic) == 0 && r.Drain == nil && time.Since(n.lastReport) < n.heartbeat() {
 		return
 	}

@@ -5,7 +5,9 @@ package reports
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -23,6 +25,9 @@ type Report struct {
 	Online  []string  `json:"o,omitempty"`
 	// Drain is set while the node is in maintenance.
 	Drain *Drain `json:"dr,omitempty"`
+	// Health is the node's vitals, sent at most every report; a missing one
+	// keeps the last known values on the master.
+	Health *Health `json:"h,omitempty"`
 }
 
 // Drain is how many tunnels a draining node still carries.
@@ -51,4 +56,50 @@ func Send(ctx context.Context, nc *nats.Conn, master string, r Report) error {
 	_, err = js.Publish(ctx, wire.ReportSubject(master, r.Node), data,
 		jetstream.WithMsgID(r.Node+":"+strconv.FormatUint(r.Seq, 10)))
 	return err
+}
+
+// HealthOf reads the node's vitals; an unreadable file leaves a field zero.
+func HealthOf() Health {
+	var h Health
+	if b, err := os.ReadFile("/proc/loadavg"); err == nil {
+		if f := strings.Fields(string(b)); len(f) > 0 {
+			h.Load1, _ = strconv.ParseFloat(f[0], 64)
+		}
+	}
+	if b, err := os.ReadFile("/proc/meminfo"); err == nil {
+		h.MemTotal, h.MemUsed = meminfo(string(b))
+	}
+	if b, err := os.ReadFile("/proc/uptime"); err == nil {
+		if f := strings.Fields(string(b)); len(f) > 0 {
+			if v, err := strconv.ParseFloat(f[0], 64); err == nil {
+				h.Uptime = int64(v)
+			}
+		}
+	}
+	return h
+}
+
+// meminfo reads MemTotal and MemAvailable (kB) and answers bytes used.
+func meminfo(raw string) (total, used int64) {
+	var available int64
+	for _, line := range strings.Split(raw, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 {
+			continue
+		}
+		v, err := strconv.ParseInt(f[1], 10, 64)
+		if err != nil {
+			continue
+		}
+		switch f[0] {
+		case "MemTotal:":
+			total = v * 1024
+		case "MemAvailable:":
+			available = v * 1024
+		}
+	}
+	if total > 0 && available > 0 && available < total {
+		used = total - available
+	}
+	return total, used
 }

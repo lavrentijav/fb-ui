@@ -235,3 +235,18 @@ API (`/inbounds/...`), tag `no_inbounds`.
 `TestInboundEditingReachesTheNode`: an inbound added through ru2 reaches ru4's
 Xray config, a port change moves it, a rule blocks the delete with a clear
 error, and once the rule is gone the delete removes it from the node.
+
+## Vitals and the overview
+
+A node's report carries a `Health` block (`l1` load, `mu`/`mt` memory in
+bytes, `df` free disk, `up` uptime seconds, `v` agent version), read from
+`/proc` on Linux; a platform without `/proc` leaves the fields zero rather
+than failing. `/nodes/state` shows it per node.
+
+`internal/native/dashboardmod` (module `dashboard`) answers the overview in
+one call: `GET /api/v1/dashboard` with node counts (total/online/draining and
+online users), client counts (total/enabled/disabled/expired), and the total
+traffic counted. It reads node state through `module.ReportAware` and the
+usage snapshots, so it works without Postgres. `GET /dashboard` on the
+master's admin API answers the same, and `GET /api/v1/dashboard/online`
+answers just the node numbers. Tag `no_dashboard`.

@@ -600,6 +600,25 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
+	mux.HandleFunc("GET /dashboard", func(w http.ResponseWriter, r *http.Request) {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		for _, mod := range module.All() {
+			if dm, ok := mod.(interface {
+				Summary(context.Context, module.Host) any
+			}); ok {
+				apiserver.JSON(w, http.StatusOK, dm.Summary(r.Context(), h))
+				return
+			}
+		}
+		http.Error(w, "no dashboard module", http.StatusNotImplemented)
+	})
 	mux.HandleFunc("GET /usage", func(w http.ResponseWriter, r *http.Request) {
 		if m := d.m.Load(); m != nil {
 			_, _ = m.CatchUp(r.Context())
@@ -1043,55 +1062,8 @@ func (d *Daemon) nodesState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = m.CatchUp(r.Context())
-	nodes := make([]string, 0, len(d.store.State.Keys(SpecTable)))
-	for _, n := range d.store.State.Keys(SpecTable) {
-		nodes = append(nodes, n)
-	}
-	seen := map[string]bool{}
-	var reps []nodestate.Report
-	for _, master := range d.cfg.Masters {
-		first, last, err := d.bus.ReportRange(r.Context(), master)
-		if err != nil || last == 0 {
-			continue
-		}
-		from := uint64(1)
-		if last > 2000 {
-			from = last - 2000
-		}
-		if first > from {
-			from = first
-		}
-		for seq := last; seq >= from && seq > 0; seq-- {
-			raw, err := d.bus.GetReport(r.Context(), master, seq)
-			if err != nil {
-				break
-			}
-			var rep struct {
-				Node   string   `json:"n"`
-				At     int64    `json:"at"`
-				Online []string `json:"o"`
-				Drain  *struct {
-					Since  int64 `json:"since"`
-					Active int   `json:"active"`
-				} `json:"dr"`
-			}
-			if json.Unmarshal(raw, &rep) != nil || rep.Node == "" || seen[rep.Node] {
-				if seq == from {
-					break
-				}
-				continue
-			}
-			seen[rep.Node] = true
-			r2 := nodestate.Report{Node: rep.Node, At: rep.At, Online: rep.Online}
-			if rep.Drain != nil {
-				r2.Drain = &nodestate.Drain{Since: rep.Drain.Since, Active: rep.Drain.Active}
-			}
-			reps = append(reps, r2)
-			if seq == from {
-				break
-			}
-		}
-	}
+	nodes := append([]string(nil), d.store.State.Keys(SpecTable)...)
+	reps := nodestate.Collect(r.Context(), d.bus, d.cfg.Masters, 2000)
 	apiserver.JSON(w, http.StatusOK, nodestate.Aggregate(nodes, reps, time.Now(), nodestate.DefaultStale))
 }
 
