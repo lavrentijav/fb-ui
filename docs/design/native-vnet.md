@@ -55,7 +55,8 @@ Every user gets one permanent internal address from `100.64.0.0/10` (as
 Tailscale does): it rarely clashes with home LANs and holds millions of users.
 Members of a network reach each other by these addresses. Allocation is by the
 master creating the user; the address never changes or is reused while the
-user exists.
+user exists. The user record keeps two VLESS ids: the normal one and
+`revuuid` for the `rev` outbound (`<name>#rev`).
 
 ## Data (op log tables)
 
@@ -157,7 +158,13 @@ The rules change with presence and membership and are applied live
 
 On top of the usual VPN profile:
 
-- the VLESS outbound carries `"reverse": {"tag": "from-node"}`;
+- **two** VLESS outbounds to the same entry: `vpn` (the user's normal UUID)
+  for traffic into the network, and `rev` (a second UUID, email
+  `<name>#rev`) carrying `"reverse": {"tag": "from-node"}`. Xray 26 refuses a
+  forward request from a reverse-enabled user ("for safety reasons, user … is
+  not allowed to use forward proxy"), so one identity cannot both expose its
+  tunnel and send into the network — found in the lab. The always-on `rev`
+  connection is also what presence reports;
 - incoming from `from-node`: to `127.0.0.1` on the same port (`freedom` with
   `redirect: "127.0.0.1:0"`), or to a LAN device for exposes with a LAN
   target; `finalRules` allow `127.0.0.0/8` and the target LAN addresses
@@ -203,7 +210,8 @@ Depends on users and subscriptions served by masters (native-nodes.md next
 step) and the master pool (`master.<zone>`, in progress).
 
 1. Addresses, networks, members, invites; API; presence; in-network routing
-   (tests 1, 2, 4, 5).
+   (tests 1, 2, 4, 5) — **done 2026-11-02** (`TestMembersOnDifferentNodes`),
+   with the two-identity fix above.
 2. Exposes by name: https/tls/http, Minecraft handshake (test 3, shared part).
 3. Allocated ports with the iptables redirect (test 3, allocated part).
 4. Limits, reports, panel switches.

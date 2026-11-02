@@ -79,6 +79,7 @@ type fleet struct {
 	ca    *fleetca.CA
 	caPEM string
 	procs map[string]interface{ Kill() error }
+	nodes map[string]interface{ Kill() error }
 }
 
 // newFleetCA makes the CA of the fleet's mutual TLS (masters and nodes).
@@ -118,6 +119,7 @@ func (f *fleet) issue(t *testing.T, dir, cn string, hosts ...string) {
 func (f *fleet) startMasters(t *testing.T, env ...string) {
 	t.Helper()
 	f.procs = map[string]interface{ Kill() error }{}
+	f.nodes = map[string]interface{ Kill() error }{}
 	for m, h := range masterHosts {
 		dir := filepath.Join(f.dir, "master-"+m)
 		f.issue(t, dir, m, publicName(m), ipOf(h))
@@ -173,7 +175,11 @@ func (f *fleet) startNode(t *testing.T, node string) {
 		"dataDir": filepath.Join(dir, "data"), "xray": map[string]string{"bin": f.xray},
 		"reportEvery": "1s", "pullEvery": "1s",
 	})
-	spawnCmd(t, node, nil, os.Getenv("NETLAB_FBNODE"), "-c", filepath.Join(dir, "config.json"))
+	cmd := spawnCmd(t, node, nil, os.Getenv("NETLAB_FBNODE"), "-c", filepath.Join(dir, "config.json"))
+	if f.nodes == nil {
+		f.nodes = map[string]interface{ Kill() error }{}
+	}
+	f.nodes[node] = cmd.Process
 }
 
 func eventually(t *testing.T, within time.Duration, what string, ok func() (bool, string)) {

@@ -2328,3 +2328,18 @@ git commit -m "test(native): network members on different nodes in the lab
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+## Status (2026-11-02)
+
+Tasks 1–8 are done. `TestMembersOnDifferentNodes` passes in the full netlab suite
+(alongside `TestReverseReachesThePlayer` and the earlier six).
+
+The lab changed the design: Xray 26 refuses a forward request from a user whose
+account has `reverse` set ("for safety reasons, user … is not allowed to use
+forward proxy"). A member therefore has two VLESS identities on the same
+inbound: the normal UUID for traffic into the network, and a second UUID with
+email `<name>#rev` for the always-on reverse tunnel. Presence is reported by
+the `rev` connection; routing rules filter by the normal email and deliver into
+`u-<name>#rev`. See `docs/design/native-vnet.md` (Addresses, Client).
+
+Not done: exposes (order of work 2–4).

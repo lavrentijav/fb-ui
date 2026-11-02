@@ -46,6 +46,8 @@ var hosts = []host{
 	// a stand-in for Let's Encrypt (Pebble) and the zone's DNS (challtestsrv)
 	{"acme", "10.0.7.1", []string{"pebble"}},
 	{"client", "10.0.9.1", nil},
+	{"alice", "10.0.9.2", nil},
+	{"bob", "10.0.9.3", nil},
 }
 
 func ipOf(name string) string {
@@ -65,6 +67,8 @@ func TestMain(m *testing.M) {
 		os.Exit(runWeb())
 	case "master":
 		os.Exit(runMaster())
+	case "game":
+		os.Exit(runGame())
 	}
 	if os.Getenv("NETLAB") != "1" {
 		fmt.Println("netlab: run through tools/netlab/run.sh")
