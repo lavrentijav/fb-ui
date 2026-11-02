@@ -120,7 +120,7 @@ func run(path string, logger *log.Logger) error {
 	slices.Sort(masters)
 	inbox := wire.NodeInbox(c.Node)
 
-	xr := &xrayrun.Runner{Bin: c.Xray.Bin, Config: c.Xray.Config}
+	xr := &xrayrun.Runner{Bin: c.Xray.Bin, Config: c.Xray.Config, Output: logger.Writer()}
 	defer xr.Stop()
 	edge := &edgerun.Runner{Listen: c.Listen, Logf: logger.Printf}
 	defer edge.Close()
