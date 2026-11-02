@@ -154,8 +154,8 @@ func (a nodeAuth) Check(c server.ClientAuthentication) bool {
 		return false
 	}
 	c.RegisterUser(&server.User{Username: wire.NodeCN(node), Permissions: &server.Permissions{
-		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*", wire.DesiredSubject("*", node)}},
-		Subscribe: &server.SubjectPermission{Allow: []string{wire.NodeInbox(node) + ".>"}},
+		Publish:   &server.SubjectPermission{Allow: []string{"rep.*." + node, "probe.*", wire.DesiredSubject("*", node), "presence." + node}},
+		Subscribe: &server.SubjectPermission{Allow: []string{wire.NodeInbox(node) + ".>", "presence.*"}},
 	}})
 	return true
 }

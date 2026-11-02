@@ -12,6 +12,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus/bustest"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
@@ -86,6 +87,33 @@ func TestNodesAuthenticateByFleetCert(t *testing.T) {
 	prober := probe.NATS(probe.Config{URLs: map[string]string{"ru2": b.ClientURL()}, TLS: nodeTLS, Inbox: wire.NodeInbox("nl2")})
 	if _, err := pick.New([]string{"ru2"}, prober, pick.Settings{}).Tick(context.Background()); err != nil {
 		t.Fatalf("node probe: %v", err)
+	}
+	// a fresh connection: the expected violation above stays in nc.LastError
+	pres, err := connect(b, nodeTLS, wire.NodeInbox("nl2"))
+	if err != nil {
+		t.Fatalf("second node connection: %v", err)
+	}
+	defer pres.Close()
+	if err := pres.Publish(presence.Subject("nl2"), []byte(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := pres.Flush(); err != nil || pres.LastError() != nil {
+		t.Fatalf("own presence refused: %v %v", err, pres.LastError())
+	}
+	sub, err := pres.SubscribeSync(presence.Subject("*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = pres.Flush()
+	if pres.LastError() != nil {
+		t.Fatalf("presence subscription refused: %v", pres.LastError())
+	}
+	_ = sub.Unsubscribe()
+	_ = pres.Publish(presence.Subject("de9"), []byte(`{}`))
+	_ = pres.Flush()
+	time.Sleep(200 * time.Millisecond)
+	if pres.LastError() == nil {
+		t.Fatal("nl2 published presence as de9")
 	}
 	if _, last, _ := b.ReportRange(context.Background(), "ru2"); last != 1 {
 		t.Fatalf("report stream holds %d, want only nl2's", last)
