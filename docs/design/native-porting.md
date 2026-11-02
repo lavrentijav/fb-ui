@@ -33,7 +33,7 @@ main-line commit that has been reviewed. The main line is
 
 | Area | State on `native` |
 |---|---|
-| Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control); missing: edge 443, certs, drain, fail2ban, sidecars |
+| Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control, edge 443, certs, drain); missing: fail2ban/IP limit, sidecars, master↔agent runtime |
 | Master ↔ agent runtime | not started |
 | Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `certs` (status, rollback), `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_certs`, `no_compat`. Missing: the rest of the modules, session login |
 | Go UI console | not started |
@@ -67,7 +67,9 @@ main-line commit that has been reviewed. The main line is
 | 3d90c1325 | fix(routing): restart this panel's core when its own filter rules change | skip | the panel's own-core restart does not exist in `fbnode` (bundle apply restarts only on a changed hash) |
 | e258c000e | fix(certs): order a challenge in the account the zone is delegated to; keep the previous pair and add rollback | port | `dnsacct` picks the delegated account; `certs.Rollback`, `prev*` fields on renewal, `POST /api/v1/certs/{id}/rollback` (`certsmod`) |
 | f79f2f330 | fix(certs): decide DNS delegation from public resolvers, not the host's own | port | `dnsacct/delegation.go` (public resolvers) |
+| a2882e9ce | fix(hosts): rebuild the cascades that dial an inbound when its hosts change | carry | cherry-pick `fd6d2b2bc` (area not rewritten) |
+| 696b8f378 | docs: describe fb-ui in the README | carry | already in `native` as `7b008c97d` |
 
-Note (2026-10-29): the main line was rebased after the ledger above was written, so most
-commits between `.native-sync` and the main-line head carry new hashes for work that is already
-ledgered. The marker is NOT advanced; a re-ledger pass must match them by subject first.
+Note (2026-11-02): re-ledgered after the 2026-10-29 rebase. The range `5bb19108e..08cb40991`
+was matched by subject: the rows above with new hashes cover the rebased work, `a2882e9ce` was
+carried, `696b8f378` was already in `native`, and `.native-sync` is now `08cb40991`.
