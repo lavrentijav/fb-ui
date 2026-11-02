@@ -66,8 +66,10 @@ else can wait; this cannot.
 - [x] First-run text: the master logs the interface directory (or says there
       is none), the admin address and the intended flow; the token line is the
       credential for `fbnode enroll`.
-- [ ] `GET /healthz` and `GET /ready` semantics documented (bus attached,
-      projection caught up, leader state).
+- [x] `GET /healthz` and `GET /ready` on the admin surface: 200 once the
+      master is ready (modules started), 503 while booting; both need no
+      credential. A runtime test starts a master from a config file, waits for
+      healthz, asserts an unauthenticated admin call is refused, and stops it.
 - Acceptance: a clean VM with one config file serves the admin API on
   loopback, emits a token, and a scripted test does login → list nodes.
 
@@ -209,7 +211,7 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 | Order | Phase | Blocks | Effort |
 |---|---|---|---|
 | 1 | 0 Safety | everything that exposes a port | days |
-| 2 | 1 Master entrypoint | any real deployment | 1 week |
+| 2 | ~~1 Master entrypoint~~ | any real deployment | 1 week (done) |
 | 3 | 3.1 Profiles (lite/relay) | cheap sub-nodes | days |
 | 4 | 3.2 Delivery + 3.3 Self-update | unattended nodes | 1–2 weeks |
 | 5 | 2 Fleet join | multi-master production | 1 week |

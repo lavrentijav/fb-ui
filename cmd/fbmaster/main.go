@@ -182,6 +182,13 @@ func checkConfig(c *Config) error {
 }
 
 func run(c *Config, createCA bool, logger *log.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return serve(ctx, c, createCA, logger)
+}
+
+// serve is run without the signal plumbing, so a test can start and stop it.
+func serve(ctx context.Context, c *Config, createCA bool, logger *log.Logger) error {
 	if err := checkConfig(c); err != nil {
 		return err
 	}
@@ -199,9 +206,6 @@ func run(c *Config, createCA bool, logger *log.Logger) error {
 	for name, url := range c.Peers {
 		peers[name] = url
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
 	d, err := masterd.Start(ctx, masterd.Config{
 		Name: c.Name, Masters: c.Masters, StoreDir: c.StoreDir,
 		PublicName: c.PublicName, EdgeListen: c.EdgeListen, ClientPort: c.ClientPort,
@@ -312,7 +316,7 @@ func ensureIdentity(c *Config, ca *fleetca.CA, logger *log.Logger) (tls.Certific
 	if err := os.WriteFile(c.Key, keyPEM, 0o600); err != nil {
 		return tls.Certificate{}, err
 	}
-	logger.Printf("issued this master's certificate for %v in %s", hosts, c.Cert)
+	logger.Printf("issued this master's certificate for %v in %s", dedupe(hosts), c.Cert)
 	return cert, nil
 }
 

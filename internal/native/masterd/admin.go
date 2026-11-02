@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
@@ -30,21 +31,31 @@ const DefaultAdminListen = "127.0.0.1:0"
 // A caller passes either an API token (Authorization: Bearer) or the panel's
 // session cookie.
 func (d *Daemon) AdminHandler() http.Handler {
-	next := d.Handler()
-	h := d.host.Load()
-	if h == nil {
-		// not ready: still refuse rather than serve an unguarded surface
-		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "starting", http.StatusServiceUnavailable)
-		})
-	}
-	var session module.SessionAuth
-	for _, m := range module.All() {
-		if sa, ok := m.(module.SessionAuth); ok {
-			session = sa
+	// The host appears only once the master is ready, while the listener may
+	// already be open; resolve it on the first request past readiness and keep
+	// the guarded handler. Before that every request is refused, never served
+	// unguarded.
+	var guarded atomic.Value
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h, ok := guarded.Load().(http.Handler); ok {
+			h.ServeHTTP(w, r)
+			return
 		}
-	}
-	return apiserver.RequireAuth(h, session, PublicAdminPath, next)
+		host := d.host.Load()
+		if host == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		var session module.SessionAuth
+		for _, m := range module.All() {
+			if sa, ok := m.(module.SessionAuth); ok {
+				session = sa
+			}
+		}
+		h := apiserver.RequireAuth(host, session, PublicAdminPath, d.Handler())
+		guarded.Store(h)
+		h.ServeHTTP(w, r)
+	})
 }
 
 // PublicAdminPath says whether an admin-surface request needs no credential.

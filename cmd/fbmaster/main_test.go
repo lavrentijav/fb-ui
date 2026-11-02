@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func writeConfig(t *testing.T, dir string, extra map[string]any) string {
@@ -125,5 +130,83 @@ func TestFirstRunCreatesTheCAAndIdentity(t *testing.T) {
 	}
 	if _, err := ensureIdentity(c, ca, logger); err != nil {
 		t.Fatalf("a second run did not reuse the identity: %v", err)
+	}
+}
+
+func freePort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
+}
+
+// The master starts from a config file alone: a fresh CA, its own
+// certificate, the admin surface on loopback with the panel credential, and
+// /healthz open.
+func TestMasterStartsAndGuardsItsAdminSurface(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a bus and an edge")
+	}
+	dir := t.TempDir()
+	client, gateway, api := freePort(t), freePort(t), freePort(t)
+	admin, edge := freePort(t), freePort(t)
+	c, err := load(writeConfig(t, dir, map[string]any{
+		"clientPort": client, "gatewayHost": "127.0.0.1", "gatewayPort": gateway,
+		"apiListen":   "127.0.0.1:" + strconv.Itoa(api),
+		"adminListen": "127.0.0.1:" + strconv.Itoa(admin),
+		"edgeListen":  "127.0.0.1:" + strconv.Itoa(edge),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errCh := make(chan error, 1)
+	go func() { errCh <- serve(ctx, c, true, testLogger(t)) }()
+
+	base := "http://127.0.0.1:" + strconv.Itoa(admin)
+	deadline := time.Now().Add(30 * time.Second)
+	var health int
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(base + "/healthz")
+		if err == nil {
+			health = resp.StatusCode
+			resp.Body.Close()
+			if health == http.StatusOK {
+				break
+			}
+		}
+		select {
+		case err := <-errCh:
+			t.Fatalf("the master exited: %v", err)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+	if health != http.StatusOK {
+		t.Fatalf("healthz never became ready (last %d)", health)
+	}
+	// without a credential the admin surface is closed
+	resp, err := http.Get(base + "/templates")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("an unauthenticated admin call answered %d", resp.StatusCode)
+	}
+	// the CA and identity were created on first run
+	for _, p := range []string{c.CACert, c.Cert} {
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("%s: %v", p, err)
+		}
+	}
+	cancel()
+	select {
+	case <-errCh:
+	case <-time.After(15 * time.Second):
+		t.Fatal("the master did not stop")
 	}
 }

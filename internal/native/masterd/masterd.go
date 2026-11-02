@@ -436,6 +436,13 @@ func (d *Daemon) Handler() http.Handler {
 			http.Error(w, "starting", http.StatusServiceUnavailable)
 		}
 	})
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		if d.m.Load() == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = io.WriteString(w, "ok "+d.cfg.Name+"\n")
+	})
 	mux.HandleFunc("PUT /nodes/{node}/spec", func(w http.ResponseWriter, r *http.Request) {
 		m := d.m.Load()
 		if m == nil {
