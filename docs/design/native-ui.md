@@ -106,10 +106,16 @@ and sessions already carried name, scope, expiry and their token's hash.
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for
    the login page; the old `/login` stays for the main-line panel.
-2. ~~Tabs (Clients+Groups, Edge+Hosts, notifications)~~ — done. Declare
-   `Legacy()` routes for every module so `/panel/api` covers each section the
-   interface shows (webhooks, audit and clients are done; nodes, certs, DNS,
-   routing remain).
+2. ~~Tabs (Clients+Groups, Edge+Hosts, notifications)~~ — done. Cover the old
+   `/panel/api` surface the interface still calls. `LegacyRoute` gained a
+   `Rewrite` hook for old routes that name their subject in the body (a delete
+   by name), and `groups` now answers the whole `clients/groups/*` set,
+   including the old summary shape (`clientCount/trafficUsed/up/down`) and
+   rename/reset/bulk add/remove. Webhooks, audit and clients are done. Hosts
+   is next but the old record (a group of addresses over `inboundIds`) does
+   not map onto the native entry (one address per node/inbound) without an
+   adapter; nodes, certs, DNS and routing have no native routes for most of
+   their old calls yet.
 3. Then move the interface to `/api/v1` per section, in the order below.
 4. Build the UI in CI (`make build-fe`) and ship `dist/` beside the binary
    (`UIDir`), not inside it, so the master stays small and a UI change needs

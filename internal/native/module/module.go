@@ -68,6 +68,11 @@ type LegacyRoute struct {
 	Method, Old, New string
 	NewMethod        string
 	Wrap             func(newBody []byte) ([]byte, error)
+	// Rewrite may change the method, path and body before the call, for an old
+	// route that carries its parameters where the new one cannot read them (a
+	// delete by name in the body). It receives the resolved new path and the
+	// request body; returning newBody == nil keeps the original body.
+	Rewrite func(newMethod, newPath string, body []byte) (method, path string, newBody []byte, err error)
 }
 
 // Module is one optional part of a master.

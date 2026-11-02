@@ -4,7 +4,9 @@
 package compat
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,6 +33,13 @@ func Handler(mods []module.Module, api http.Handler) http.Handler {
 	return mux
 }
 
+// refuse answers an old-panel failure the old way: 200 with success=false.
+func refuse(w http.ResponseWriter, err error) {
+	out := envelope{Msg: err.Error(), Obj: json.RawMessage("null")}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}
+
 func serve(lr module.LegacyRoute, api http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := lr.New
@@ -44,10 +53,23 @@ func serve(lr module.LegacyRoute, api http.Handler) http.Handler {
 		if method == "" {
 			method = lr.Method
 		}
+		var reqBody []byte
+		if lr.Rewrite != nil {
+			reqBody, _ = io.ReadAll(io.LimitReader(r.Body, 1<<20))
+			var err error
+			if method, path, reqBody, err = lr.Rewrite(method, path, reqBody); err != nil {
+				refuse(w, err)
+				return
+			}
+		}
 		inner := r.Clone(r.Context())
 		inner.Method = method
 		inner.URL.Path, inner.URL.RawPath = path, ""
 		inner.RequestURI = ""
+		if lr.Rewrite != nil {
+			inner.Body = io.NopCloser(bytes.NewReader(reqBody))
+			inner.ContentLength = int64(len(reqBody))
+		}
 
 		rec := httptest.NewRecorder()
 		api.ServeHTTP(rec, inner)
