@@ -25,6 +25,8 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/dnsacct"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/enroll"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
@@ -71,6 +73,9 @@ type Config struct {
 	PublicIP  string         // this master's address in the pool
 	PoolRoots *x509.CertPool // what the pool check trusts (nil: the system's)
 	PoolEvery time.Duration  // default 20 s
+	// FleetCA, when set, lets masters enrol nodes: a one-time token becomes
+	// a node.<name> certificate signed by this CA.
+	FleetCA *fleetca.CA
 	// APIListen is where /api/v1 is served (for example "127.0.0.1:8443");
 	// empty serves no API and runs no modules' routes. Modules still run.
 	APIListen string
@@ -276,6 +281,7 @@ func (d *Daemon) Public() http.Handler {
 	})
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
+	d.mountEnroll(mux)
 	return mux
 }
 
@@ -483,6 +489,7 @@ func (d *Daemon) Handler() http.Handler {
 		}
 	})
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
+	d.mountEnroll(mux)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -498,6 +505,66 @@ func (d *Daemon) Handler() http.Handler {
 	})
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	return mux
+}
+
+// mountEnroll serves token minting and redemption once a CA is configured.
+func (d *Daemon) mountEnroll(mux *http.ServeMux) {
+	if d.cfg.FleetCA == nil {
+		return
+	}
+	redeem := enroll.Handler(d.cfg.FleetCA, enrollStore{d.m.Load}, d.store.State, time.Now)
+	// a token minted on another master may not have replicated here yet
+	mux.Handle("POST /enroll", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		redeem.ServeHTTP(w, r)
+	}))
+	mux.HandleFunc("POST /enroll/tokens", func(w http.ResponseWriter, r *http.Request) {
+		m := d.m.Load()
+		if m == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		var body struct {
+			Node string `json:"node"`
+			TTL  string `json:"ttl"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ttl, err := time.ParseDuration(body.TTL)
+		if err != nil || ttl <= 0 {
+			ttl = time.Hour
+		}
+		buf := make([]byte, 24)
+		if _, err := rand.Read(buf); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		secret := hex.EncodeToString(buf)
+		if err := enroll.Mint(r.Context(), enrollStore{d.m.Load}, secret, body.Node, ttl, time.Now()); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"node": body.Node, "token": enroll.Token(secret, d.cfg.FleetCA), "caPin": enroll.Pin(d.cfg.FleetCA),
+		})
+	})
+}
+
+// enrollStore adapts *master.Master to enroll.Writer.
+type enrollStore struct{ m func() *master.Master }
+
+func (s enrollStore) Set(ctx context.Context, table, key string, fields map[string]any) error {
+	_, err := s.m().Set(ctx, table, key, fields)
+	return err
+}
+
+func (s enrollStore) Delete(ctx context.Context, table, key string) error {
+	_, err := s.m().Delete(ctx, table, key)
+	return err
 }
 
 // specs is every node's spec from the projection.

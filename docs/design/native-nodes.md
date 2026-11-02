@@ -24,6 +24,29 @@ an inbound that is not listening yet.
 | `Client.LimitIP` | an IP limit per user, rendered into `Bundle.Limits` (the strictest, if the user is on several inbounds). The **node** enforces it with `internal/native/failban`: every `banEvery` (default 10 s) it reads `xray api statsonlineiplist -all`, keeps the user's newest `LimitIP` addresses and bans the rest as a `sourceIP → block` rule applied live (`adrules`); an address counts as live for `banHold` (default 2 min) after it was last seen, so a banned device does not come back as the newest one |
 | always | `direct`, `block`, stats API on 127.0.0.1:10085, per-user traffic counters |
 
+## Enrollment
+
+A new node needs only a one-time token:
+
+1. `POST /enroll/tokens {"node":"ru4","ttl":"1h"}` on a master's admin API
+   records `enroll` (key = sha256 of a random secret, field `node`, `expires`)
+   and answers `{token, caPin}`. The token is `enr1_<secret>_<sha256 of the CA>`
+   — the fingerprint is the out-of-band channel an operator carries.
+2. `fbnode enroll -master https://master.<zone> -token <token> -node ru4 \
+   -masters ru2=tls://ru2.m.<zone>:443,fi1=... -dir /etc/fbnode` POSTs the
+   token as a bearer; the master issues `node.<name>` (365 days) and answers
+   the CA, certificate and key.
+3. The node **verifies** the answer before writing anything: the served CA's
+   sha256 must equal the token's fingerprint and the leaf must be
+   `CN=node.<name>` signed by that CA. A man in the middle is refused.
+4. The token works once: a successful redemption deletes the record, and a
+   second attempt is refused by any master.
+
+The redeem endpoint is mounted on the admin API and on `master.<zone>` (which
+serves a publicly trusted certificate), so the key only travels over TLS in
+production. The admin API itself is still unauthenticated — it must stay bound
+to loopback until the session login exists.
+
 ## Subscriptions
 
 `PUT /sub/<email>` on a master's admin API writes `subtoken` (key = token,
@@ -82,8 +105,8 @@ Found by the lab, now handled:
 
 ## Next steps (in order)
 
-1. ~~Masters in the lab~~ — done (`TestMastersDriveNodes`). Enrollment
-   (a master issuing `node.<name>` certificates) is still manual.
+1. ~~Masters in the lab~~ — done (`TestMastersDriveNodes`); enrollment is
+   done too (see Enrollment above and next step 8).
 2. ~~Group balancer~~ — done for exits (`TestGroupBalancerFailsOver`: de2
    stopped, traffic on de1 in ~2 s). Entry-side DNS pool still to do.
    Nodes of one group (e.g. exits `de1`, `de2`) behind
@@ -128,3 +151,9 @@ Found by the lab, now handled:
    inbound with a `Host`, connecting to the edge on 443 with the inbound's
    path. Group names are a later step: a `Host` is already whatever name the
    spec puts there, so a group name needs only the DNS pool that resolves it.
+8. ~~Node enrollment~~ — done (`TestNodeEnrollsItself`: a token minted through
+   ru2 lets a node get its `node.ru4` certificate, apply its spec, serve
+   traffic and report; the token is spent). `fbnode enroll` writes the identity
+   and a config; the CA is pinned by the token's fingerprint.
+9. Sidecars (TUIC, MTProto, AmneziaWG) and the master's view of node state
+   (reports → API) are the rest of the fbnode track.

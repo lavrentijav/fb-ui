@@ -145,6 +145,7 @@ func spawnCmd(t *testing.T, hostName string, env []string, argv ...string) *exec
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("spawned %s in %s: %v (pid %d, log %s)", hostName, os.Getenv("NETLAB_ROLE"), argv, cmd.Process.Pid, logf.Name())
 	t.Cleanup(func() {
 		_ = cmd.Process.Signal(syscall.SIGTERM)
 		_ = cmd.Wait()

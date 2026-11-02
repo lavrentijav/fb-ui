@@ -10,11 +10,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/agent"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/enroll"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/failban"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
@@ -100,12 +103,75 @@ func clientTLS(c *config) (*tls.Config, error) {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "enroll" {
+		if err := runEnroll(os.Args[2:], os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, "fbnode enroll:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	path := flag.String("c", "/etc/fbnode/config.json", "config file")
 	flag.Parse()
 	logger := log.New(os.Stderr, "fbnode ", log.LstdFlags)
 	if err := run(*path, logger); err != nil {
 		logger.Fatal(err)
 	}
+}
+
+// runEnroll redeems an enrollment token and writes the node's identity and a
+// config that connects to the given masters.
+func runEnroll(args []string, stderr io.Writer) error {
+	fs := flag.NewFlagSet("enroll", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	master := fs.String("master", "", "master URL that mints the certificate (https://master.<zone> or http://127.0.0.1:8080)")
+	token := fs.String("token", "", "one-time enrollment token from POST /enroll/tokens")
+	node := fs.String("node", "", "this node's name")
+	dir := fs.String("dir", "/etc/fbnode", "where to write ca.pem, cert.pem, key.pem and config.json")
+	masters := fs.String("masters", "", "master name=URL pairs, comma separated (tls://<name>.m.<zone>:443)")
+	xrayBin := fs.String("xray", "/usr/local/x-ui/bin/xray-linux-amd64", "xray binary")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *master == "" || *token == "" || *node == "" || *masters == "" {
+		return errors.New("-master, -token, -node and -masters are required")
+	}
+	res, err := enroll.Exchange(context.Background(), *master, *token, *node, nil)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(*dir, 0o700); err != nil {
+		return err
+	}
+	for name, body := range map[string]string{"ca.pem": res.CA, "cert.pem": res.Cert, "key.pem": res.Key} {
+		if err := os.WriteFile(filepath.Join(*dir, name), []byte(body), 0o600); err != nil {
+			return err
+		}
+	}
+	targets := map[string]string{}
+	for _, pair := range strings.Split(*masters, ",") {
+		name, url, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok || name == "" || url == "" {
+			return fmt.Errorf("bad -masters entry %q (name=url)", pair)
+		}
+		targets[name] = url
+	}
+	cfg := map[string]any{
+		"node": *node, "masters": targets,
+		"ca":      filepath.Join(*dir, "ca.pem"),
+		"cert":    filepath.Join(*dir, "cert.pem"),
+		"key":     filepath.Join(*dir, "key.pem"),
+		"dataDir": filepath.Join(*dir, "data"),
+		"xray":    map[string]string{"bin": *xrayBin},
+	}
+	raw, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(*dir, "config.json"), raw, 0o600); err != nil {
+		return err
+	}
+	fmt.Fprintf(stderr, "enrolled %s; wrote %s/config.json\n", *node, *dir)
+	return nil
 }
 
 func run(path string, logger *log.Logger) error {

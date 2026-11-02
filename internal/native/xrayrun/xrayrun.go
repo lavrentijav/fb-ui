@@ -83,6 +83,7 @@ func (r *Runner) Restart() error {
 	r.stopLocked()
 	// Xray outlives any request; Stop ends it
 	cmd := exec.CommandContext(context.Background(), r.Bin, "run", "-c", r.Config)
+	dieWithParent(cmd)
 	cmd.Stdout, cmd.Stderr = r.Output, r.Output
 	if err := cmd.Start(); err != nil {
 		return err

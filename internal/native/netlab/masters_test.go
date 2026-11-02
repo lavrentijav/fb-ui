@@ -35,8 +35,16 @@ func runMaster() int {
 		return 1
 	}
 	caPEM, _ := os.ReadFile(os.Getenv("NETLAB_FLEET_CA"))
+	caKeyPEM, _ := os.ReadFile(os.Getenv("NETLAB_FLEET_KEY"))
 	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM(caPEM)
+	var fleetCA *fleetca.CA
+	if len(caKeyPEM) > 0 {
+		if fleetCA, err = fleetca.Load(caPEM, caKeyPEM); err != nil {
+			fmt.Println(err)
+			return 1
+		}
+	}
 	mtls := &tls.Config{
 		MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{pair},
 		RootCAs: pool, ClientCAs: pool, ClientAuth: tls.RequireAndVerifyClientCert,
@@ -57,7 +65,7 @@ func runMaster() int {
 		return 1
 	}
 	d, err := masterd.Start(ctx, masterd.Config{
-		ACME: acme, RenewEvery: 2 * time.Second,
+		ACME: acme, RenewEvery: 2 * time.Second, FleetCA: fleetCA,
 		Name: name, Masters: masters, StoreDir: filepath.Join(dir, "js"),
 		PublicName: publicName(name), EdgeListen: ":443", ClientPort: 4222,
 		ClientTLS: mtls, GatewayTLS: mtls, GatewayHost: "0.0.0.0", GatewayPort: 7222,
@@ -76,10 +84,11 @@ func runMaster() int {
 
 type fleet struct {
 	*lab
-	ca    *fleetca.CA
-	caPEM string
-	procs map[string]interface{ Kill() error }
-	nodes map[string]interface{ Kill() error }
+	ca       *fleetca.CA
+	caPEM    string
+	caKeyPEM string
+	procs    map[string]interface{ Kill() error }
+	nodes    map[string]interface{ Kill() error }
 }
 
 // newFleetCA makes the CA of the fleet's mutual TLS (masters and nodes).
@@ -89,9 +98,11 @@ func (f *fleet) newFleetCA(t *testing.T) {
 	if f.ca, err = fleetca.New("netlab fleet"); err != nil {
 		t.Fatal(err)
 	}
-	caPEM, _, _ := f.ca.PEM()
+	caPEM, caKeyPEM, _ := f.ca.PEM()
 	f.caPEM = filepath.Join(f.dir, "fleet-ca.pem")
 	os.WriteFile(f.caPEM, caPEM, 0o644)
+	f.caKeyPEM = filepath.Join(f.dir, "fleet-ca-key.pem")
+	os.WriteFile(f.caKeyPEM, caKeyPEM, 0o600)
 }
 
 func pemPair(t *testing.T, c tls.Certificate) (string, string) {
@@ -123,7 +134,10 @@ func (f *fleet) startMasters(t *testing.T, env ...string) {
 	for m, h := range masterHosts {
 		dir := filepath.Join(f.dir, "master-"+m)
 		f.issue(t, dir, m, publicName(m), ipOf(h))
-		cmd := spawn(t, h, "master", append([]string{"NETLAB_MASTER=" + m, "NETLAB_DIR=" + dir, "NETLAB_FLEET_CA=" + f.caPEM}, env...)...)
+		cmd := spawn(t, h, "master", append([]string{
+			"NETLAB_MASTER=" + m, "NETLAB_DIR=" + dir,
+			"NETLAB_FLEET_CA=" + f.caPEM, "NETLAB_FLEET_KEY=" + f.caKeyPEM,
+		}, env...)...)
 		f.procs[m] = cmd.Process
 	}
 	deadline := time.Now().Add(90 * time.Second)
