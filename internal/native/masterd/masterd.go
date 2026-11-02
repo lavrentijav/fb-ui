@@ -15,6 +15,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 	"sync/atomic"
@@ -77,6 +78,9 @@ type Config struct {
 	// FleetCA, when set, lets masters enrol nodes: a one-time token becomes
 	// a node.<name> certificate signed by this CA.
 	FleetCA *fleetca.CA
+	// NodeBinary is a local fbnode build that POST /provision/install uploads
+	// to a server; empty disables installing.
+	NodeBinary string
 	// APIListen is where /api/v1 is served (for example "127.0.0.1:8443");
 	// empty serves no API and runs no modules' routes. Modules still run.
 	APIListen string
@@ -492,6 +496,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	d.mountEnroll(mux)
 	mux.HandleFunc("POST /provision/preflight", d.preflight)
+	mux.HandleFunc("POST /provision/install", d.install)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -525,6 +530,73 @@ func (d *Daemon) preflight(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 	defer cancel()
 	res, err := provision.Preflight(ctx, body.Target, body.Auth, body.HostKey)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(res)
+}
+
+// install puts the agent on a server: it redeems an identity for node, then
+// uploads the binary, the identity and a unit over SSH and starts it. Like
+// preflight it takes credentials, so it lives on the admin API only.
+func (d *Daemon) install(w http.ResponseWriter, r *http.Request) {
+	if d.cfg.FleetCA == nil || d.cfg.NodeBinary == "" {
+		http.Error(w, "installing is not configured (needs a fleet CA and a node binary)", http.StatusNotImplemented)
+		return
+	}
+	var body struct {
+		provision.Target
+		Auth    provision.Auth    `json:"auth"`
+		HostKey string            `json:"hostKey"`
+		Node    string            `json:"node"`
+		Masters map[string]string `json:"masters"`
+		Dir     string            `json:"dir"`
+		Bin     string            `json:"bin"`
+		Unit    string            `json:"unit"`
+		XrayBin string            `json:"xrayBin"`
+		Wait    string            `json:"wait"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	binary, err := os.ReadFile(d.cfg.NodeBinary)
+	if err != nil {
+		http.Error(w, "the node binary: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	wait, err := time.ParseDuration(body.Wait)
+	if err != nil || wait <= 0 {
+		wait = 30 * time.Second
+	}
+	buf := make([]byte, 24)
+	if _, err := rand.Read(buf); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	secret := hex.EncodeToString(buf)
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
+	defer cancel()
+	if err := enroll.Mint(ctx, enrollStore{d.m.Load}, secret, body.Node, time.Hour, time.Now()); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	identity, err := enroll.Redeem(ctx, d.cfg.FleetCA, enrollStore{d.m.Load}, d.store.State, body.Node, secret, time.Now())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res, err := provision.Install(ctx, provision.InstallRequest{
+		Target: body.Target, Auth: body.Auth, HostKey: body.HostKey,
+		Node: body.Node, Masters: body.Masters, Identity: identity, Binary: binary,
+		Dir: body.Dir, BinPath: body.Bin, UnitPath: body.Unit, XrayBin: body.XrayBin, Wait: wait,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return

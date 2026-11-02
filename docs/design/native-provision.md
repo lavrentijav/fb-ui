@@ -50,10 +50,50 @@ never aborts it; parsing lives in `parse` and is unit-tested.
 machine: facts, host-key capture, pinning, a wrong pin, a wrong password, key
 parsing and bad input.
 
+## Install
+
+`POST /provision/install` (master admin API, loopback only) does the first
+change on the server, in one call:
+
+```json
+{"host":"1.2.3.4","port":22,"user":"root",
+ "auth":{"kind":"password","password":"…"},"hostKey":"SHA256:…",
+ "node":"ru4","masters":{"ru2":"tls://ru2.m.<zone>:443"},
+ "dir":"/etc/fbnode","bin":"/usr/local/bin/fbnode",
+ "unit":"/etc/systemd/system/fbnode.service",
+ "xrayBin":"/usr/local/x-ui/bin/xray-linux-amd64","wait":"30s"}
+```
+
+The master, in order: refuses without a configured `NodeBinary` and fleet CA;
+mints a one-time enrollment secret and redeems it **itself** (the identity is
+created on the master, which already holds the CA key); then over SSH
+
+1. checks `<xrayBin>` is executable and the login user is root — nothing is
+   changed if either fails (the core is a prerequisite, installed separately);
+2. creates the directories, then uploads the agent binary in base64 chunks
+   (96 KiB per command, under Linux' argument limit) and verifies its
+   SHA-256, so a truncated transfer never reaches `systemctl`;
+3. runs `<bin> enroll` once to prove the file is an executable agent of the
+   server's architecture (a wrong-arch file fails here, not at boot);
+4. uploads `ca.pem`, `cert.pem`, `key.pem` (0600), `config.json` (0600) and a
+   systemd unit (0644);
+5. `daemon-reload`, `enable`, `start`, then polls `is-active` for `wait`.
+
+Any failure after the first write runs the undo list in reverse: `disable
+--now`, `daemon-reload`, remove the binary, unit, config and identity. The
+answer never contains key material: `{node, binary, unit, sha256,
+serviceActive}`.
+
+The install endpoint needs the master to be able to read an `fbnode` build
+(`Config.NodeBinary`). The node then enrols as in `native-nodes.md`: the
+identity is the same, so it joins the fleet on its first pull.
+
 ## Next steps
 
 1. ~~Preflight~~ — done.
-2. Install: SSH, drop the `fbnode` binary for the server's arch, write
-   `systemd` unit and config, then enrol (see `native-nodes.md`, Enrollment).
+2. ~~Install + enrol~~ — done (`TestInstallNodeOverSSH`: a master installs onto
+   a bare server over real SSH, the started agent joins the fleet and applies
+   its spec).
 3. Register: create the node's spec from a template after it reports once.
-4. Rollback: remove the unit, binary and any DNS record on failure.
+4. DNS and certificate for the new node's name.
+5. Rollback of a successful install, and reinstall/upgrade.

@@ -97,6 +97,45 @@ func Mint(ctx context.Context, w Writer, secret, node string, ttl time.Duration,
 	})
 }
 
+// Redeem checks the secret against the pending record and, if it is valid,
+// issues node's certificate and deletes the record, all in one call. A
+// second redemption of the same secret fails.
+func Redeem(ctx context.Context, ca *fleetca.CA, w Writer, r Reader, node, secret string, now time.Time) (Result, error) {
+	if !validNodeName.MatchString(node) {
+		return Result{}, fmt.Errorf("enroll: bad node name %q", node)
+	}
+	rec, found := r.Get(Table, Hash(secret))
+	if !found {
+		return Result{}, ErrUnknown
+	}
+	var pending string
+	var expires int64
+	_ = json.Unmarshal(rec["node"], &pending)
+	_ = json.Unmarshal(rec["expires"], &expires)
+	if pending != node {
+		return Result{}, ErrNode
+	}
+	if expires > 0 && now.UnixMilli() > expires {
+		_ = w.Delete(ctx, Table, Hash(secret))
+		return Result{}, ErrExpired
+	}
+	cert, err := ca.Issue(wire.NodeCN(node), nil, 365*24*time.Hour)
+	if err != nil {
+		return Result{}, err
+	}
+	// one-time: whoever redeemed it first wins; a loser gets ErrUnknown
+	_ = w.Delete(ctx, Table, Hash(secret))
+	certPEM, keyPEM, err := keyPEMs(cert)
+	if err != nil {
+		return Result{}, err
+	}
+	caPEM, _, err := ca.PEM()
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Node: node, CA: string(caPEM), Cert: certPEM, Key: keyPEM}, nil
+}
+
 // Handler redeems tokens: POST /enroll with the token as a bearer and
 // {"node": "..."} in the body. A token works once.
 func Handler(ca *fleetca.CA, w Writer, r Reader, now func() time.Time) http.Handler {
@@ -118,49 +157,21 @@ func Handler(ca *fleetca.CA, w Writer, r Reader, now func() time.Time) http.Hand
 			http.Error(wr, "a JSON body {\"node\": \"...\"} is required", http.StatusBadRequest)
 			return
 		}
-		if !validNodeName.MatchString(body.Node) {
-			http.Error(wr, "bad node name", http.StatusBadRequest)
+		res, err := Redeem(req.Context(), ca, w, r, body.Node, secret, now())
+		switch {
+		case err == nil:
+		case errors.Is(err, ErrUnknown), errors.Is(err, ErrExpired):
+			http.Error(wr, err.Error(), http.StatusUnauthorized)
 			return
-		}
-		rec, found := r.Get(Table, Hash(secret))
-		if !found {
-			http.Error(wr, ErrUnknown.Error(), http.StatusUnauthorized)
+		case errors.Is(err, ErrNode):
+			http.Error(wr, err.Error(), http.StatusForbidden)
 			return
-		}
-		var node string
-		var expires int64
-		_ = json.Unmarshal(rec["node"], &node)
-		_ = json.Unmarshal(rec["expires"], &expires)
-		if node != body.Node {
-			http.Error(wr, ErrNode.Error(), http.StatusForbidden)
-			return
-		}
-		if expires > 0 && now().UnixMilli() > expires {
-			_ = w.Delete(req.Context(), Table, Hash(secret))
-			http.Error(wr, ErrExpired.Error(), http.StatusUnauthorized)
-			return
-		}
-		cert, err := ca.Issue(wire.NodeCN(body.Node), nil, 365*24*time.Hour)
-		if err != nil {
-			http.Error(wr, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		// one-time: whoever redeemed it first wins; a loser gets 401 next time
-		_ = w.Delete(req.Context(), Table, Hash(secret))
-		certPEM, keyPEM, err := keyPEMs(cert)
-		if err != nil {
-			http.Error(wr, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		caPEM, _, err := ca.PEM()
-		if err != nil {
-			http.Error(wr, err.Error(), http.StatusInternalServerError)
+		default:
+			http.Error(wr, err.Error(), http.StatusBadRequest)
 			return
 		}
 		wr.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(wr).Encode(map[string]string{
-			"node": body.Node, "ca": string(caPEM), "cert": certPEM, "key": keyPEM,
-		})
+		_ = json.NewEncoder(wr).Encode(res)
 	})
 }
 

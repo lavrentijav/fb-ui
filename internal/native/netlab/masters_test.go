@@ -66,6 +66,7 @@ func runMaster() int {
 	}
 	d, err := masterd.Start(ctx, masterd.Config{
 		ACME: acme, RenewEvery: 2 * time.Second, FleetCA: fleetCA,
+		NodeBinary: os.Getenv("NETLAB_FBNODE"),
 		Name: name, Masters: masters, StoreDir: filepath.Join(dir, "js"),
 		PublicName: publicName(name), EdgeListen: ":443", ClientPort: 4222,
 		ClientTLS: mtls, GatewayTLS: mtls, GatewayHost: "0.0.0.0", GatewayPort: 7222,
