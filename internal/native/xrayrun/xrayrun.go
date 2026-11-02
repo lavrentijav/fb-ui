@@ -187,6 +187,37 @@ func parseStats(out []byte) ([]UserTraffic, error) {
 	return out2, nil
 }
 
+// Online lists the users with a live connection (policy statsUserOnline).
+func (r *Runner) Online(ctx context.Context) ([]string, error) {
+	if r.API == "" {
+		return nil, errors.New("xrayrun: no API address")
+	}
+	out, err := exec.CommandContext(ctx, r.Bin, "api", "statsgetallonlineusers", "--server="+r.API).Output()
+	if err != nil {
+		return nil, fmt.Errorf("xrayrun: online: %w", err)
+	}
+	return parseOnline(out)
+}
+
+func parseOnline(out []byte) ([]string, error) {
+	var res struct {
+		Users []string `json:"users"`
+	}
+	if len(bytes.TrimSpace(out)) == 0 {
+		return nil, nil
+	}
+	if err := json.Unmarshal(out, &res); err != nil {
+		return nil, fmt.Errorf("xrayrun: online: %w", err)
+	}
+	var emails []string
+	for _, u := range res.Users {
+		if parts := strings.Split(u, ">>>"); len(parts) == 3 {
+			emails = append(emails, parts[1])
+		}
+	}
+	return emails, nil
+}
+
 func lastLine(b []byte) string {
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
 	return lines[len(lines)-1]

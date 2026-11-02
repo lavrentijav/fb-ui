@@ -24,6 +24,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
@@ -123,7 +124,8 @@ func run(path string, logger *log.Logger) error {
 	defer xr.Stop()
 	edge := &edgerun.Runner{Listen: c.Listen, Logf: logger.Printf}
 	defer edge.Close()
-	bundles := &agent.BundleApplier{Xray: xr, Edge: edge}
+	pres := &presence.Map{}
+	bundles := &agent.BundleApplier{Xray: xr, Edge: edge, Node: c.Node, Presence: pres}
 	app, err := desired.OpenApplier(filepath.Join(c.DataDir, "state"), func(ctx context.Context, st desired.State) error {
 		logger.Printf("applying bundle %.12s (stamp %s)", st.Hash, st.Stamp)
 		return bundles.Apply(ctx, st)
@@ -149,12 +151,20 @@ func run(path string, logger *log.Logger) error {
 			},
 		},
 	}
+	pr := agent.NewPresence(c.Node, xr, pres, bundles, func(ctx context.Context) (*nats.Conn, error) {
+		m := sel.Current()
+		if m == "" {
+			return nil, errors.New("no master yet")
+		}
+		return node.Sender.Conn(ctx, m)
+	}, logger.Printf)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := node.Start(ctx); err != nil {
 		logger.Printf("restoring the last state: %v", err)
 	}
 	logger.Printf("node %s, masters %v", c.Node, masters)
+	go pr.Run(ctx)
 	node.Run(ctx)
 	return nil
 }

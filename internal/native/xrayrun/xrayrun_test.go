@@ -6,9 +6,20 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
+
+func TestParseOnline(t *testing.T) {
+	got, err := parseOnline([]byte(`{ "users": [ "user>>>alice>>>online", "user>>>bob>>>online" ] }`))
+	if err != nil || !slices.Equal(got, []string{"alice", "bob"}) {
+		t.Fatalf("got %v %v", got, err)
+	}
+	if got, err := parseOnline([]byte(`{}`)); err != nil || len(got) != 0 {
+		t.Fatalf("empty: %v %v", got, err)
+	}
+}
 
 func TestParseStatsSumsPerUser(t *testing.T) {
 	out := []byte(`{"stat":[
