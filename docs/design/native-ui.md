@@ -63,6 +63,24 @@ Both talk to the master's admin API on the same origin as the panel, so they
 work against a native master today; the lab covers the list, the switch and
 the network view.
 
+## System pages (done 2026-11-02)
+
+Three pages under **Система**, all against APIs that already existed:
+
+- **Notifications** (`/notifications`, hash tabs `#telegram`, `#email`,
+  `#discord`) merges the three transports into one page with a shared Save.
+  The old `/settings#telegram`-style links still render inside Settings.
+- **Webhooks** (`/webhooks`) lists endpoints with their event filters, last
+  delivery and status; it creates and edits them (name, address, events,
+  signing secret), sends a test delivery and deletes. Uses
+  `/panel/api/webhooks/*`.
+- **Audit log** (`/audit`) shows every API change (time, actor, method, route,
+  status, address) with an actor filter and pagination, newest first. Uses
+  `/panel/api/audit/list`.
+
+The sidebar's Settings submenu now holds General, Security and Subscription
+only; notifications moved to their own entry.
+
 ## Still to do
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for
@@ -76,7 +94,7 @@ the network view.
    (`UIDir`), not inside it, so the master stays small and a UI change needs
    no new binary.
 
-## The interface today (17 entries)
+## The interface today (22 entries)
 
 | Entry | What the page does |
 |---|---|
@@ -107,7 +125,7 @@ the network view.
 | **Флот** | Nodes · Cascades · Templates | `/network` renamed **Cascades** (it is the cascade graph, not the vnet); Nodes gets tabs `Список / История / Обслуживание`; Templates stays |
 | **Вход (443)** | Edge · Hosts · TLS & DNS | **Hosts merges into Edge** as the `Имена и маршруты` tab (both describe the 443 surface); **Certs + DNS accounts** join one page with tabs |
 | **Маршрутизация** | Filters · Outbounds & Balancers · Xray core | drop the `/outbound` and `/routing` aliases; split the xray page: rules/balancers to Routing, templates/DNS to **Xray core** |
-| **Система** | Settings · Access · Notifications · Webhooks · Audit log · API docs | Settings keeps General + Security; **Notifications** merges Telegram/email/Discord into one page with provider tabs; **Access** holds API tokens and live sessions (both are security state); **Webhooks** and **Audit log** become pages (their API already exists); API docs moves here |
+| **Система** | Settings · Access · Notifications · Webhooks · Audit log · API docs | Settings keeps General + Security; **Notifications** merges Telegram/email/Discord into one page with provider tabs (done); **Access** holds API tokens and live sessions (both are security state); **Webhooks** and **Audit log** are pages (done); API docs lives here |
 | logout | — | unchanged |
 
 Why this shape: three questions an operator asks — *who has access*
@@ -115,8 +133,8 @@ Why this shape: three questions an operator asks — *who has access*
 (**Вход**) — then *where traffic goes* (**Маршрутизация**) and *what the panel
 thinks* (**Система**). Removed: two duplicate xray aliases, two separate
 notification pages, a separate Hosts page that only edits the edge's table.
-Added: the four pages whose API already exists but has no screen (webhooks,
-audit, sessions/tokens, virtual networks).
+Added: webhooks, audit, notifications, subscriptions and virtual networks;
+sessions/tokens (Access) still needs an API.
 
 ## Tests
 

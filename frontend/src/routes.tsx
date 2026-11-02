@@ -10,6 +10,9 @@ const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
 const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
 const SubscriptionsPage = lazy(() => import('@/pages/subscriptions/SubscriptionsPage'));
 const VirtualNetworksPage = lazy(() => import('@/pages/vnet/VirtualNetworksPage'));
+const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
+const WebhooksPage = lazy(() => import('@/pages/webhooks/WebhooksPage'));
+const AuditPage = lazy(() => import('@/pages/audit/AuditPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const NetworkPage = lazy(() => import('@/pages/network/NetworkPage'));
 const FiltersPage = lazy(() => import('@/pages/filters/FiltersPage'));
@@ -63,6 +66,9 @@ const routes: RouteObject[] = [
       { path: 'edge', element: withSuspense(<EdgePage />) },
       { path: 'templates', element: withSuspense(<TemplatesPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
+      { path: 'notifications', element: withSuspense(<NotificationsPage />) },
+      { path: 'webhooks', element: withSuspense(<WebhooksPage />) },
+      { path: 'audit', element: withSuspense(<AuditPage />) },
       { path: 'xray', element: withSuspense(<XrayPage />) },
       { path: 'outbound', element: <Navigate to="/xray#outbound" replace /> },
       { path: 'routing', element: <Navigate to="/xray#routing" replace /> },

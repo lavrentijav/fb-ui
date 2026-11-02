@@ -154,7 +154,10 @@
       "system": "System"
     },
     "subscriptions": "Subscriptions",
-    "vnet": "Virtual networks"
+    "vnet": "Virtual networks",
+    "notifications": "Notifications",
+    "webhooks": "Webhooks",
+    "audit": "Audit log"
   },
   "pages": {
     "login": {
@@ -2736,6 +2739,47 @@
       "owner": "Owner",
       "members": "Members",
       "empty": "No virtual networks yet"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "intro": "Deliver panel events over Telegram, email and Discord. Each transport has its own event list; leave it empty to send everything."
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "intro": "Send panel events as signed POSTs to an address you control. An empty event list subscribes to every event; leave the secret empty to send none.",
+      "create": "New webhook",
+      "edit": "Edit webhook",
+      "empty": "No webhooks yet",
+      "loadFailed": "Failed to load webhooks",
+      "name": "Name",
+      "nameRequired": "A name is required",
+      "url": "Address",
+      "urlHint": "A public HTTPS address; local and private addresses are refused.",
+      "urlRequired": "An address is required",
+      "events": "Events",
+      "eventsHint": "Empty means every event.",
+      "allEvents": "All events",
+      "secret": "Signing secret",
+      "secretHint": "Sent as an HMAC signature so the receiver can verify the request.",
+      "secretKeep": "Leave it empty to keep the current secret.",
+      "lastDelivery": "Last delivery",
+      "actions": "Actions",
+      "sendTest": "Send a test",
+      "testOk": "The test delivery arrived",
+      "testFailed": "The test delivery failed",
+      "deleteConfirm": "Delete the webhook {name}?"
+    },
+    "audit": {
+      "title": "Audit log",
+      "intro": "Every change made through the API: who, from where, what route and the outcome. Request bodies are never stored.",
+      "empty": "No entries yet",
+      "loadFailed": "Failed to load the audit log",
+      "time": "Time",
+      "actor": "Actor",
+      "method": "Method",
+      "path": "Route",
+      "ip": "Address",
+      "filterActor": "Filter by actor"
     }
   },
   "tgbot": {

@@ -14,7 +14,6 @@ import {
   CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
-  DiscordOutlined,
   ExportOutlined,
   FilterOutlined,
   GithubOutlined,
@@ -22,7 +21,6 @@ import {
   HeartOutlined,
   ImportOutlined,
   LogoutOutlined,
-  MailOutlined,
   MenuOutlined,
   MessageOutlined,
   MoonFilled,
@@ -74,6 +72,9 @@ type IconName =
   | 'groups'
   | 'subscriptions'
   | 'vnet'
+  | 'notifications'
+  | 'webhooks'
+  | 'audit'
   | 'setting'
   | 'tool'
   | 'cluster'
@@ -95,6 +96,9 @@ const iconByName: Record<IconName, ComponentType> = {
   groups: TagsOutlined,
   subscriptions: LinkOutlined,
   vnet: ApartmentOutlined,
+  notifications: MessageOutlined,
+  webhooks: ApiOutlined,
+  audit: ReadOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -257,6 +261,9 @@ export default function AppSidebar() {
       { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
       { key: '/xray', icon: 'tool', title: t('menu.xray'), section: 'routing' },
       { key: '/settings', icon: 'setting', title: t('menu.settings'), section: 'system' },
+      { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
+      { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
+      { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },
       { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
       { key: LOGOUT_KEY, icon: 'logout', title: t('logout'), section: 'system' },
     ],
@@ -277,17 +284,6 @@ export default function AppSidebar() {
         key: '/settings#security',
         icon: <SafetyOutlined />,
         label: t('pages.settings.securitySettings'),
-      },
-      {
-        key: '/settings#telegram',
-        icon: <MessageOutlined />,
-        label: t('pages.settings.TGBotSettings'),
-      },
-      { key: '/settings#email', icon: <MailOutlined />, label: t('pages.settings.emailSettings') },
-      {
-        key: '/settings#discord',
-        icon: <DiscordOutlined />,
-        label: t('pages.settings.discordSettings'),
       },
       {
         key: '/settings#subscription',
