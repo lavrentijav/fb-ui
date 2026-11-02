@@ -28,7 +28,9 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
 
 // SpecTable holds each node's spec as field "spec".
@@ -70,14 +72,16 @@ type Config struct {
 }
 
 type Daemon struct {
-	cfg   Config
-	bus   *bus.Bus
-	edge  *edgerun.Runner
-	store *master.Mem
-	m     atomic.Pointer[master.Master]
-	dns   atomic.Pointer[dnsacct.Accounts]
-	host  atomic.Pointer[mhost.Host]
-	api   *http.Server
+	cfg      Config
+	bus      *bus.Bus
+	edge     *edgerun.Runner
+	store    *master.Mem
+	m        atomic.Pointer[master.Master]
+	dns      atomic.Pointer[dnsacct.Accounts]
+	host     atomic.Pointer[mhost.Host]
+	vnets    atomic.Pointer[vnet.Store]
+	presence *presence.Map
+	api      *http.Server
 }
 
 // Start brings the master up; it serves nodes once the streams exist,
@@ -92,7 +96,7 @@ func Start(ctx context.Context, cfg Config) (*Daemon, error) {
 	if err != nil {
 		return nil, err
 	}
-	d := &Daemon{cfg: cfg, bus: b, store: master.NewMem()}
+	d := &Daemon{cfg: cfg, bus: b, store: master.NewMem(), presence: &presence.Map{}}
 	d.edge = &edgerun.Runner{Listen: cfg.EdgeListen, Logf: cfg.Logf}
 	if err := d.edge.Apply(d.busEdge(), nil); err != nil {
 		b.Close()
@@ -125,6 +129,10 @@ func (d *Daemon) boot(ctx context.Context) {
 	}
 	if err := d.bus.ServeProbe(probe.SystemLoad); err != nil {
 		d.logf("probe: %v", err)
+	}
+	d.vnets.Store(&vnet.Store{Master: m, State: d.store.State})
+	if _, err := d.presence.Watch(d.bus.Conn()); err != nil {
+		d.logf("presence: %v", err)
 	}
 	if _, err := desired.Serve(d.bus.Conn(), d.cfg.Name, d.render(m)); err != nil {
 		d.logf("desired: %v", err)
@@ -260,6 +268,7 @@ func (d *Daemon) Public() http.Handler {
 		}
 		fmt.Fprintln(w, "ok", d.cfg.Name)
 	})
+	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	return mux
 }
 
@@ -302,6 +311,17 @@ func (d *Daemon) render(m *master.Master) desired.Render {
 		var spec nodespec.Spec
 		if err := json.Unmarshal(rec["spec"], &spec); err != nil {
 			return desired.State{}, err
+		}
+		if s := d.vnets.Load(); s != nil {
+			specs := map[string]nodespec.Spec{}
+			for _, other := range d.store.State.Keys(SpecTable) {
+				rec, _ := d.store.State.Get(SpecTable, other)
+				var o nodespec.Spec
+				if json.Unmarshal(rec["spec"], &o) == nil {
+					specs[other] = o
+				}
+			}
+			s.Fill(&spec, specs)
 		}
 		// a renewal is an op like any other: it moves the version, so
 		// nodes pull the new certificate with the next bundle
@@ -431,7 +451,31 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
+	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
+		s := d.vnets.Load()
+		if s == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		u, err := s.CreateUser(r.Context(), r.PathValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(u)
+	})
+	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	return mux
+}
+
+// vnetAPI is the users' side of the network, under /api/v1/.
+func (d *Daemon) vnetAPI(w http.ResponseWriter, r *http.Request) {
+	s := d.vnets.Load()
+	if s == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	vnet.API(s, d.presence.Where).ServeHTTP(w, r)
 }
 
 func (d *Daemon) Close() error {
