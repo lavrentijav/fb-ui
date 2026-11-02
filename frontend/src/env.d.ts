@@ -25,6 +25,20 @@ interface SubPageData {
   uploadByte?: string | number;
   usedByte?: string | number;
   user?: string;
+  uploadByte?: string | number;
+  downloadByte?: string | number;
+  supportUrl?: string;
+  webPageUrl?: string;
+  announce?: string;
+  announceUrl?: string;
+  announceColor?: string;
+  announceButtonText?: string;
+  announceButtonLink?: string;
+  updateHours?: number;
+  refillDate?: number;
+  hwidLimit?: number;
+  servers?: { name: string; upload: number; download: number }[];
+  backupUrls?: string[];
 }
 
 interface Window {

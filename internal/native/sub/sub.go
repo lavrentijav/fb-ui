@@ -23,8 +23,24 @@ func Links(specs []nodespec.Spec, email string) []string {
 	return LinksWith(specs, email, nil)
 }
 
+// Options tune a link list: the advertised endpoints, the remark each link
+// carries, and extra parameters (identity, per-server quota).
+type Options struct {
+	Hosts Hosts
+	// Remark names a link; nil keeps the "<node>-<inbound>" default. An empty
+	// answer falls back to the default too.
+	Remark func(node string, ib nodespec.Inbound) string
+	// Extra adds query parameters to every link of an inbound.
+	Extra func(node string, ib nodespec.Inbound) map[string]string
+}
+
 // LinksWith is Links plus the hosts map.
 func LinksWith(specs []nodespec.Spec, email string, hosts Hosts) []string {
+	return LinksWithOpts(specs, email, Options{Hosts: hosts})
+}
+
+// LinksWithOpts is Links with the subscription's own naming and extras.
+func LinksWithOpts(specs []nodespec.Spec, email string, opt Options) []string {
 	specs = slices.Clone(specs)
 	slices.SortFunc(specs, func(a, b nodespec.Spec) int { return strings.Compare(a.Node, b.Node) })
 	var out []string
@@ -38,10 +54,21 @@ func LinksWith(specs []nodespec.Spec, email string, hosts Hosts) []string {
 					continue
 				}
 				base := s.Node + "-" + ib.Tag
-				adv := hosts[s.Node+"/"+ib.Tag]
+				remark := base
+				if opt.Remark != nil {
+					if named := strings.TrimSpace(opt.Remark(s.Node, ib)); named != "" {
+						remark = named
+					}
+				}
+				var extra map[string]string
+				if opt.Extra != nil {
+					extra = opt.Extra(s.Node, ib)
+				}
+				adv := opt.Hosts[s.Node+"/"+ib.Tag]
 				if len(adv) == 0 {
 					out = append(out, Link(c.ID, Endpoint{
-						Address: ib.Host, Path: ib.Path, Remark: base,
+						Address: ib.Host, Network: ib.Network, Path: ib.Path,
+						Remark: remark, Extra: extra,
 					}))
 					continue
 				}
@@ -49,7 +76,11 @@ func LinksWith(specs []nodespec.Spec, email string, hosts Hosts) []string {
 					if e.Path == "" {
 						e.Path = ib.Path
 					}
-					e.Remark = joinRemark(base, e.Remark)
+					if e.Network == "" {
+						e.Network = ib.Network
+					}
+					e.Remark = joinRemark(remark, e.Remark)
+					e.Extra = merge(extra, e.Extra)
 					out = append(out, Link(c.ID, e))
 				}
 			}
@@ -58,17 +89,38 @@ func LinksWith(specs []nodespec.Spec, email string, hosts Hosts) []string {
 	return out
 }
 
+// merge combines two parameter maps; the endpoint's own values win.
+func merge(base, own map[string]string) map[string]string {
+	if len(own) == 0 {
+		return base
+	}
+	out := make(map[string]string, len(base)+len(own))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range own {
+		out[k] = v
+	}
+	return out
+}
+
 // Endpoint is one way to reach an inbound: the address a client dials and
 // the transport parameters its link carries.
 type Endpoint struct {
-	Address  string `json:"address"`
-	Port     int    `json:"port"`     // 0 = 443
-	Security string `json:"security"` // default tls
-	SNI      string `json:"sni"`      // default: Address
-	Host     string `json:"host"`     // ws Host header, default: SNI
-	Path     string `json:"path"`     // default: the inbound's path
-	ALPN     string `json:"alpn"`     // default http/1.1 when TLS
-	Remark   string `json:"remark"`   // appended to the link remark
+	Address     string `json:"address"`
+	Port        int    `json:"port"`        // 0 = 443
+	Network     string `json:"network"`     // ws | xhttp (default ws)
+	Security    string `json:"security"`    // default tls
+	SNI         string `json:"sni"`         // default: Address
+	Host        string `json:"host"`        // ws Host header, default: SNI
+	Path        string `json:"path"`        // default: the inbound's path
+	ALPN        string `json:"alpn"`        // default http/1.1 when TLS
+	Fingerprint string `json:"fingerprint"` // uTLS profile, default chrome
+	Remark      string `json:"remark"`      // appended to the link remark
+	// Extra are additional query parameters. Unknown ones are ignored by
+	// every surveyed client, so this is how a subscription carries more than
+	// the link strictly needs (userinfo, providerid, node metadata).
+	Extra map[string]string `json:"extra,omitempty"`
 }
 
 func (e Endpoint) port() int {
@@ -85,7 +137,22 @@ func (e Endpoint) security() string {
 	return e.Security
 }
 
-// Link is a VLESS ws link for one endpoint.
+func (e Endpoint) network() string {
+	if e.Network != "" {
+		return e.Network
+	}
+	return "ws"
+}
+
+func (e Endpoint) fingerprint() string {
+	if e.Fingerprint != "" {
+		return e.Fingerprint
+	}
+	return "chrome"
+}
+
+// Link is a VLESS link for one endpoint. Extra parameters are added first, so
+// a caller cannot overwrite what the transport itself requires.
 func Link(id string, e Endpoint) string {
 	security := e.security()
 	sni := e.SNI
@@ -97,18 +164,26 @@ func Link(id string, e Endpoint) string {
 		host = sni
 	}
 	q := url.Values{}
+	for k, v := range e.Extra {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
 	q.Set("encryption", "none")
 	q.Set("security", security)
-	q.Set("type", "ws")
+	q.Set("type", e.network())
 	q.Set("path", e.Path)
 	q.Set("host", host)
+	q.Set("headerType", "none")
 	if security != "none" {
 		q.Set("sni", sni)
+		q.Set("fp", e.fingerprint())
 		alpn := e.ALPN
 		if alpn == "" {
 			alpn = "http/1.1"
 		}
 		q.Set("alpn", alpn)
+		q.Set("allowInsecure", "0")
 	}
 	remark := strings.TrimSpace(e.Remark)
 	return "vless://" + id + "@" + e.Address + ":" + itoa(e.port()) + "?" + q.Encode() + "#" + escape(remark)

@@ -113,7 +113,7 @@ func TestEnforcesTheAllowanceOnce(t *testing.T) {
 func TestResetClearsTheCount(t *testing.T) {
 	h := modtest.NewHost("m1")
 	m := &Module{Tracker: usage.New()}
-	m.Tracker.Add("alice", 100, 100)
+	m.Tracker.Add("alice", "ru4", 100, 100)
 	if err := m.Tracker.Reset(context.Background(), h, "alice"); err != nil {
 		t.Fatal(err)
 	}

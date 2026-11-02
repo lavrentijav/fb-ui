@@ -119,7 +119,12 @@
     "vnetInviteCode": "Код приглашения",
     "vnetJoin": "Войти по коду",
     "vnetInvite": "Пригласить",
-    "vnetLeave": "Покинуть сеть"
+    "vnetLeave": "Покинуть сеть",
+    "serversTitle": "Трафик по серверам",
+    "mirror": "Зеркало",
+    "webPage": "Сайт",
+    "hwidLimit": "Устройств: {count}",
+    "refillDate": "Сброс трафика"
   },
   "menu": {
     "theme": "Тема",

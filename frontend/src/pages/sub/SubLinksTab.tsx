@@ -8,12 +8,19 @@ interface SubLinksTabProps {
   subUrl: string;
   subJsonUrl: string;
   subClashUrl: string;
+  backupUrls?: string[];
   onCopy: (value: string) => void;
 }
 
 const appendRawView = (url: string) => `${url}${url.includes('?') ? '&' : '?'}view=raw`;
 
-export default function SubLinksTab({ subUrl, subJsonUrl, subClashUrl, onCopy }: SubLinksTabProps) {
+export default function SubLinksTab({
+  subUrl,
+  subJsonUrl,
+  subClashUrl,
+  backupUrls = [],
+  onCopy,
+}: SubLinksTabProps) {
   const { t } = useTranslation();
   const subLabel = t('pages.settings.subSettings');
   const rows = [
@@ -26,6 +33,15 @@ export default function SubLinksTab({ subUrl, subJsonUrl, subClashUrl, onCopy }:
       downloadable: true,
     },
     { kind: 'CLASH', color: 'gold', url: subClashUrl, title: 'Clash / Mihomo', downloadable: true },
+    // mirrors the response advertises: a client retries them when the primary
+    // host stops answering
+    ...backupUrls.map((url, i) => ({
+      kind: t('subscription.mirror'),
+      color: 'default',
+      url,
+      title: `${t('subscription.mirror')} ${i + 1}`,
+      downloadable: false,
+    })),
   ].filter((row) => row.url);
 
   return (

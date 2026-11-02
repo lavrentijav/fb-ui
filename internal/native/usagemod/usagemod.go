@@ -37,7 +37,7 @@ func New() *Module { return &Module{Tracker: usage.New()} }
 
 func (*Module) Name() string { return "usage" }
 func (*Module) Tables() []string {
-	return []string{usage.Table, usage.CursorTable}
+	return []string{usage.Table, usage.NodeTable, usage.CursorTable}
 }
 
 func (*Module) Legacy() []module.LegacyRoute {
@@ -130,6 +130,7 @@ func (m *Module) tick(ctx context.Context, h module.Host) error {
 // skipped, its stream position still advances with the cursor.
 func (m *Module) apply(raw []byte) {
 	var r struct {
+		Node    string `json:"n"`
 		Traffic []struct {
 			Email string `json:"e"`
 			Up    int64  `json:"u"`
@@ -140,7 +141,7 @@ func (m *Module) apply(raw []byte) {
 		return
 	}
 	for _, t := range r.Traffic {
-		m.Tracker.Add(t.Email, t.Up, t.Down)
+		m.Tracker.Add(t.Email, r.Node, t.Up, t.Down)
 	}
 }
 

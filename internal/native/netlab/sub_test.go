@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +32,20 @@ func (f *fleet) subToken(t *testing.T, via, email string) string {
 		t.Fatalf("token: %v %+v", err, out)
 	}
 	return out.Token
+}
+
+// subHeaders is the metadata a subscription response carries.
+func (f *fleet) subHeaders(via, token string) (http.Header, error) {
+	resp, err := http.Get("http://" + ipOf(masterHosts[via]) + ":8080/sub/" + token)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("sub: %d", resp.StatusCode)
+	}
+	return resp.Header, nil
 }
 
 func (f *fleet) subLinks(via, token string) ([]string, error) {
@@ -131,6 +146,126 @@ func TestSubscriptionLinkConnects(t *testing.T) {
 		}
 		return got == "/ip "+ipOf("ru4"), got
 	})
+
+	// the traffic the run just made shows up per server in the response, which
+	// is the Flamix extension a client draws a bar from
+	eventually(t, 90*time.Second, "the per-server traffic reaches the subscription", func() (bool, string) {
+		h, err := f.subHeaders("fi1", token)
+		if err != nil {
+			return false, err.Error()
+		}
+		raw := h.Get("Server-Userinfo")
+		if raw == "" {
+			return false, "no Server-Userinfo yet"
+		}
+		b, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(raw, "base64:"))
+		if err != nil {
+			return false, err.Error()
+		}
+		var servers map[string]string
+		if err := json.Unmarshal(b, &servers); err != nil {
+			return false, string(b)
+		}
+		var got string
+		for name, info := range servers {
+			if strings.Contains(name, "ru4-vpn") {
+				got = info
+			}
+		}
+		if got == "" {
+			return false, fmt.Sprintf("servers %v", servers)
+		}
+		var up, down int64
+		for _, part := range strings.Split(got, ";") {
+			part = strings.TrimSpace(part)
+			if v, ok := strings.CutPrefix(part, "upload="); ok {
+				up, _ = strconv.ParseInt(v, 10, 64)
+			}
+			if v, ok := strings.CutPrefix(part, "download="); ok {
+				down, _ = strconv.ParseInt(v, 10, 64)
+			}
+		}
+		if up+down == 0 {
+			return false, got
+		}
+		return true, got
+	})
+}
+
+// A subscription response says more than the link list: quota, a name, an
+// update interval and the transport parameters a modern client prefers.
+func TestSubscriptionAdvertisesMetadata(t *testing.T) {
+	f := &fleet{lab: newLab(t)}
+	f.newFleetCA(t)
+	f.startMasters(t)
+	ru4 := nodespec.Spec{
+		Node: "ru4",
+		Inbounds: []nodespec.Inbound{{
+			Tag: "vpn", Port: 12054, Network: "ws", Path: "/ws-meta", Host: "ru.lab.firewalk.test",
+			Route: nodespec.Direct, Clients: []nodespec.Client{{Email: "alice", ID: aliceID, LimitIP: 2}},
+		}},
+		Certs: []nodespec.Cert{f.cert(t, "ru.lab.firewalk.test")}, DirectAllow: []string{"10.0.0.0/16"},
+	}
+	f.putSpec(t, "fi1", ru4)
+	f.startNode(t, "ru4")
+	token := f.subToken(t, "fi1", "alice")
+
+	h, err := f.subHeaders("fi1", token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := h.Get("Subscription-Userinfo"); !strings.HasPrefix(got, "upload=0; download=0; total=") {
+		t.Fatalf("subscription-userinfo %q", got)
+	}
+	if got := h.Get("Profile-Update-Interval"); got != "12" {
+		t.Fatalf("profile-update-interval %q", got)
+	}
+	title, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(h.Get("Profile-Title"), "base64:"))
+	if err != nil || string(title) != "alice" {
+		t.Fatalf("profile-title %q %v", title, err)
+	}
+	if !strings.Contains(h.Get("Content-Disposition"), "filename*=UTF-8''alice") {
+		t.Fatalf("content-disposition %q", h.Get("Content-Disposition"))
+	}
+	if got := h.Get("X-Hwid-Limit"); got != "2" {
+		t.Fatalf("x-hwid-limit %q", got)
+	}
+
+	links, err := f.subLinks("fi1", token)
+	if err != nil || len(links) != 1 {
+		t.Fatalf("links %v %v", links, err)
+	}
+	u, err := url.Parse(links[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := u.Query()
+	for k, want := range map[string]string{
+		"fp": "chrome", "headerType": "none", "allowInsecure": "0", "type": "ws",
+		"path": "/ws-meta", "sni": "ru.lab.firewalk.test",
+	} {
+		if q.Get(k) != want {
+			t.Fatalf("%s = %q, want %q in %s", k, q.Get(k), want, links[0])
+		}
+	}
+	if u.Fragment != "ru4-vpn" {
+		t.Fatalf("remark %q", u.Fragment)
+	}
+
+	// ?format=plain carries the same metadata as body lines, for a client or
+	// CDN that strips headers
+	resp, err := http.Get("http://" + ipOf(masterHosts["fi1"]) + ":8080/sub/" + token + "?format=plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	body := string(raw)
+	for _, want := range []string{"#subscription-userinfo:", "#profile-title: base64:", "vless://"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("plain body lacks %q:\n%s", want, body)
+		}
+	}
 }
 
 // An advertised address replaces the node's own name in the subscription, so

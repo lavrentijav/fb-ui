@@ -119,7 +119,12 @@
     "vnetInviteCode": "Invite code",
     "vnetJoin": "Join with code",
     "vnetInvite": "Invite",
-    "vnetLeave": "Leave network"
+    "vnetLeave": "Leave network",
+    "serversTitle": "Traffic by server",
+    "mirror": "Mirror",
+    "webPage": "Website",
+    "hwidLimit": "Devices: {count}",
+    "refillDate": "Traffic resets"
   },
   "menu": {
     "theme": "Chủ đề",

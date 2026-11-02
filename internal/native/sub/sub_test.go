@@ -95,3 +95,72 @@ func TestHostsOverrideTheEndpoint(t *testing.T) {
 		t.Fatalf("plain link %s", got[2])
 	}
 }
+
+func TestLinkCarriesTheExtraParametersAndTheTransport(t *testing.T) {
+	raw := sub.Link(uid, sub.Endpoint{
+		Address: "ru.lab.test", Network: "xhttp", Path: "/x", Remark: "ru4",
+		Extra: map[string]string{"userinfo": "download=5; total=10", "providerid": "p1", "node": "ru4"},
+	})
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := u.Query()
+	if q.Get("type") != "xhttp" {
+		t.Fatalf("type = %q", q.Get("type"))
+	}
+	for k, want := range map[string]string{
+		"fp": "chrome", "headerType": "none", "allowInsecure": "0",
+		"userinfo": "download=5; total=10", "providerid": "p1", "node": "ru4",
+	} {
+		if q.Get(k) != want {
+			t.Fatalf("%s = %q, want %q in %s", k, q.Get(k), want, raw)
+		}
+	}
+}
+
+func TestAnExtraCannotBreakTheTransport(t *testing.T) {
+	raw := sub.Link(uid, sub.Endpoint{
+		Address: "ru.lab.test", Path: "/ws", Security: "none",
+		Extra: map[string]string{"security": "reality", "sni": "evil"},
+	})
+	q, _ := url.Parse(raw)
+	if q.Query().Get("security") != "none" {
+		t.Fatalf("an extra overrode security: %s", raw)
+	}
+}
+
+func TestOptionsNameTheLinksAndAddParameters(t *testing.T) {
+	got := sub.LinksWithOpts(specs(), "alice", sub.Options{
+		Remark: func(node string, ib nodespec.Inbound) string { return node + "/" + ib.Tag },
+		Extra: func(node string, ib nodespec.Inbound) map[string]string {
+			return map[string]string{"node": node, "inbound": ib.Tag}
+		},
+	})
+	if len(got) != 2 {
+		t.Fatalf("links %v", got)
+	}
+	for _, raw := range got {
+		u, _ := url.Parse(raw)
+		if !strings.Contains(u.Fragment, "/") {
+			t.Fatalf("remark not templated: %s", raw)
+		}
+		if u.Query().Get("node") == "" || u.Query().Get("inbound") == "" {
+			t.Fatalf("extras missing: %s", raw)
+		}
+	}
+}
+
+func TestHostsKeepTheTemplatedRemark(t *testing.T) {
+	got := sub.LinksWithOpts(specs(), "alice", sub.Options{
+		Hosts:  sub.Hosts{"ru4/vpn": {{Address: "cdn.example", Remark: "cdn"}}},
+		Remark: func(node string, ib nodespec.Inbound) string { return "S-" + node },
+	})
+	// de2 first (sorted), then ru4's advertised link
+	if len(got) != 2 {
+		t.Fatalf("links %v", got)
+	}
+	if !strings.HasSuffix(got[1], "#S-ru4%20cdn") {
+		t.Fatalf("advertised remark %s", got[1])
+	}
+}

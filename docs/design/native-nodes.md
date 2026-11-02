@@ -346,6 +346,11 @@ the login) and `GET /vnet/networks` (networks, owners and members with their
 addresses). The interface's **Subscriptions** and **Virtual networks** pages
 under Доступ use them; see `native-ui.md`.
 
+What the response says besides the links (quota, title, announcement,
+mirrors, fallback IPs, HWID limit, per-server traffic, link parameters) is
+specified in `native-sub-params.md`; per-node traffic is kept in `usage_node`
+so `Server-Userinfo` is real.
+
 `TestSubscriptionPageAndAccount` covers it end to end: create a subscription
 with a login, open its URL as a browser (page with data and rewritten assets)
 and as a client (links), log in from another master, create a network, invite,

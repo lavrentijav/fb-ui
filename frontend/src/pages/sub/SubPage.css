@@ -722,3 +722,47 @@ a.sub-row-title:hover {
     display: none;
   }
 }
+
+/* Per-server traffic: one compact bar per node, shown when the master reports
+   a breakdown (the Flamix server-userinfo extension). */
+.sub-servers {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--sub-row-bg);
+  border: 1px solid var(--sub-row-border);
+}
+
+.sub-servers-title {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sub-server {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(60px, 1.4fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.sub-server-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub-server-bar {
+  margin: 0;
+}
+
+.sub-server-used {
+  white-space: nowrap;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}

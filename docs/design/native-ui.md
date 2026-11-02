@@ -45,8 +45,11 @@ without it, and the UI module can be cut with `-tags no_ui`.
 
 The subscription page is a separate build entry (`subpage.html`) served by the
 master at `/sub/<token>` for browsers (raw links for clients), with the login
-and the virtual network in a **Manage** tab backed by `/api/v1/sub/*`. See
-`native-nodes.md` for the API.
+and the virtual network in a **Manage** tab backed by `/api/v1/sub/*`. It also
+renders the response metadata (announcement with colour and button,
+support/website links, update interval, HWID limit, refill date, mirror URLs,
+a per-server traffic bar). See `native-nodes.md` for the API and
+`native-sub-params.md` for every parameter sent.
 
 ## Subscriptions and virtual networks (done 2026-11-02)
 

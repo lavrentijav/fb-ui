@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Card, ConfigProvider, Layout, Tabs, message } from 'antd';
+import { Alert, Button, Card, ConfigProvider, Layout, Progress, Tabs, message } from 'antd';
 import type { TabsProps } from 'antd';
 import {
   AppstoreOutlined,
@@ -11,7 +11,7 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 
-import { ClipboardManager, LanguageManager } from '@/utils';
+import { ClipboardManager, LanguageManager, SizeFormatter } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 import { useTheme } from '@/hooks/useTheme';
 import SubAccountTab from './SubAccountTab';
@@ -33,6 +33,20 @@ const subTitle = subData.subTitle || '';
 const subSupportUrl = subData.subSupportUrl || '';
 const updateHours = Number(subData.subUpdates || 0);
 const announce = subData.announce || '';
+const announceUrl = subData.announceUrl || '';
+const announceColor = subData.announceColor || '';
+const announceButton = subData.announceButtonText
+  ? { text: subData.announceButtonText, link: subData.announceButtonLink || '' }
+  : null;
+const webPageUrl = subData.webPageUrl || '';
+const refillDate = Number(subData.refillDate || 0);
+const hwidLimit = Number(subData.hwidLimit || 0);
+const backupUrls: string[] = Array.isArray(subData.backupUrls) ? subData.backupUrls : [];
+const servers: { name: string; upload: number; download: number }[] = Array.isArray(
+  subData.servers,
+)
+  ? subData.servers
+  : [];
 const links: string[] = Array.isArray(subData.links) ? subData.links : [];
 const linkEmails: string[] = Array.isArray(subData.emails) ? subData.emails : [];
 const totalByte = Number(subData.totalByte || 0);
@@ -61,6 +75,24 @@ const heroData = {
 const apps = buildSubApps({ subUrl, sId, subTitle });
 const initialPlatform = detectPlatform(navigator.userAgent);
 const RTL_LANGUAGES = new Set(['fa-IR', 'ar-EG']);
+
+// The banner colour is whatever the operator wrote; map the common names onto
+// antd's alert types and leave an unknown value as information.
+function announceType(color: string): 'info' | 'success' | 'warning' | 'error' {
+  switch (color.toLowerCase()) {
+    case 'green':
+    case 'success':
+      return 'success';
+    case 'red':
+    case 'danger':
+    case 'warning':
+      return 'warning';
+    case 'yellow':
+      return 'warning';
+    default:
+      return 'info';
+  }
+}
 
 // The sub page runs its own violet accent, so every antd control on it picks the
 // hue up instead of the panel blue useTheme pins. Mirrored in SubPage.css.
@@ -118,6 +150,7 @@ export default function SubPage() {
             subUrl={subUrl}
             subJsonUrl={subJsonUrl}
             subClashUrl={subClashUrl}
+            backupUrls={backupUrls}
             onCopy={copy}
           />
         ),
@@ -200,10 +233,63 @@ export default function SubPage() {
               lang={lang}
               onLangChange={onLangChange}
             />
-            {announce && <Alert type="info" showIcon title={announce} className="sub-announce" />}
+            {announce && (
+              <Alert
+                type={announceType(announceColor)}
+                showIcon
+                title={
+                  announceUrl ? (
+                    <a href={announceUrl} target="_blank" rel="noopener noreferrer">
+                      {announce}
+                    </a>
+                  ) : (
+                    announce
+                  )
+                }
+                action={
+                  announceButton?.link ? (
+                    <Button
+                      size="small"
+                      href={announceButton.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {announceButton.text}
+                    </Button>
+                  ) : undefined
+                }
+                className="sub-announce"
+              />
+            )}
             <SubHero {...heroData} lang={lang} />
+            {servers.length > 0 && (
+              <div className="sub-servers">
+                <div className="sub-servers-title">{t('subscription.serversTitle')}</div>
+                {servers.map((s) => {
+                  const used = s.upload + s.download;
+                  const pct = totalByte > 0 ? Math.min(100, (used / totalByte) * 100) : 0;
+                  return (
+                    <div key={s.name} className="sub-server" dir="ltr">
+                      <span className="sub-server-name" title={s.name}>
+                        {s.name}
+                      </span>
+                      <Progress
+                        percent={pct}
+                        showInfo={false}
+                        size="small"
+                        className="sub-server-bar"
+                      />
+                      <span className="sub-server-used">
+                        {SizeFormatter.sizeFormat(used)}
+                        {totalByte > 0 ? ` / ${SizeFormatter.sizeFormat(totalByte)}` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {tabs.length > 0 && <Tabs className="sub-tabs" tabBarGutter={24} items={tabs} />}
-            {(updateHours > 0 || subSupportUrl) && (
+            {(updateHours > 0 || subSupportUrl || webPageUrl || hwidLimit > 0 || refillDate > 0) && (
               <footer className="sub-footer">
                 {updateHours > 0 && (
                   <span>
@@ -216,6 +302,21 @@ export default function SubPage() {
                     <CustomerServiceOutlined />
                     {t('subscription.support')}
                   </a>
+                )}
+                {webPageUrl && (
+                  <a href={webPageUrl} target="_blank" rel="noopener noreferrer">
+                    <LinkOutlined />
+                    {t('subscription.webPage')}
+                  </a>
+                )}
+                {hwidLimit > 0 && (
+                  <span>{t('subscription.hwidLimit', { count: hwidLimit })}</span>
+                )}
+                {refillDate > 0 && (
+                  <span>
+                    {t('subscription.refillDate')}:{' '}
+                    {new Date(refillDate * 1000).toLocaleDateString()}
+                  </span>
                 )}
               </footer>
             )}

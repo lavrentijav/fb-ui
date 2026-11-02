@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
 )
@@ -195,6 +196,19 @@ func CheckURL(v string) error {
 		return errors.New("must be an http(s) URL")
 	}
 	return nil
+}
+
+// CheckDate accepts a refill date as YYYY-MM-DD or RFC 3339.
+func CheckDate(v string) error {
+	if v == "" {
+		return nil
+	}
+	for _, layout := range []string{"2006-01-02", time.RFC3339} {
+		if _, err := time.Parse(layout, v); err == nil {
+			return nil
+		}
+	}
+	return errors.New("must be YYYY-MM-DD or RFC 3339")
 }
 
 var botToken = regexp.MustCompile(`^[0-9]{5,}:[A-Za-z0-9_-]{20,}$`)

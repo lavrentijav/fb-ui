@@ -48,6 +48,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/register"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/subauth"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/submeta"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/templates"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/usage"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
@@ -1554,17 +1555,25 @@ func (d *Daemon) serveSub(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	links := sub.LinksWith(d.effectiveSpecs(), rec.Email, hosts.Endpoints(hosts.List(d.store.State)))
+	rendered := d.renderSub(rec, token, r)
 	if wantsHTML(r) {
-		d.serveSubPage(w, r, token, rec)
+		d.serveSubPage(w, r, rendered)
 		return
 	}
-	if len(links) == 0 {
+	if len(rendered.links) == 0 {
 		http.Error(w, "no inbounds for "+rec.Email, http.StatusNotFound)
 		return
 	}
+	writeSubHeaders(w, rendered.info)
+	// ?format=plain is the metadata lines plus the links, for a client or CDN
+	// that drops headers; the default stays base64 for the older clients.
+	if subFormat(r) == "plain" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = io.WriteString(w, rendered.info.Plain(rendered.links))
+		return
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = io.WriteString(w, sub.Base64(links))
+	_, _ = io.WriteString(w, sub.Base64(rendered.links))
 }
 
 // subPageData is what the subscription page reads from window.
@@ -1581,12 +1590,32 @@ type subPageData struct {
 	TotalByte  int64    `json:"totalByte"`
 	Expire     int64    `json:"expire"`
 	Datepicker string   `json:"datepicker"`
+	// The same metadata the response headers carry, for the page itself.
+	UploadByte    int64           `json:"uploadByte"`
+	DownloadByte  int64           `json:"downloadByte"`
+	SupportURL    string          `json:"supportUrl,omitempty"`
+	WebPageURL    string          `json:"webPageUrl,omitempty"`
+	Announce      string          `json:"announce,omitempty"`
+	AnnounceURL   string          `json:"announceUrl,omitempty"`
+	AnnounceColor string          `json:"announceColor,omitempty"`
+	UpdateHours   int             `json:"updateHours,omitempty"`
+	RefillDate    int64           `json:"refillDate,omitempty"`
+	HwidLimit     int             `json:"hwidLimit,omitempty"`
+	Servers       []subPageServer `json:"servers,omitempty"`
+	BackupURLs    []string        `json:"backupUrls,omitempty"`
+}
+
+// subPageServer is one server's share of the traffic, for the page's list.
+type subPageServer struct {
+	Name     string `json:"name"`
+	Upload   int64  `json:"upload"`
+	Download int64  `json:"download"`
 }
 
 // serveSubPage serves the built subscription page (UIDir/subpage.html) with
 // the subscription baked in. Assets are absolute (/assets/...), so they are
 // pointed at the panel's static mount.
-func (d *Daemon) serveSubPage(w http.ResponseWriter, r *http.Request, token string, rec subauth.Record) {
+func (d *Daemon) serveSubPage(w http.ResponseWriter, r *http.Request, rendered subRender) {
 	if d.cfg.UIDir == "" {
 		http.Error(w, "no interface built", http.StatusNotFound)
 		return
@@ -1596,12 +1625,25 @@ func (d *Daemon) serveSubPage(w http.ResponseWriter, r *http.Request, token stri
 		http.Error(w, "no subscription page built", http.StatusNotFound)
 		return
 	}
-	links := sub.LinksWith(d.effectiveSpecs(), rec.Email, hosts.Endpoints(hosts.List(d.store.State)))
-	up, total, expire := d.emailUsage(rec.Email)
+	info := rendered.info
+	rec, _ := subauth.Get(d.store.State, rendered.token)
+	servers := make([]subPageServer, 0, len(info.Servers))
+	for _, name := range submeta.SortedRemarks(info.Servers) {
+		q := info.Servers[name]
+		servers = append(servers, subPageServer{Name: name, Upload: q.Upload, Download: q.Download})
+	}
 	data := subPageData{
-		SID: token, User: rec.User, Enabled: rec.Enable, Links: links, Emails: []string{rec.Email},
+		SID: rendered.token, User: rec.User, Enabled: rec.Enable, Links: rendered.links,
+		Emails: []string{rec.Email},
 		SubURL: r.URL.Path, SubJSONURL: r.URL.Path + "?format=json",
-		SubTitle: rec.User, UsedByte: up, TotalByte: total, Expire: expire, Datepicker: "gregorian",
+		SubTitle: info.Title, UsedByte: info.Quota.Used(), TotalByte: info.Quota.Total,
+		Expire: info.Quota.Expire, Datepicker: "gregorian",
+		UploadByte: info.Quota.Upload, DownloadByte: info.Quota.Download,
+		SupportURL: info.SupportURL, WebPageURL: info.WebPageURL,
+		Announce: info.Announce.Text, AnnounceURL: info.Announce.URL,
+		AnnounceColor: info.Announce.Color, UpdateHours: info.UpdateHours,
+		RefillDate: info.RefillDate, HwidLimit: info.HwidLimit,
+		Servers: servers, BackupURLs: info.BackupURLs,
 	}
 	baked, err := json.Marshal(data)
 	if err != nil {
@@ -1822,11 +1864,21 @@ func (d *Daemon) subMe(w http.ResponseWriter, r *http.Request) {
 	if m := d.m.Load(); m != nil {
 		_, _ = m.CatchUp(r.Context())
 	}
-	used, total, expire := d.emailUsage(rec.Email)
-	links := sub.LinksWith(d.effectiveSpecs(), rec.Email, hosts.Endpoints(hosts.List(d.store.State)))
+	rendered := d.renderSub(rec, rec.Token, r)
+	meta := map[string]any{
+		"usedBytes": rendered.info.Quota.Used(), "totalBytes": rendered.info.Quota.Total,
+		"uploadBytes": rendered.info.Quota.Upload, "downloadBytes": rendered.info.Quota.Download,
+		"expire": rendered.info.Quota.Expire, "title": rendered.info.Title,
+		"announce": rendered.info.Announce.Text, "supportUrl": rendered.info.SupportURL,
+	}
+	servers := make([]map[string]any, 0, len(rendered.info.Servers))
+	for _, name := range submeta.SortedRemarks(rendered.info.Servers) {
+		q := rendered.info.Servers[name]
+		servers = append(servers, map[string]any{"name": name, "upload": q.Upload, "download": q.Download})
+	}
+	meta["servers"] = servers
 	out := map[string]any{
-		"user": rec.User, "email": rec.Email, "links": links,
-		"usedBytes": used, "totalBytes": total, "expire": expire,
+		"user": rec.User, "email": rec.Email, "links": rendered.links, "meta": meta,
 	}
 	if st := d.vnets.Load(); st != nil {
 		out["vnet"] = d.vnetView(r, st, rec.Email)
