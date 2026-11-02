@@ -35,8 +35,17 @@ func TestAPIFlow(t *testing.T) {
 	if code, _ := call(t, h, "", "GET", "/api/v1/me", ""); code != http.StatusUnauthorized {
 		t.Fatalf("no token: %d", code)
 	}
-	if code, me := call(t, h, a.Token, "GET", "/api/v1/me", ""); code != 200 || me["ip"] != a.IP {
+	if code, me := call(t, h, a.Token, "GET", "/api/v1/me", ""); code != 200 || me["ip"] != a.IP || me["name"] != "alice" {
 		t.Fatalf("me: %d %v", code, me)
+	}
+	if code, n := call(t, h, a.Token, "PUT", "/api/v1/me/name", `{"name":"alice-pc"}`); code != 200 || n["name"] != "alice-pc" {
+		t.Fatalf("rename: %d %v", code, n)
+	}
+	if code, _ := call(t, h, b.Token, "PUT", "/api/v1/me/name", `{"name":"alice-pc"}`); code != http.StatusConflict {
+		t.Fatalf("a taken name: %d", code)
+	}
+	if code, _ := call(t, h, b.Token, "PUT", "/api/v1/me/name", `{"name":"Bob!"}`); code != http.StatusBadRequest {
+		t.Fatalf("a bad name: %d", code)
 	}
 	if code, _ := call(t, h, a.Token, "POST", "/api/v1/network", `{"title":"друзья"}`); code != 200 {
 		t.Fatalf("create: %d", code)

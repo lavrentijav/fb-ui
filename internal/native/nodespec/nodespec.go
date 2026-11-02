@@ -100,25 +100,45 @@ type Client struct {
 func ReverseTag(email string) string { return "u-" + email }
 
 // VNet is the virtual network table a master renders for a node: members,
-// how to reach other nodes, which inbounds carry members and cascades.
+// their names, how to reach other nodes, which inbounds carry members and
+// cascades, and the loopback resolvers of the networks on this node.
 type VNet struct {
 	Members []VMember      `json:"members"`
 	Peers   map[string]Hop `json:"peers,omitempty"`
 	Entry   []string       `json:"entry"`
 	Cascade string         `json:"cascade,omitempty"`
+	// Zone is the internal DNS zone members resolve under (default local).
+	Zone string `json:"zone,omitempty"`
+	// Resolvers are the node's loopback DNS listeners, one per network.
+	Resolvers []VResolver `json:"resolvers,omitempty"`
 }
 
 type VMember struct {
 	Email string `json:"email"`
 	// Rev is the reverse-tunnel user's email on the same inbound; empty
 	// means Email (older tables).
-	Rev     string `json:"rev,omitempty"`
+	Rev string `json:"rev,omitempty"`
+	// Name is what other members resolve (Name.Zone); empty means none.
+	Name    string `json:"name,omitempty"`
 	IP      string `json:"ip"`
 	Network string `json:"network"`
 }
 
-// VNetPrefix holds every member address.
-const VNetPrefix = "100.64.0.0/10"
+// VResolver is one network's DNS listener on the node's loopback.
+type VResolver struct {
+	Network string `json:"network"`
+	Port    int    `json:"port"`
+}
+
+const (
+	// VNetPrefix holds every member address.
+	VNetPrefix = "100.64.0.0/10"
+	// VDNSAddress is where members query their network's resolver; it is
+	// inside VNetPrefix, like Tailscale's MagicDNS.
+	VDNSAddress = "100.100.100.100"
+	// VNetZoneDefault is the internal zone when the table names no other.
+	VNetZoneDefault = "local"
+)
 
 // Exit leaves through another node (a cascade). Several hops (the exit
 // nodes of one group) become a balancer that prefers the fastest alive hop.
@@ -161,6 +181,7 @@ var (
 	validTag     = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 	validCountry = regexp.MustCompile(`^[a-z]{2}[0-9]?$`)
 	validUUID    = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	validLabel   = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 )
 
 // Validate rejects a spec the node could not run as meant.
@@ -251,11 +272,32 @@ func (s *Spec) Validate() error {
 	}
 	if v := s.VNet; v != nil {
 		prefix := netip.MustParsePrefix(VNetPrefix)
+		names := map[string]bool{}
 		for _, m := range v.Members {
 			ip, err := netip.ParseAddr(m.IP)
 			if m.Email == "" || m.Network == "" || err != nil || !prefix.Contains(ip) {
 				return fmt.Errorf("nodespec: bad network member %+v", m)
 			}
+			if m.Name != "" {
+				if !validLabel.MatchString(m.Name) || names[m.Name] {
+					return fmt.Errorf("nodespec: bad or repeated member name %q", m.Name)
+				}
+				names[m.Name] = true
+			}
+		}
+		if v.Zone != "" {
+			for _, label := range strings.Split(v.Zone, ".") {
+				if !validLabel.MatchString(label) {
+					return fmt.Errorf("nodespec: bad network zone %q", v.Zone)
+				}
+			}
+		}
+		ports := map[int]bool{}
+		for _, r := range v.Resolvers {
+			if r.Network == "" || r.Port <= 0 || r.Port > 65535 || ports[r.Port] {
+				return fmt.Errorf("nodespec: bad network resolver %+v", r)
+			}
+			ports[r.Port] = true
 		}
 		for _, tag := range append(slices.Clone(v.Entry), v.Cascade) {
 			if tag != "" && !tags[tag] {

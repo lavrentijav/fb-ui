@@ -19,6 +19,7 @@ const (
 	UserTable   = "vuser"
 	TokenTable  = "vtoken"
 	AddrTable   = "vaddr"
+	NameTable   = "uname" // keyed by name: a name belongs to one user
 	NetTable    = "vnet"
 	MemberTable = "vnet_member" // keyed by user: one network per user
 	InviteTable = "vnet_invite"
@@ -31,14 +32,38 @@ var (
 	ErrBadInvite   = errors.New("приглашение недействительно или закончилось")
 	ErrOwnerLeaves = errors.New("владелец не может выйти: удалите сеть или передайте её")
 	ErrNoUser      = errors.New("нет такого пользователя")
+	ErrBadName     = errors.New("имя: 1–32 символа, a-z, 0-9 и дефис, не в начале и не в конце")
+	ErrNameTaken   = errors.New("это имя уже занято")
 )
+
+// reservedNames would confuse clients or shadow the resolver itself.
+var reservedNames = map[string]bool{
+	"localhost": true, "local": true, "dns": true, "ns": true, "master": true,
+}
+
+// ValidName reports whether name is a usable internal host name.
+func ValidName(name string) bool {
+	if len(name) == 0 || len(name) > 32 || reservedNames[name] {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' {
+			if c != '-' || (i > 0 && i < len(name)-1) {
+				continue
+			}
+		}
+		return false
+	}
+	return true
+}
 
 type Reader interface {
 	Get(table, key string) (map[string]json.RawMessage, bool)
 	Keys(table string) []string
 }
 
-type User struct{ ID, Email, UUID, RevUUID, Token, IP string }
+type User struct{ ID, Email, UUID, RevUUID, Token, IP, Name string }
 
 // RevEmail is the user's reverse-tunnel identity on the same inbound: Xray
 // forbids a reverse-enabled user from making forward requests, so one user
@@ -144,6 +169,10 @@ func (s *Store) CreateUser(ctx context.Context, id string) (User, error) {
 		return u, nil
 	}
 	u := User{ID: id, Email: id, UUID: uuid4(), RevUUID: uuid4(), Token: random(24)}
+	name := ""
+	if ValidName(id) {
+		name = id
+	}
 	for range 5 {
 		ip := randomAddr()
 		if _, taken := s.State.Get(AddrTable, ip); taken {
@@ -151,6 +180,17 @@ func (s *Store) CreateUser(ctx context.Context, id string) (User, error) {
 		}
 		if _, err := s.Master.Set(ctx, AddrTable, ip, map[string]any{"user": id}); err != nil {
 			return User{}, err
+		}
+		// the name is a convenience: a lost claim only leaves the user unnamed
+		if name != "" {
+			if rec, ok := s.State.Get(NameTable, name); ok && str(rec, "user") != id {
+				name = "" // someone else already goes by it
+			}
+		}
+		if name != "" {
+			if _, err := s.Master.Set(ctx, NameTable, name, map[string]any{"user": id}); err != nil {
+				return User{}, err
+			}
 		}
 		if err := s.settle(ctx); err != nil {
 			return User{}, err
@@ -166,10 +206,58 @@ func (s *Store) CreateUser(ctx context.Context, id string) (User, error) {
 	if _, err := s.Master.Set(ctx, TokenTable, u.Token, map[string]any{"user": id}); err != nil {
 		return User{}, err
 	}
-	_, err := s.Master.Set(ctx, UserTable, id, map[string]any{
+	if _, err := s.Master.Set(ctx, UserTable, id, map[string]any{
 		"email": u.Email, "uuid": u.UUID, "revuuid": u.RevUUID, "token": u.Token, "ip": u.IP,
-	})
-	return u, err
+	}); err != nil {
+		return User{}, err
+	}
+	u.Name = s.Name(id)
+	return u, nil
+}
+
+// Name is the name this user claimed, "" if none.
+func (s *Store) Name(user string) string {
+	for _, key := range s.State.Keys(NameTable) {
+		if rec, ok := s.State.Get(NameTable, key); ok && str(rec, "user") == user {
+			return key
+		}
+	}
+	return ""
+}
+
+// SetName claims name for user; names are unique keys, re-read after they
+// replicate, so two masters handing out the same name leave one winner.
+func (s *Store) SetName(ctx context.Context, user, name string) (string, error) {
+	if !ValidName(name) {
+		return "", ErrBadName
+	}
+	if _, ok := s.User(user); !ok {
+		return "", ErrNoUser
+	}
+	_, _ = s.Master.CatchUp(ctx)
+	if rec, ok := s.State.Get(NameTable, name); ok && str(rec, "user") != user {
+		return "", ErrNameTaken
+	}
+	if _, err := s.Master.Set(ctx, NameTable, name, map[string]any{"user": user}); err != nil {
+		return "", err
+	}
+	if err := s.settle(ctx); err != nil {
+		return "", err
+	}
+	if rec, _ := s.State.Get(NameTable, name); str(rec, "user") != user {
+		return "", ErrNameTaken
+	}
+	for _, old := range s.State.Keys(NameTable) {
+		if old == name {
+			continue
+		}
+		if rec, _ := s.State.Get(NameTable, old); str(rec, "user") == user {
+			if _, err := s.Master.Delete(ctx, NameTable, old); err != nil {
+				return "", err
+			}
+		}
+	}
+	return name, nil
 }
 
 func (s *Store) User(id string) (User, bool) {
@@ -177,7 +265,8 @@ func (s *Store) User(id string) (User, bool) {
 	if !ok {
 		return User{}, false
 	}
-	return User{ID: id, Email: str(rec, "email"), UUID: str(rec, "uuid"), RevUUID: str(rec, "revuuid"), Token: str(rec, "token"), IP: str(rec, "ip")}, true
+	return User{ID: id, Email: str(rec, "email"), UUID: str(rec, "uuid"), RevUUID: str(rec, "revuuid"),
+		Token: str(rec, "token"), IP: str(rec, "ip"), Name: s.Name(id)}, true
 }
 
 func (s *Store) UserByToken(token string) (User, bool) {

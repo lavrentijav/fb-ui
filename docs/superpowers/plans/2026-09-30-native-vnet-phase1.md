@@ -2343,3 +2343,13 @@ the `rev` connection; routing rules filter by the normal email and deliver into
 `u-<name>#rev`. See `docs/design/native-vnet.md` (Addresses, Client).
 
 Not done: exposes (order of work 2–4).
+
+## Names and the resolver (2026-11-02)
+
+Added after the owner asked for internal `.local` names: `uname` (name →
+user, unique by key), `PUT /api/v1/me/name`, names in the rendered table
+(`VNet.Members[].Name`, `VNet.Zone`), per-network loopback resolvers
+(`VNet.Resolvers`, `internal/native/vdns`, TCP+UDP) reached at
+`100.100.100.100:53`, and routing that lets only a network's members query its
+resolver. The client JSON lists the resolver for the zone. `TestMembersOnDifferentNodes`
+now also checks `bob.local`, `NXDOMAIN` for a non-member, and a rename.

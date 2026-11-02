@@ -51,6 +51,14 @@ func TestFillAddsUsersAndTable(t *testing.T) {
 	if len(v.Members) != 2 || v.Members[0].Network != n {
 		t.Fatalf("members %+v", v.Members)
 	}
+	if v.Zone != "local" || !slices.ContainsFunc(v.Members, func(m nodespec.VMember) bool {
+		return m.Email == "bob" && m.Name == "bob"
+	}) {
+		t.Fatalf("names or zone: %+v %q", v.Members, v.Zone)
+	}
+	if len(v.Resolvers) != 1 || v.Resolvers[0].Network != n || v.Resolvers[0].Port == 0 {
+		t.Fatalf("resolvers %+v", v.Resolvers)
+	}
 	if _, err := nodespec.Render(ru4); err != nil {
 		t.Fatalf("filled spec does not render: %v", err)
 	}

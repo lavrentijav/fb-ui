@@ -34,7 +34,7 @@ main-line commit that has been reviewed. The main line is
 | Area | State on `native` |
 |---|---|
 | Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control, edge 443, certs, drain, presence, live network routing); missing: fail2ban/IP limit, sidecars, master↔agent runtime |
-| Virtual networks (phase 1) | in progress: users, addresses, networks, invites, presence, in-network routing, client config; lab `TestMembersOnDifferentNodes` passes; missing: exposes by name/allocated port |
+| Virtual networks (phase 1) | in progress: users, addresses, names, per-network DNS resolver (`internal/native/vdns`), networks, invites, presence, in-network routing, client config; lab `TestMembersOnDifferentNodes` passes; missing: exposes by name/allocated port |
 | Master ↔ agent runtime | not started |
 | Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `certs` (status, rollback), `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_certs`, `no_compat`. Missing: the rest of the modules, session login |
 | Go UI console | not started |

@@ -58,12 +58,36 @@ master creating the user; the address never changes or is reused while the
 user exists. The user record keeps two VLESS ids: the normal one and
 `revuuid` for the `rev` outbound (`<name>#rev`).
 
+Each user also picks a **name**, resolved inside the network as
+`<name>.local` (zone `local`; RFC 6762 reserves it for mDNS, so clients whose
+system resolver answers `.local` themselves must be pointed at the network
+resolver instead). The name defaults to the user id; 1–32 characters, `a-z`,
+`0-9` and inner `-`. Names are unique fleet-wide (`uname`, keyed by name).
+
+### Resolver
+
+Members query `100.100.100.100:53` (inside `100.64.0.0/10`, like Tailscale's
+MagicDNS). Every node answers for the networks whose members it serves: the
+master renders each network a loopback port (`127.0.0.1:15353+i`, sorted by
+network id) into `VNet.Resolvers`, and `fbnode` runs `internal/native/vdns`
+there. Routing sends only that network's members' queries to it
+(`user ∈ members(N) ∧ ip = 100.100.100.100 ∧ port = 53 → freedom redirect
+127.0.0.1:<port>`), so a name is visible only to its own network.
+
+`vdns` answers `A` (member address), empty `AAAA` (clients fall back to `A`),
+and `PTR` for `*.in-addr.arpa`; unknown names under the zone are `NXDOMAIN`,
+anything outside it is `REFUSED` — it is never an open resolver. UDP and TCP.
+
+The client JSON lists the resolver for the zone (`dns.servers`), so clients
+that honor the JSON's DNS config resolve names without extra setup; others
+need the resolver set to `100.100.100.100` for `*.local`.
+
 ## Data (op log tables)
 
 | Table | Key | Fields |
 |---|---|---|
 | `vaddr` | user | `ip` |
-| `uname` | name | `user` — `vasya` → `vasya.u.<zone>`; unique, chosen by the user |
+| `uname` | name | `user` — `vasya` → `vasya.local`; unique, chosen by the user |
 | `vnet` | network id | `title`, `owner` |
 | `vnet_member` | user | `network`, `role` (`owner`/`admin`/`member`) — keyed by user: one network per user holds by construction |
 | `vnet_invite` | code | `network`, `by`, `expires`, `uses` |
@@ -112,12 +136,16 @@ token; the bot and the panel use a service token acting for a user.
 | DELETE | `/exposes/{id}` | close |
 | GET | `/sub/<token>` | the client's JSON config (below) |
 
+`PUT /me/name` answers 400 for an invalid name and 409 when another user has
+it; the name is claimed as a key and re-read after it replicates, so two
+masters cannot hand out the same one.
+
 ## Presence
 
 - The node agent asks its Xray every 1–2 s which users hold a reverse tunnel
-  and publishes changes on the bus (`presence.<node>`); a full snapshot every
-  30 s repairs a lost message; an entry not refreshed for 90 s is gone.
-  Presence is operational: it is not written to the op log.
+  (the `#rev` users) and publishes changes on the bus (`presence.<node>`); a
+  full snapshot every 2 s repairs a lost message; an entry not refreshed for
+  10 s is gone. Presence is operational: it is not written to the op log.
 - Masters relay the fleet map to every node; nodes turn it into routing.
 - One user on two devices on two nodes: the most recently connected one gets
   incoming traffic.
@@ -169,7 +197,10 @@ On top of the usual VPN profile:
   `redirect: "127.0.0.1:0"`), or to a LAN device for exposes with a LAN
   target; `finalRules` allow `127.0.0.0/8` and the target LAN addresses
   (Xray 26 blocks private targets otherwise — found in the lab);
-- `100.64.0.0/10` routed into the tunnel, TUN mode on, so apps reach members.
+- `100.64.0.0/10` routed into the tunnel, TUN mode on, so apps reach members;
+- `dns.servers` lists `100.100.100.100` for the zone, so `.local` names
+  resolve through the network resolver (clients that keep their own DNS for
+  the zone must be told to use it).
 
 Which stock clients apply `reverse` and TUN from a JSON subscription
 (v2rayNG, Happ, Hiddify, …) must be checked before this is offered; the list
@@ -196,7 +227,9 @@ goes to the user-facing help.
 ## Tests (network lab, real addresses and Xray)
 
 1. Two members on **different** nodes reach each other, TCP and UDP; a
-   non-member cannot.
+   non-member cannot. `bob.local` resolves from alice's node over her tunnel,
+   a name outside the network is `NXDOMAIN`, and a rename reaches the other
+   node with the next bundle.
 2. A member moves to another node and is reachable again within seconds.
 3. From the internet: `https` (our certificate), Minecraft by name on the
    shared 25565, an allocated TCP and UDP port through **any** pool node.
@@ -209,9 +242,9 @@ goes to the user-facing help.
 Depends on users and subscriptions served by masters (native-nodes.md next
 step) and the master pool (`master.<zone>`, in progress).
 
-1. Addresses, networks, members, invites; API; presence; in-network routing
-   (tests 1, 2, 4, 5) — **done 2026-11-02** (`TestMembersOnDifferentNodes`),
-   with the two-identity fix above.
+1. Addresses, networks, members, invites; names and their resolver; API;
+   presence; in-network routing (tests 1, 2, 4, 5) — **done 2026-11-02**
+   (`TestMembersOnDifferentNodes`), with the two-identity fix above.
 2. Exposes by name: https/tls/http, Minecraft handshake (test 3, shared part).
 3. Allocated ports with the iptables redirect (test 3, allocated part).
 4. Limits, reports, panel switches.

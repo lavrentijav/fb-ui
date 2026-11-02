@@ -26,7 +26,13 @@ func API(s *Store, where func() map[string]string) http.Handler {
 	}
 	mux.HandleFunc("GET /api/v1/me", auth(func(w http.ResponseWriter, _ *http.Request, u User) {
 		m, _ := s.NetworkOf(u.ID)
-		ok(w, map[string]any{"id": u.ID, "ip": u.IP, "network": m.Network, "role": m.Role, "node": where()[u.Email]})
+		ok(w, map[string]any{"id": u.ID, "ip": u.IP, "name": u.Name, "network": m.Network, "role": m.Role, "node": where()[u.Email]})
+	}))
+	mux.HandleFunc("PUT /api/v1/me/name", auth(func(w http.ResponseWriter, r *http.Request, u User) {
+		var body struct{ Name string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		name, err := s.SetName(r.Context(), u.ID, body.Name)
+		reply(w, map[string]any{"name": name}, err)
 	}))
 	mux.HandleFunc("POST /api/v1/network", auth(func(w http.ResponseWriter, r *http.Request, u User) {
 		var body struct{ Title string }
@@ -44,7 +50,9 @@ func API(s *Store, where func() map[string]string) http.Handler {
 		var members []map[string]any
 		for _, mm := range s.Members(m.Network) {
 			peer, _ := s.User(mm.User)
-			members = append(members, map[string]any{"id": mm.User, "ip": peer.IP, "role": mm.Role, "node": online[peer.Email]})
+			members = append(members, map[string]any{
+				"id": mm.User, "ip": peer.IP, "name": peer.Name, "role": mm.Role, "node": online[peer.Email],
+			})
 		}
 		ok(w, map[string]any{"network": m.Network, "role": m.Role, "members": members})
 	}))
@@ -109,7 +117,9 @@ func reply(w http.ResponseWriter, v any, err error) {
 			v = map[string]bool{"ok": true}
 		}
 		ok(w, v)
-	case errors.Is(err, ErrInNetwork), errors.Is(err, ErrOwnerLeaves):
+	case errors.Is(err, ErrBadName):
+		fail(w, http.StatusBadRequest, err)
+	case errors.Is(err, ErrInNetwork), errors.Is(err, ErrOwnerLeaves), errors.Is(err, ErrNameTaken):
 		fail(w, http.StatusConflict, err)
 	case errors.Is(err, ErrForbidden):
 		fail(w, http.StatusForbidden, err)

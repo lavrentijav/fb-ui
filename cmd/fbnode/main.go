@@ -26,6 +26,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/vdns"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
 )
@@ -125,7 +126,9 @@ func run(path string, logger *log.Logger) error {
 	edge := &edgerun.Runner{Listen: c.Listen, Logf: logger.Printf}
 	defer edge.Close()
 	pres := &presence.Map{}
-	bundles := &agent.BundleApplier{Xray: xr, Edge: edge, Node: c.Node, Presence: pres}
+	dns := vdns.NewManager(logger.Printf)
+	defer dns.Close()
+	bundles := &agent.BundleApplier{Xray: xr, Edge: edge, DNS: dns, Node: c.Node, Presence: pres}
 	app, err := desired.OpenApplier(filepath.Join(c.DataDir, "state"), func(ctx context.Context, st desired.State) error {
 		logger.Printf("applying bundle %.12s (stamp %s)", st.Hash, st.Stamp)
 		return bundles.Apply(ctx, st)

@@ -40,6 +40,8 @@ func table() *nodespec.VNet {
 		},
 		Peers: map[string]nodespec.Hop{"de2": {Address: "de2.x", Port: 443, ID: uid, Network: "ws", Path: "/c", SNI: "de2.x"}},
 		Entry: []string{"vpn"}, Cascade: "cascade",
+		Zone:      nodespec.VNetZoneDefault,
+		Resolvers: []nodespec.VResolver{{Network: "n1", Port: 15353}, {Network: "n2", Port: 15354}},
 	}
 }
 
@@ -137,5 +139,73 @@ func TestPatchWithoutTableKeepsConfig(t *testing.T) {
 	out, err := vroute.Patch(in, nil, nil, "ru4")
 	if err != nil || string(out) != string(in) {
 		t.Fatal("nil table changed the config")
+	}
+}
+
+// Every network's resolver is reachable only by that network's members, and
+// its rule must come before the block for the whole network prefix.
+func TestPatchDeliversDNSQueries(t *testing.T) {
+	x, err := vroute.Patch(base(t), table(), map[string]string{"alice": "ru4", "bob": "de2", "eve": "ru4"}, "ru4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Routing struct {
+			Rules []struct {
+				InboundTag, User, IP []string
+				Port                 string
+				OutboundTag          string
+			}
+		} `json:"routing"`
+		Outbounds []struct {
+			Tag      string
+			Protocol string
+			Settings struct{ Redirect string }
+		} `json:"outbounds"`
+	}
+	if err := json.Unmarshal(x, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	dnsAt, blockAt, n1Seen := -1, -1, false
+	for i, r := range cfg.Routing.Rules {
+		if slices.Contains(r.IP, nodespec.VDNSAddress) {
+			if dnsAt < 0 {
+				dnsAt = i
+			}
+			if r.Port != "53" || !slices.Equal(r.InboundTag, []string{"vpn"}) {
+				t.Fatalf("dns rule %+v", r)
+			}
+			switch r.OutboundTag {
+			case vroute.DNSTag("n1"):
+				n1Seen = true
+				if !slices.Equal(r.User, []string{"alice", "bob"}) {
+					t.Fatalf("n1 members %v", r.User)
+				}
+			case vroute.DNSTag("n2"):
+				if !slices.Equal(r.User, []string{"eve"}) {
+					t.Fatalf("n2 members %v", r.User)
+				}
+			default:
+				t.Fatalf("unexpected dns rule %+v", r)
+			}
+		}
+		if slices.Contains(r.IP, nodespec.VNetPrefix) {
+			blockAt = i
+		}
+	}
+	if !n1Seen || dnsAt < 0 || blockAt < 0 || dnsAt > blockAt {
+		t.Fatalf("n1 seen %v, dns rule at %d, block at %d", n1Seen, dnsAt, blockAt)
+	}
+	var found bool
+	for _, o := range cfg.Outbounds {
+		if o.Tag == vroute.DNSTag("n1") {
+			found = true
+			if o.Protocol != "freedom" || o.Settings.Redirect != "127.0.0.1:15353" {
+				t.Fatalf("dns outbound %+v", o)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no dns outbound")
 	}
 }

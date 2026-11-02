@@ -6,12 +6,14 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 )
 
-// ClientEntry is the node (or group name) the client connects to.
+// ClientEntry is the node (or group name) the client connects to. Zone is
+// the network's internal DNS zone; "" means nodespec.VNetZoneDefault.
 type ClientEntry struct {
 	Address       string
 	Port          int
 	SNI, Host     string
 	Network, Path string
+	Zone          string
 }
 
 // ClientConfig is a member's Xray config: its tunnel carries the network
@@ -45,10 +47,19 @@ func ClientConfig(u User, e ClientEntry, inbounds []map[string]any) ([]byte, err
 			"finalRules": []any{map[string]any{"action": "allow", "ip": []string{"127.0.0.0/8"}}},
 		},
 	}
+	zone := e.Zone
+	if zone == "" {
+		zone = nodespec.VNetZoneDefault
+	}
 	cfg := map[string]any{
 		"log":       map[string]any{"loglevel": "warning"},
 		"inbounds":  inbounds,
 		"outbounds": []any{vpn, rev, local},
+		// names of the network resolve through the fleet resolver; everything
+		// else keeps the client's own DNS
+		"dns": map[string]any{
+			"servers": []any{map[string]any{"address": nodespec.VDNSAddress, "domains": []string{zone}}},
+		},
 		"routing": map[string]any{"rules": []any{
 			map[string]any{"type": "field", "inboundTag": []string{"from-node"}, "outboundTag": "local"},
 			map[string]any{"type": "field", "ip": []string{nodespec.VNetPrefix}, "outboundTag": "vpn"},

@@ -10,6 +10,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/vdns"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vroute"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
 )
@@ -19,6 +20,7 @@ import (
 type BundleApplier struct {
 	Xray     *xrayrun.Runner
 	Edge     *edgerun.Runner
+	DNS      *vdns.Manager // nil: no internal names
 	Node     string
 	Presence *presence.Map // nil: no network routing
 
@@ -37,7 +39,33 @@ func (b *BundleApplier) Apply(ctx context.Context, st desired.State) error {
 	if err := b.Edge.Apply(bundle.Edge, bundle.Certs); err != nil {
 		return err
 	}
-	return b.Edge.SetDrain(bundle.Drain)
+	if err := b.Edge.SetDrain(bundle.Drain); err != nil {
+		return err
+	}
+	b.applyDNS(&bundle)
+	return nil
+}
+
+// applyDNS follows the bundle's names and per-network resolvers.
+func (b *BundleApplier) applyDNS(bundle *nodespec.Bundle) {
+	if b.DNS == nil {
+		return
+	}
+	if bundle.VNet == nil {
+		b.DNS.Update("", nil, nil)
+		return
+	}
+	names := make([]vdns.Name, 0, len(bundle.VNet.Members))
+	for _, m := range bundle.VNet.Members {
+		if m.Name != "" {
+			names = append(names, vdns.Name{Name: m.Name, IP: m.IP, Network: m.Network})
+		}
+	}
+	rs := make([]vdns.Resolver, 0, len(bundle.VNet.Resolvers))
+	for _, r := range bundle.VNet.Resolvers {
+		rs = append(rs, vdns.Resolver{Network: r.Network, Port: r.Port})
+	}
+	b.DNS.Update(bundle.VNet.Zone, names, rs)
 }
 
 func (b *BundleApplier) applyXray(ctx context.Context, bundle *nodespec.Bundle) error {

@@ -22,9 +22,11 @@ func vnetSpec() Spec {
 			},
 		},
 		VNet: &VNet{
-			Members: []VMember{{Email: "alice", IP: "100.64.0.7", Network: "n1"}},
+			Members: []VMember{{Email: "alice", Name: "alice", IP: "100.64.0.7", Network: "n1"}},
 			Peers:   map[string]Hop{"de2": {Address: "de2.example", Port: 443, ID: uid, Network: "ws", Path: "/c", SNI: "de2.example"}},
 			Entry:   []string{"vpn"}, Cascade: "cascade",
+			Zone:      VNetZoneDefault,
+			Resolvers: []VResolver{{Network: "n1", Port: 15353}},
 		},
 	}
 }
@@ -65,6 +67,11 @@ func TestValidateNetworkTable(t *testing.T) {
 		"unknown cascade inbound":   func(s *Spec) { s.VNet.Cascade = "nope" },
 		"unknown entry inbound":     func(s *Spec) { s.VNet.Entry = []string{"nope"} },
 		"peer without id":           func(s *Spec) { s.VNet.Peers["de2"] = Hop{Address: "x", Port: 443, Network: "ws", Path: "/c"} },
+		"bad member name":           func(s *Spec) { s.VNet.Members[0].Name = "Alice." },
+		"repeated member name":      func(s *Spec) { s.VNet.Members = append(s.VNet.Members, s.VNet.Members[0]) },
+		"bad zone":                  func(s *Spec) { s.VNet.Zone = "local!" },
+		"resolver without port":     func(s *Spec) { s.VNet.Resolvers[0].Port = 0 },
+		"repeated resolver port":    func(s *Spec) { s.VNet.Resolvers = append(s.VNet.Resolvers, VResolver{Network: "n2", Port: 15353}) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := vnetSpec()
