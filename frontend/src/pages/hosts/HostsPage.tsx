@@ -21,6 +21,7 @@ import { useHostsQuery, type HostRecord } from '@/api/queries/useHostsQuery';
 import { useHostMutations } from '@/api/queries/useHostMutations';
 import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import AppSidebar from '@/layouts/AppSidebar';
+import { useEmbedded } from '@/hooks/useEmbedded';
 import { setMessageInstance } from '@/utils/messageBus';
 import type { BulkAddHostValues } from '@/schemas/api/host';
 import HostList, { sortHosts } from './HostList';
@@ -29,6 +30,7 @@ import HostFormModal from './HostFormModal';
 export default function HostsPage() {
   const { t } = useTranslation();
   const { isDark, isUltra, antdThemeConfig } = useTheme();
+  const embedded = useEmbedded();
   const { isMobile } = useMediaQuery();
   const [modal, modalContextHolder] = Modal.useModal();
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -148,9 +150,12 @@ export default function HostsPage() {
       {messageContextHolder}
       {modalContextHolder}
       <Layout className={pageClass}>
-        <AppSidebar />
+        {!embedded && <AppSidebar />}
         <Layout className="content-shell">
-          <Layout.Content id="content-layout" className="content-area">
+          <Layout.Content
+            id={embedded ? undefined : 'content-layout'}
+            className={embedded ? 'embedded-content' : 'content-area'}
+          >
             <Spin spinning={!fetched} delay={200} size="large">
               {!fetched ? (
                 <div className="loading-spacer" />

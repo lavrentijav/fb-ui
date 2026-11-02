@@ -372,7 +372,7 @@ export default function CommandPalette() {
         icon: <TeamOutlined />,
       },
       {
-        path: '/groups',
+        path: '/clients#groups',
         title: t('menu.groups'),
         keywords: ['groups', 'tags', 'batch'],
         icon: <TagsOutlined />,
@@ -390,7 +390,7 @@ export default function CommandPalette() {
         icon: <PartitionOutlined />,
       },
       {
-        path: '/hosts',
+        path: '/edge#hosts',
         title: t('menu.hosts'),
         keywords: ['hosts', 'sni', 'domains'],
         icon: <GlobalOutlined />,

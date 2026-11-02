@@ -71,6 +71,7 @@ import ClientTrafficCell from '@/components/clients/ClientTrafficCell';
 import ClientSpeedTag, { isActiveSpeed } from '@/components/clients/ClientSpeedTag';
 import ClientCardComment from '@/components/clients/ClientCardComment';
 import AppSidebar from '@/layouts/AppSidebar';
+import { useEmbedded } from '@/hooks/useEmbedded';
 import { IntlUtil, SizeFormatter } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 import { LazyMount } from '@/components/utility';
@@ -319,6 +320,7 @@ function sortValueFor(column: string | null, order: 'ascend' | 'descend' | null)
 export default function ClientsPage() {
   const { t } = useTranslation();
   const { isDark, isUltra, antdThemeConfig } = useTheme();
+  const embedded = useEmbedded();
   const { datepicker } = useDatepicker();
   const { isMobile } = useMediaQuery();
   const [modal, modalContextHolder] = Modal.useModal();
@@ -1285,10 +1287,13 @@ export default function ClientsPage() {
       {messageContextHolder}
       {modalContextHolder}
       <Layout className={pageClass}>
-        <AppSidebar />
+        {!embedded && <AppSidebar />}
 
         <Layout className="content-shell">
-          <Layout.Content id="content-layout" className="content-area">
+          <Layout.Content
+            id={embedded ? undefined : 'content-layout'}
+            className={embedded ? 'embedded-content' : 'content-area'}
+          >
             <Spin spinning={!fetched} delay={200} description={t('loading')} size="large">
               {!fetched ? (
                 <div className="loading-spacer" />

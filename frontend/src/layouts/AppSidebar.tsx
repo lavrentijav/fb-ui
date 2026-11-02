@@ -312,22 +312,6 @@ export default function AppSidebar() {
     return children;
   }, [t, showSubFormats, showSubBalancers]);
 
-  const clientsChildren = useMemo<NonNullable<MenuProps['items']>>(
-    () => [
-      { key: '/clients', icon: <TeamOutlined />, label: t('menu.clients') },
-      { key: '/groups', icon: <TagsOutlined />, label: t('menu.groups') },
-    ],
-    [t],
-  );
-
-  const edgeChildren = useMemo<NonNullable<MenuProps['items']>>(
-    () => [
-      { key: '/edge', icon: <GatewayOutlined />, label: t('menu.edge') },
-      { key: '/hosts', icon: <GlobalOutlined />, label: t('menu.hosts') },
-    ],
-    [t],
-  );
-
   const xrayChildren = useMemo<NonNullable<MenuProps['items']>>(
     () => [
       { key: '/xray#basic', icon: <SettingOutlined />, label: t('pages.xray.basicTemplate') },
@@ -342,8 +326,6 @@ export default function AppSidebar() {
 
   const settingsActive = pathname === '/settings';
   const xrayActive = pathname === '/xray';
-  const clientsActive = pathname === '/clients' || pathname === '/groups';
-  const edgeActive = pathname === '/edge' || pathname === '/hosts';
   const selectedKey = settingsActive
     ? `/settings${hash || '#general'}`
     : xrayActive
@@ -352,15 +334,7 @@ export default function AppSidebar() {
         ? '/'
         : pathname;
 
-  const openSubmenu = settingsActive
-    ? '/settings'
-    : xrayActive
-      ? '/xray'
-      : clientsActive
-        ? '/clients'
-        : edgeActive
-          ? '/edge'
-          : null;
+  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));
   if (openSubmenu && !openKeys.includes(openSubmenu)) {
     setOpenKeys([...openKeys, openSubmenu]);
@@ -370,12 +344,6 @@ export default function AppSidebar() {
     (items: typeof tabs): MenuProps['items'] =>
       items.map((tab) => {
         const Icon = iconByName[tab.icon];
-        if (tab.key === '/clients') {
-          return { key: tab.key, icon: <Icon />, label: tab.title, children: clientsChildren };
-        }
-        if (tab.key === '/edge') {
-          return { key: tab.key, icon: <Icon />, label: tab.title, children: edgeChildren };
-        }
         if (tab.key === '/settings') {
           return { key: tab.key, icon: <Icon />, label: tab.title, children: settingsChildren };
         }
@@ -384,7 +352,7 @@ export default function AppSidebar() {
         }
         return { key: tab.key, icon: <Icon />, label: tab.title, title: '' };
       }),
-    [clientsChildren, edgeChildren, settingsChildren, xrayChildren],
+    [settingsChildren, xrayChildren],
   );
 
   const groupedNavItems = useMemo<MenuProps['items']>(

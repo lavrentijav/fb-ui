@@ -37,6 +37,8 @@
 }
 
 .index-page .ant-layout,
+.clients-groups-page .ant-layout,
+.edge-hosts-page .ant-layout,
 .index-page .ant-layout-content,
 .clients-page .ant-layout,
 .clients-page .ant-layout-content,
@@ -57,6 +59,8 @@
 
 .index-page .content-shell,
 .clients-page .content-shell,
+.clients-groups-page .content-shell,
+.edge-hosts-page .content-shell,
 .inbounds-page .content-shell,
 .xray-page .content-shell,
 .settings-page .content-shell,
@@ -68,6 +72,8 @@
 
 .index-page .content-area,
 .clients-page .content-area,
+.clients-groups-page .content-area,
+.edge-hosts-page .content-area,
 .inbounds-page .content-area,
 .xray-page .content-area,
 .settings-page .content-area,
@@ -225,4 +231,15 @@ body.dark .ant-dropdown-menu-item-divider {
   .hosts-page .summary-card {
     padding: 8px;
   }
+}
+
+/* A page rendered inside another page's tabs: the outer page owns the
+   sidebar and the padding, so the inner one contributes none. */
+.embedded-content {
+  padding: 0 !important;
+}
+
+.clients-groups-page .embedded-content,
+.edge-hosts-page .embedded-content {
+  background: transparent;
 }

@@ -6,8 +6,7 @@ import PanelLayout from '@/layouts/PanelLayout';
 
 const IndexPage = lazy(() => import('@/pages/index/IndexPage'));
 const InboundsPage = lazy(() => import('@/pages/inbounds/InboundsPage'));
-const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
-const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
+const ClientsGroupsPage = lazy(() => import('@/pages/clients/ClientsGroupsPage'));
 const SubscriptionsPage = lazy(() => import('@/pages/subscriptions/SubscriptionsPage'));
 const VirtualNetworksPage = lazy(() => import('@/pages/vnet/VirtualNetworksPage'));
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
@@ -17,9 +16,8 @@ const AccessPage = lazy(() => import('@/pages/access/AccessPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const NetworkPage = lazy(() => import('@/pages/network/NetworkPage'));
 const FiltersPage = lazy(() => import('@/pages/filters/FiltersPage'));
-const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
 const CertsPage = lazy(() => import('@/pages/certs/CertsPage'));
-const EdgePage = lazy(() => import('@/pages/edge/EdgePage'));
+const EdgeHostsPage = lazy(() => import('@/pages/edge/EdgeHostsPage'));
 const TemplatesPage = lazy(() => import('@/pages/templates/TemplatesPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const XrayPage = lazy(() => import('@/pages/xray/XrayPage'));
@@ -53,8 +51,8 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: withSuspense(<IndexPage />) },
       { path: 'inbounds', element: withSuspense(<InboundsPage />) },
-      { path: 'clients', element: withSuspense(<ClientsPage />) },
-      { path: 'groups', element: withSuspense(<GroupsPage />) },
+      { path: 'clients', element: withSuspense(<ClientsGroupsPage />) },
+      { path: 'groups', element: <Navigate to="/clients#groups" replace /> },
       { path: 'subscriptions', element: withSuspense(<SubscriptionsPage />) },
       { path: 'vnet', element: withSuspense(<VirtualNetworksPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
@@ -62,9 +60,9 @@ const routes: RouteObject[] = [
       { path: 'cascades', element: withSuspense(<NetworkPage />) },
       { path: 'network', element: <Navigate to="/cascades" replace /> },
       { path: 'filters', element: withSuspense(<FiltersPage />) },
-      { path: 'hosts', element: withSuspense(<HostsPage />) },
+      { path: 'hosts', element: <Navigate to="/edge#hosts" replace /> },
       { path: 'certs', element: withSuspense(<CertsPage />) },
-      { path: 'edge', element: withSuspense(<EdgePage />) },
+      { path: 'edge', element: withSuspense(<EdgeHostsPage />) },
       { path: 'templates', element: withSuspense(<TemplatesPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'notifications', element: withSuspense(<NotificationsPage />) },

@@ -26,6 +26,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, RadarChartOutlined } from '
 
 import { useTheme } from '@/hooks/useTheme';
 import AppSidebar from '@/layouts/AppSidebar';
+import { useEmbedded } from '@/hooks/useEmbedded';
 import { setMessageInstance } from '@/utils/messageBus';
 import {
   useEdge,
@@ -53,6 +54,7 @@ const emptyRoute: EdgeRoute = {
 export default function EdgePage() {
   const { t } = useTranslation();
   const { isDark, antdThemeConfig } = useTheme();
+  const embedded = useEmbedded();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   useEffect(() => {
@@ -159,9 +161,12 @@ export default function EdgePage() {
       {messageContextHolder}
       {modalContextHolder}
       <Layout className={isDark ? 'edge-page is-dark' : 'edge-page'}>
-        <AppSidebar />
+        {!embedded && <AppSidebar />}
         <Layout className="content-shell">
-          <Layout.Content id="content-layout" className="content-area">
+          <Layout.Content
+            id={embedded ? undefined : 'content-layout'}
+            className={embedded ? 'embedded-content' : 'content-area'}
+          >
             <Row gutter={[16, 12]}>
               <Col span={24}>
                 <Alert type="info" showIcon message={t('pages.edge.intro')} />

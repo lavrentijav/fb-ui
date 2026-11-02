@@ -27,8 +27,11 @@ without it, and the UI module can be cut with `-tags no_ui`.
 ## Done in the page (2026-11-02)
 
 - The sidebar is grouped into six sections (Обзор, Доступ, Флот, Вход (443),
-  Маршрутизация, Система); `Clients` and `Edge` became submenus holding their
-  merged pages (`Groups`, `Hosts`).
+  Маршрутизация, Система). `Clients` and `Edge` are single entries now:
+  `/clients` has tabs `Clients / Groups` and `/edge` has `Edge / Hosts`, with
+  `/groups` and `/hosts` redirecting into the matching tab. A page rendered
+  inside another's tabs reads `useEmbedded()` and drops its own sidebar and
+  padding.
 - The old `/outbound` and `/routing` aliases are gone (they were the same
   `XrayPage`); both are now sections of `/xray` (`#routing`, `#outbound`), and
   old paths redirect there. `/network` moved to `/cascades` with a redirect.
@@ -103,29 +106,28 @@ and sessions already carried name, scope, expiry and their token's hash.
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for
    the login page; the old `/login` stays for the main-line panel.
-2. Turn the submenus into in-page tabs (Clients+Groups, Edge+Hosts) and merge
-   Settings' notification tabs; then declare `Legacy()` routes for every
-   module so `/panel/api` covers each section the interface shows (webhooks
-   and audit are done; nodes, certs, DNS, routing, clients remain).
+2. ~~Tabs (Clients+Groups, Edge+Hosts, notifications)~~ — done. Declare
+   `Legacy()` routes for every module so `/panel/api` covers each section the
+   interface shows (webhooks, audit and clients are done; nodes, certs, DNS,
+   routing remain).
 3. Then move the interface to `/api/v1` per section, in the order below.
 4. Build the UI in CI (`make build-fe`) and ship `dist/` beside the binary
    (`UIDir`), not inside it, so the master stays small and a UI change needs
    no new binary.
 
-## The interface today (22 entries)
+## The interface today (20 entries)
 
 | Entry | What the page does |
 |---|---|
 | `/` Dashboard | Panel and Xray state, traffic totals, online counts, node health. |
 | `/inbounds` | Inbounds: protocol/port/transport, their clients, enable/disable, clone, QR. |
-| `/clients` | Every client across inbounds: traffic, expiry, IP limit, groups, links/QR, bulk operations. |
-| `/groups` | Client groups: attach/detach inbounds, bulk add/remove, group settings. |
+| `/clients` | Every client across inbounds: traffic, expiry, IP limit, groups, links/QR, bulk operations. Tabs: Clients · Groups (attach/detach inbounds, bulk add/remove, group settings). |
 | `/nodes` | Fleet: nodes and masters, add node, panel update, mTLS, maintenance/drain, metric history. |
 | `/network` | Cascade topology graph (`CascadeLink`): source inbound → target inbound, outbound generation. |
 | `/filters` | Lists (domain/IP/ASN, remote URL) and rules (block/direct/cascade per inbound), route tester. |
-| `/hosts` | Host overrides per inbound: addresses, SNI, path, shuffle, ECH, pinned cert. |
+
 | `/certs` | TLS certificates: ACME issuance/renewal, DNS accounts, rollback, expiries. |
-| `/edge` | The shared 443 edge: what is exposed, stub sites, port sharing. |
+| `/edge` | The shared 443 edge: what is exposed, stub sites, port sharing. Tabs: Edge · Hosts (per-inbound addresses, SNI, path, shuffle, ECH, pinned cert). |
 | `/templates` | Inbound templates: save a set of inbounds, stamp it onto other servers. |
 | `/xray` | Core settings: basic template, balancers, DNS, advanced JSON. |
 | `/outbound` | Alias of `/xray` (balancers/outbounds). |
