@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
@@ -31,5 +32,26 @@ func TestRelayApplierIgnoresTheCore(t *testing.T) {
 	// a later ban change also must not need a core
 	if err := b.SetBans(context.Background(), []string{"10.1.2.3"}); err != nil {
 		t.Fatalf("relay bans: %v", err)
+	}
+}
+
+// A node stops a spent client in its running config without touching the
+// other users, and restores it when the decision is withdrawn.
+func TestSetDisabledRewritesTheRunningConfig(t *testing.T) {
+	cfg := `{"inbounds":[{"tag":"vpn","settings":{"clients":[
+	  {"id":"a","email":"alice"},{"id":"b","email":"bob"}]}}],
+	 "outbounds":[{"tag":"direct"}]}`
+	b := &BundleApplier{Node: "ru4"}
+	b.last = &nodespec.Bundle{Xray: []byte(cfg), Edge: nodespec.Edge{}}
+	// with no core, SetDisabled only records the set (relay case)
+	if err := b.SetDisabled(context.Background(), []string{"bob"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.Disabled(); len(got) != 1 || got[0] != "bob" {
+		t.Fatalf("disabled %v", got)
+	}
+	out, err := withoutClients([]byte(cfg), map[string]bool{"bob": true})
+	if err != nil || strings.Contains(string(out), `"bob"`) || !strings.Contains(string(out), `"alice"`) {
+		t.Fatalf("filtered config %s", out)
 	}
 }

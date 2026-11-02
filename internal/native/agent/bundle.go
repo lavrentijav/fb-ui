@@ -26,9 +26,10 @@ type BundleApplier struct {
 	Node     string
 	Presence *presence.Map // nil: no network routing
 
-	mu   sync.Mutex
-	last *nodespec.Bundle
-	bans []string
+	mu       sync.Mutex
+	last     *nodespec.Bundle
+	bans     []string
+	disabled []string // emails stopped locally (spent quota, expiry)
 }
 
 func (b *BundleApplier) Apply(ctx context.Context, st desired.State) error {
@@ -88,12 +89,56 @@ func (b *BundleApplier) applyXray(ctx context.Context, bundle *nodespec.Bundle) 
 	if x, err = vroute.Bans(x, b.bans); err != nil {
 		return err
 	}
+	if len(b.disabled) > 0 {
+		off := make(map[string]bool, len(b.disabled))
+		for _, email := range b.disabled {
+			off[email] = true
+		}
+		if x, err = withoutClients(x, off); err != nil {
+			return err
+		}
+	}
 	b.Xray.API = bundle.API
 	if err := b.Xray.Apply(ctx, x); err != nil {
 		return err
 	}
 	b.last = bundle
 	return nil
+}
+
+// Quotas is each user's traffic allowance and expiry from the last bundle.
+func (b *BundleApplier) Quotas() map[string]nodespec.Quota {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.last == nil || len(b.last.Quotas) == 0 {
+		return nil
+	}
+	return maps.Clone(b.last.Quotas)
+}
+
+// Disabled is the set of emails this node stopped locally.
+func (b *BundleApplier) Disabled() []string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return slices.Clone(b.disabled)
+}
+
+// SetDisabled removes the named emails from the running config (an empty list
+// restores them). An unchanged set does nothing, so the quota loop is cheap.
+func (b *BundleApplier) SetDisabled(ctx context.Context, emails []string) error {
+	sorted := slices.Sorted(slices.Values(emails))
+	b.mu.Lock()
+	if slices.Equal(b.disabled, sorted) {
+		b.mu.Unlock()
+		return nil
+	}
+	b.disabled = sorted
+	last := b.last
+	b.mu.Unlock()
+	if last == nil {
+		return nil
+	}
+	return b.applyXray(ctx, last)
 }
 
 // Limits is each user's IP limit from the last bundle.

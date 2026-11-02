@@ -192,7 +192,10 @@ of the same binary. The micro store is implemented, tested and wired
 live in it for `lite` (`desired.OpenApplierBackend`, `agent.StoreJournal`),
 and the file journal remains for `relay`. Tests cover state across reopen,
 journal numbering across prune, traffic, bans with expiry and schema
-refusal. Local quota enforcement is the remaining piece.
+refusal. Local quota enforcement is implemented: the bundle carries each
+client's allowance and expiry, and `agent.Quota` stops a client in the
+running config from the node's own counters, so a user is cut at the limit
+even when no master answers; the master's reconciler still wins.
 
 ## 5. One-paragraph summary for the operator
 

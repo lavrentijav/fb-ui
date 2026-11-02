@@ -39,12 +39,20 @@ type Node struct {
 	Health func() reports.Health
 	// Version is the agent's build version, reported with health.
 	Version string
+	// Sink, when set, receives each report's traffic so the node keeps its own
+	// counters for local quota enforcement.
+	Sink TrafficSink
 
 	lastReport time.Time
 }
 
 // Start brings the last applied state up before any master answers.
 func (n *Node) Start(ctx context.Context) error { return n.Applier.Reapply(ctx) }
+
+// TrafficSink accepts per-client deltas for local enforcement.
+type TrafficSink interface {
+	AddTraffic(ctx context.Context, email string, up, down int64) error
+}
 
 // Collect journals the traffic Xray counted since the last call. A relay has
 // no core to ask, so it only sends the heartbeat with its health.
@@ -85,6 +93,11 @@ func (n *Node) Collect(ctx context.Context) {
 	for _, t := range traffic {
 		r.Traffic = append(r.Traffic, reports.Traffic{Email: t.Email, Up: t.Up, Down: t.Down})
 		r.Online = append(r.Online, t.Email)
+		if n.Sink != nil {
+			if err := n.Sink.AddTraffic(ctx, t.Email, t.Up, t.Down); err != nil {
+				n.logf("traffic store: %v", err)
+			}
+		}
 	}
 	if _, err := n.Sender.Journal.Add(r); err != nil {
 		n.logf("journal: %v", err)

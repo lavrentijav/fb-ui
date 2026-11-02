@@ -23,6 +23,15 @@ type Bundle struct {
 	// Limits is each user's IP limit (the strictest, if it appears on
 	// several inbounds); the node enforces them itself.
 	Limits map[string]int `json:"limits,omitempty"`
+	// Quotas is each user's traffic allowance and expiry, so the node can stop
+	// a client that reached its limit even when no master answers.
+	Quotas map[string]Quota `json:"quotas,omitempty"`
+}
+
+// Quota is one user's allowance as the node sees it.
+type Quota struct {
+	TotalBytes int64 `json:"totalBytes,omitempty"` // 0 = unlimited
+	ExpiresAt  int64 `json:"expiresAt,omitempty"`  // unix ms, 0 = never
 }
 
 // Edge is the node's 443 table: SNI routes, then HTTP routes for names the
@@ -84,6 +93,7 @@ func Render(s Spec) (Bundle, error) {
 	var edge Edge
 	terminated := map[string]bool{}
 	limits := map[string]int{}
+	quotas := map[string]Quota{}
 	for _, ib := range s.Inbounds {
 		clients := make([]any, 0, len(ib.Clients))
 		for _, c := range ib.Clients {
@@ -94,6 +104,18 @@ func Render(s Spec) (Bundle, error) {
 			clients = append(clients, client)
 			if c.LimitIP > 0 && (limits[c.Email] == 0 || c.LimitIP < limits[c.Email]) {
 				limits[c.Email] = c.LimitIP
+			}
+			if c.TotalBytes > 0 || c.ExpiresAt > 0 {
+				q := quotas[c.Email]
+				// the strictest allowance and the earliest expiry win: a user
+				// with several records on this node must satisfy all of them
+				if c.TotalBytes > 0 && (q.TotalBytes == 0 || c.TotalBytes < q.TotalBytes) {
+					q.TotalBytes = c.TotalBytes
+				}
+				if c.ExpiresAt > 0 && (q.ExpiresAt == 0 || c.ExpiresAt < q.ExpiresAt) {
+					q.ExpiresAt = c.ExpiresAt
+				}
+				quotas[c.Email] = q
 			}
 		}
 		inbounds = append(inbounds, obj{
@@ -186,7 +208,7 @@ func Render(s Spec) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet, Limits: limits}, nil
+	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet, Limits: limits, Quotas: quotas}, nil
 }
 
 // HopOutbound is a cascade to one exit node's inbound.

@@ -97,6 +97,12 @@ type Client struct {
 	// LimitIP caps how many addresses the user may connect from at once;
 	// the node bans the extra ones (0 = no limit).
 	LimitIP int `json:"limitIp,omitempty"`
+	// TotalBytes is the traffic allowance (0 = unlimited) and ExpiresAt the
+	// expiry (unix ms, 0 = never). The node carries them so it can stop the
+	// client locally when a master is unreachable; the master stays
+	// authoritative and reconciles.
+	TotalBytes int64 `json:"totalBytes,omitempty"`
+	ExpiresAt  int64 `json:"expiresAt,omitempty"`
 }
 
 // ReverseTag is the node's outbound into a user's reverse tunnel.

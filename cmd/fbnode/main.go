@@ -194,6 +194,17 @@ func runEnroll(args []string, stderr io.Writer) error {
 	return nil
 }
 
+// storeTraffic adapts the node store to the quota loop.
+type storeTraffic struct{ store *nodestore.Store }
+
+func (s storeTraffic) Used(ctx context.Context, email string) (int64, bool, error) {
+	t, ok, err := s.store.One(ctx, email)
+	if err != nil || !ok {
+		return 0, false, err
+	}
+	return t.Up + t.Down, true, nil
+}
+
 func run(path string, logger *log.Logger) error {
 	c, err := load(path)
 	if err != nil {
@@ -293,11 +304,16 @@ func run(path string, logger *log.Logger) error {
 		},
 	}
 	var ipLimit *agent.IPLimit
+	var quota *agent.Quota
 	if xr != nil {
 		ipLimit = &agent.IPLimit{
 			Xray: xr, Applier: bundles, Limiter: &failban.Limiter{Hold: c.BanHold.Duration},
 			Every: c.BanEvery.Duration, Log: logger.Printf,
 		}
+		// keep the node's own counters and stop a client at its limit even
+		// when no master answers
+		node.Sink = store
+		quota = &agent.Quota{Source: storeTraffic{store}, Target: bundles, Log: logger.Printf}
 	}
 	pr := agent.NewPresence(c.Node, xr, pres, bundles, func(ctx context.Context) (*nats.Conn, error) {
 		m := sel.Current()
@@ -315,6 +331,9 @@ func run(path string, logger *log.Logger) error {
 	go pr.Run(ctx)
 	if ipLimit != nil {
 		go ipLimit.Run(ctx)
+	}
+	if quota != nil {
+		go quota.Run(ctx)
 	}
 	node.Run(ctx)
 	return nil

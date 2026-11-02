@@ -189,3 +189,27 @@ func TestBundleCarriesTheStrictestIPLimit(t *testing.T) {
 		t.Fatal("a negative limit was accepted")
 	}
 }
+
+// The bundle carries each user's allowance and expiry so the node can stop a
+// client locally; several records for one email resolve to the strictest.
+func TestBundleCarriesQuotas(t *testing.T) {
+	s := Spec{Node: "ru4", Inbounds: []Inbound{
+		{Tag: "a", Port: 1, Network: "ws", Path: "/a", Route: Direct, Clients: []Client{
+			{Email: "alice", ID: uid, TotalBytes: 100, ExpiresAt: 2000},
+		}},
+		{Tag: "b", Port: 2, Network: "ws", Path: "/b", Route: Direct, Clients: []Client{
+			{Email: "alice", ID: uid, TotalBytes: 50, ExpiresAt: 1000},
+			{Email: "bob", ID: uid},
+		}},
+	}}
+	b, err := Render(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := b.Quotas["alice"]; q.TotalBytes != 50 || q.ExpiresAt != 1000 {
+		t.Fatalf("alice quota %+v", q)
+	}
+	if _, ok := b.Quotas["bob"]; ok {
+		t.Fatalf("an unlimited client got a quota: %+v", b.Quotas)
+	}
+}

@@ -99,15 +99,19 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 - [x] Move `desired.Applier` state and `agent.Journal` onto nodestore for
       `lite` (`OpenApplierBackend`, `StoreJournal`, `Reporter`); `relay` keeps
       the small files.
-- [ ] Local enforcement in `agent`: a client at `totalBytes`/`expiresAt` is cut
-      on the node from its own counters, reported as an event; the master's
-      `usagemod` reconciles (never fights an already-disabled client).
+- [x] Local enforcement in `agent`: the bundle carries each client's
+      `totalBytes`/`expiresAt` (`nodespec.Quota`); `agent.Quota` cuts a client
+      from the running config when its own counter reaches the limit or it
+      expired (`BundleApplier.SetDisabled` rewrites only that client), and
+      restores it when the master's correction removes the record. The master's
+      `usagemod` remains the reconciler.
 - [x] `profile` in the node config and `fbnode enroll -profile`: `lite`
       (default) and `relay` (edge only, no Xray, no store).
 - [x] Nil-safe `BundleApplier`/`Node.Collect` (relay runs no core; tested).
 - [ ] `nodespec.Render` for a spec with no inbounds (edge/certs/drain, empty
       Xray config).
-- [ ] Test: the agent opens no listener except `Listen` (the no-admin rule).
+- [x] Test: the node binary opens no listener of its own
+      (`cmd/fbnode/listeners_test.go`); the edge is served by `edgerun`.
 - [ ] Lab `TestRelayNodeForwards`.
 
 ### 3.2 Delivery

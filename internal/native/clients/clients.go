@@ -171,6 +171,7 @@ func Attach(r module.Reader, node string, spec *nodespec.Spec, now time.Time) {
 			}
 			ib.Clients = append(ib.Clients, nodespec.Client{
 				Email: c.Email, ID: c.UUID, LimitIP: c.LimitIP,
+				TotalBytes: c.TotalGB, ExpiresAt: c.ExpiresAt,
 			})
 		}
 	}
