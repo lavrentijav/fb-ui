@@ -124,19 +124,26 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 - [ ] Lab `TestRelayNodeForwards`.
 
 ### 3.2 Delivery
-- [ ] `make fbnode` / `make fbmaster` with `-trimpath`, `CGO_ENABLED=0`,
-      version from git, SHA-256; artifacts in the release.
+- [x] `make fbnode` / `make fbmaster` / `make native-binaries`: static
+      (`CGO_ENABLED=0`), `-trimpath`, version from `git describe`, printed
+      SHA-256, into `dist/native` (git-ignored).
 - [ ] systemd unit template in the repo (today it is generated inside
-      `provision`); no config secrets in the unit.
+      `provision`); no config secrets in the unit. Note the unit needs
+      `Restart=always`: `fbnode upgrade` relies on it to start the new build.
 - [ ] `provision`: install Xray when missing (download, verify checksum,
       pin a version) instead of refusing; optional core upgrade.
 
 ### 3.3 Self-update
-- [ ] Signed release manifest (checksum + signature with a fleet key).
-- [ ] Agent downloads to a staging path, verifies, swaps via a `current`/
-      `previous` symlink, restarts, and rolls back if the process does not
-      stay up for N seconds or Xray fails to start.
-- [ ] `--version` and a reported version (the report already has a field).
+- [ ] Signed release manifest (checksum + signature with a fleet key). Today
+      the operator passes the sha256 explicitly.
+- [x] `fbnode upgrade -url -sha256`: downloads, verifies the digest, keeps the
+      running binary as `<current>.previous`, renames the new one into place,
+      writes a marker and exits so the supervisor starts it.
+- [x] Rollback: each start counts in the marker; after three failed starts the
+      previous binary is restored and the process exits; a build that stays up
+      past `HealthyAfter` (60 s) clears the marker.
+- [x] `--version` on both binaries, and the agent reports its version with
+      health (the field already existed).
 - [ ] Master command `POST /nodes/{node}/upgrade` and per-node version in
       `/nodes/state`.
 - Acceptance: lab: upgrade a node to a bad build, it rolls back and keeps

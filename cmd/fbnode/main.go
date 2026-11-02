@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -33,6 +34,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/selfupdate"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vdns"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
@@ -119,12 +121,21 @@ func clientTLS(c *config) (*tls.Config, error) {
 }
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "enroll" {
-		if err := runEnroll(os.Args[2:], os.Stderr); err != nil {
-			fmt.Fprintln(os.Stderr, "fbnode enroll:", err)
-			os.Exit(1)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "enroll":
+			if err := runEnroll(os.Args[2:], os.Stderr); err != nil {
+				fmt.Fprintln(os.Stderr, "fbnode enroll:", err)
+				os.Exit(1)
+			}
+			return
+		case "upgrade":
+			if err := runUpgrade(os.Args[2:], os.Stderr); err != nil {
+				fmt.Fprintln(os.Stderr, "fbnode upgrade:", err)
+				os.Exit(1)
+			}
+			return
 		}
-		return
 	}
 	path := flag.String("c", "/etc/fbnode/config.json", "config file")
 	flag.Parse()
@@ -194,6 +205,69 @@ func runEnroll(args []string, stderr io.Writer) error {
 	return nil
 }
 
+// executablePath is the running binary's path, falling back to argv[0] when the
+// platform cannot report it.
+func executablePath() string {
+	if p, err := os.Executable(); err == nil {
+		return p
+	}
+	return os.Args[0]
+}
+
+// runUpgrade downloads a signed release binary, verifies it and swaps it in,
+// then exits so the supervisor starts the new build. A bad build is rolled back
+// by the next starts (selfupdate.StartupCheck).
+func runUpgrade(args []string, stderr io.Writer) error {
+	fs := flag.NewFlagSet("upgrade", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	url := fs.String("url", "", "binary URL to install")
+	sha := fs.String("sha256", "", "expected sha256 of the download")
+	configPath := fs.String("c", "/etc/fbnode/config.json", "config file (the marker goes in its dataDir)")
+	dir := fs.String("dir", "", "override the marker directory")
+	current := fs.String("current", "", "override the binary to replace (defaults to this executable)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *url == "" || *sha == "" {
+		return errors.New("-url and -sha256 are required")
+	}
+	markerDir := *dir
+	if markerDir == "" {
+		c, err := load(*configPath)
+		if err != nil {
+			return fmt.Errorf("read the config to find dataDir: %w", err)
+		}
+		markerDir = c.DataDir
+	}
+	cur := *current
+	if cur == "" {
+		var err error
+		if cur, err = os.Executable(); err != nil {
+			return err
+		}
+	}
+	resp, err := http.Get(*url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download: %s", resp.Status)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 128<<20))
+	if err != nil {
+		return err
+	}
+	u := &selfupdate.Update{
+		Current: cur, MarkerPath: filepath.Join(markerDir, "upgrade.json"),
+	}
+	if err := u.Apply(data, *sha); err != nil {
+		return err
+	}
+	fmt.Fprintf(stderr, "installed %s; exiting so the supervisor starts it\n", *url)
+	return nil
+}
+
 // storeTraffic adapts the node store to the quota loop.
 type storeTraffic struct{ store *nodestore.Store }
 
@@ -209,6 +283,18 @@ func run(path string, logger *log.Logger) error {
 	c, err := load(path)
 	if err != nil {
 		return err
+	}
+	// a self-update in progress: this start counts, or the previous binary is
+	// restored and this process exits so the supervisor brings it up
+	update := &selfupdate.Update{
+		Current:    executablePath(),
+		MarkerPath: filepath.Join(c.DataDir, "upgrade.json"),
+	}
+	if back, err := update.StartupCheck(); err != nil {
+		logger.Printf("upgrade check: %v", err)
+	} else if back {
+		logger.Printf("rolled back to the previous binary after failed starts; exiting")
+		return errors.New("self-update rolled back")
 	}
 	tlsCfg, err := clientTLS(c)
 	if err != nil {
@@ -327,6 +413,17 @@ func run(path string, logger *log.Logger) error {
 	if err := node.Start(ctx); err != nil {
 		logger.Printf("restoring the last state: %v", err)
 	}
+	// the new build proved itself once it has run this long with its core up;
+	// until then a crash loop rolls it back on the next start
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-time.After(update.HealthyAfterWait()):
+			if err := update.Healthy(); err != nil {
+				logger.Printf("upgrade marker: %v", err)
+			}
+		}
+	}()
 	logger.Printf("node %s (%s), masters %v", c.Node, c.Profile, masters)
 	go pr.Run(ctx)
 	if ipLimit != nil {

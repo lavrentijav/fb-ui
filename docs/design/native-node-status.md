@@ -54,10 +54,10 @@ fixes in `pool` and `sub`.
 
 ### What blocks unattended production, in order
 
-1. **No self-update / rollback.** An agent can only be replaced by SSH
-   reinstall. Needs: signed binary, `upgrade` on the agent, version reporting
-   (the field exists), rollback to the previous binary when the new one fails
-   to stay up.
+1. ~~No self-update / rollback~~ — done: `fbnode upgrade` verifies a pinned
+   sha256, swaps with a `.previous` file, and the next starts roll back after
+   three failures; a healthy run clears the marker. Still missing: a signature
+   over the manifest and a master command to trigger it.
 2. **No sidecars** (TUIC, MTProto, AmneziaWG) — parity with the main line's
    node. Not needed for a VLESS-only pilot.
 3. **Xray is not installed or upgraded by us.** `provision` refuses a host

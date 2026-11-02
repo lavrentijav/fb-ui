@@ -77,6 +77,25 @@ build-fe: ## Build the Vite bundles into internal/web/dist
 build: build-fe ## Build the frontend then the Go binary
 	go build ./...
 
+# Native fleet binaries. Static (CGO off) so they run on any Linux host without
+# a toolchain; the version comes from git so a report tells which build runs.
+NATIVE_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+NATIVE_LDFLAGS = -s -w -X main.version=$(NATIVE_VERSION)
+NATIVE_OUT ?= dist/native
+
+.PHONY: fbnode fbmaster native-binaries
+fbnode: ## Build the static node agent (lite profile) into $(NATIVE_OUT)
+	@mkdir -p $(NATIVE_OUT)
+	CGO_ENABLED=0 go build -trimpath -ldflags '$(NATIVE_LDFLAGS)' -o $(NATIVE_OUT)/fbnode ./cmd/fbnode
+	@sha256sum $(NATIVE_OUT)/fbnode
+
+fbmaster: ## Build the static master into $(NATIVE_OUT)
+	@mkdir -p $(NATIVE_OUT)
+	CGO_ENABLED=0 go build -trimpath -ldflags '$(NATIVE_LDFLAGS)' -o $(NATIVE_OUT)/fbmaster ./cmd/fbmaster
+	@sha256sum $(NATIVE_OUT)/fbmaster
+
+native-binaries: fbnode fbmaster ## Both native binaries, versioned and checksummed
+
 .PHONY: build-storybook
 build-storybook: ## Build the static Storybook (compile-checks all stories)
 	cd $(FRONTEND) && npm run build-storybook
