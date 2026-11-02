@@ -94,6 +94,22 @@ func authenticate(h module.Host, session module.SessionAuth, next http.Handler) 
 	})
 }
 
+// RequireAuth guards an administrative handler: a request the public predicate
+// accepts passes unchecked, everything else needs a bearer token or (when the
+// fleet has a session module) its login cookie. It is how the master's admin
+// surface stays closed while the subscription, enrollment and panel paths keep
+// their own credentials.
+func RequireAuth(h module.Host, session module.SessionAuth, public func(*http.Request) bool, next http.Handler) http.Handler {
+	guarded := authenticate(h, session, next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if public != nil && public(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		guarded.ServeHTTP(w, r)
+	})
+}
+
 // authorize checks the scope after the module middlewares ran, so a refused
 // change is still seen by them (the audit log records it).
 func authorize(need module.Scope, next http.Handler) http.Handler {

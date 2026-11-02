@@ -115,7 +115,12 @@ type Config struct {
 	// APIListen is where /api/v1 is served (for example "127.0.0.1:8443");
 	// empty serves no API and runs no modules' routes. Modules still run.
 	APIListen string
-	Logf      func(format string, args ...any)
+	// AdminListen is the master's administrative HTTP surface (subscriptions,
+	// hosts, nodes, enroll). Empty means loopback on a free port; a non-loopback
+	// address is refused unless AdminAllowPublic is set.
+	AdminListen      string
+	AdminAllowPublic bool
+	Logf             func(format string, args ...any)
 }
 
 type Daemon struct {

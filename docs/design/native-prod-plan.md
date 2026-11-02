@@ -34,15 +34,19 @@ Why first: the master's admin handler has no authentication and the lab binds
 `:8080`; the status doc already says this must never be exposed. Everything
 else can wait; this cannot.
 
-- [ ] `Config.AdminListen` (default `127.0.0.1:0`); the process logs the port.
-- [ ] Refuse to bind a non-loopback admin address unless an explicit
-      `AdminAllowPublic: true` is set, and log a warning then.
-- [ ] Gate every admin route with the existing `apiauth`/`uimod` session
-      middleware (the module API already has it; the admin mux does not).
-- [ ] Audit the admin handler list: every route either authenticated or
-      explicitly public (`/healthz`, `/ready`), with a table in the docs.
-- [ ] Log redaction test: no token, password, subscription login or private key
-      in a log line (a unit test over the formatters).
+- [x] `Config.AdminListen` (default `127.0.0.1:0`); `ListenAdmin` logs the
+      resolved address.
+- [x] Refuse to bind a non-loopback admin address unless an explicit
+      `AdminAllowPublic: true` is set (`AdminAddress`).
+- [x] Gate every admin route with `apiauth`/`uimod` (`apiserver.RequireAuth`,
+      `masterd.AdminHandler`); a not-ready master refuses rather than serving.
+- [x] Admin path audit (`PublicAdminPath`): only `/healthz`, `/ready`,
+      `/enroll[/…]`, `/sub/…` and `/panel/…` are credential-free — each carries
+      its own token or is the public interface; everything else needs a bearer
+      token or the panel's session cookie. Tests pin the classification.
+- [x] Redaction: the bootstrap admin token is the only credential logged, once
+      and deliberately; the refusal body never echoes a credential (tested) and
+      no list endpoint returns a password or hash (subscription tests).
 - Acceptance: `curl` from another host gets 401/403/connection refused; lab
   masters still pass with the loopback default.
 
