@@ -128,3 +128,32 @@ func TestNodeNeverRollsBackAcrossMasters(t *testing.T) {
 		t.Fatalf("applied state lost on restart: %+v %v", again.Current(), err)
 	}
 }
+
+// A node backed by its micro store reloads the applied state after a restart
+// and saves the next one without a file on disk.
+func TestApplierBackendRoundTrip(t *testing.T) {
+	var saved desired.State
+	applied := 0
+	backend := desired.Backend{
+		Load: func() (desired.State, error) { return desired.State{}, desired.ErrNoState },
+		Save: func(st desired.State) error { saved = st; return nil },
+	}
+	a, err := desired.OpenApplierBackend(backend, func(context.Context, desired.State) error {
+		applied++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Current().Hash != "" {
+		t.Fatal("a fresh backend should have no state")
+	}
+	backend.Load = func() (desired.State, error) { return saved, nil }
+	b, err := desired.OpenApplierBackend(backend, func(context.Context, desired.State) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Current().Hash != saved.Hash || applied != 0 {
+		t.Fatalf("reload %+v", b.Current())
+	}
+}

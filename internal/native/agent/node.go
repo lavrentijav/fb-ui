@@ -46,15 +46,19 @@ type Node struct {
 // Start brings the last applied state up before any master answers.
 func (n *Node) Start(ctx context.Context) error { return n.Applier.Reapply(ctx) }
 
-// Collect journals the traffic Xray counted since the last call.
+// Collect journals the traffic Xray counted since the last call. A relay has
+// no core to ask, so it only sends the heartbeat with its health.
 func (n *Node) Collect(ctx context.Context) {
-	if n.Applier.Current().Hash == "" {
-		return // no config yet, so no Xray to ask
-	}
-	traffic, err := n.Xray.Traffic(ctx)
-	if err != nil {
-		n.logf("traffic: %v", err)
-		return
+	var traffic []xrayrun.UserTraffic
+	if n.Xray != nil {
+		if n.Applier.Current().Hash == "" {
+			return // no config yet, so no Xray to ask
+		}
+		var err error
+		if traffic, err = n.Xray.Traffic(ctx); err != nil {
+			n.logf("traffic: %v", err)
+			return
+		}
 	}
 	r := reports.Report{At: time.Now().UnixMilli()}
 	if n.Health != nil {
@@ -138,7 +142,7 @@ func (n *Node) Run(ctx context.Context) {
 			}
 		case <-pt.C:
 			n.Pull(ctx)
-			if n.Applier.Current().Hash != "" && !n.Xray.Running() {
+			if n.Xray != nil && n.Applier.Current().Hash != "" && !n.Xray.Running() {
 				n.logf("xray is down, restarting")
 				if err := n.Xray.Restart(); err != nil {
 					n.logf("restart: %v", err)

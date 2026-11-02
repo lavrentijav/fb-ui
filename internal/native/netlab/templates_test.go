@@ -4,6 +4,7 @@ package netlab
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/nodestore"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/templates"
 )
 
@@ -71,11 +73,18 @@ func TestTemplateStampsTwoNodes(t *testing.T) {
 	for node, host := range map[string]string{"ru4": "ru.lab.firewalk.test", "ru7": "ru7.lab.firewalk.test"} {
 		n, h := node, host
 		eventually(t, 60*time.Second, n+" got its own host", func() (bool, string) {
-			b, err := os.ReadFile(filepath.Join(f.dir, "node-"+n, "data", "state", "desired.json"))
+			// the applied state lives in the node's micro store
+			store, err := nodestore.Open(filepath.Join(f.dir, "node-"+n, "data", "node.db"))
 			if err != nil {
 				return false, err.Error()
 			}
-			return strings.Contains(string(b), h), tailOf(string(b), 2)
+			defer store.Close()
+			st, err := store.State(context.Background())
+			if err != nil {
+				return false, err.Error()
+			}
+			b := string(st.Config)
+			return strings.Contains(b, h), tailOf(b, 2)
 		})
 	}
 

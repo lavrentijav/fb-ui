@@ -85,13 +85,28 @@ else can wait; this cannot.
 
 ## Phase 3 — Node production hardening
 
-The node data plane is done (`lite` = full node). Remaining work:
+The node data plane is done (`lite` = full node, dependent on the master, with
+its own micro SQLite). Remaining work:
 
-### 3.1 Profiles
-- [ ] `profile` in the node config: `lite` (default, today's wiring) and
-      `relay` (edge only, no Xray).
-- [ ] Nil-safe `BundleApplier`/`Node.Collect`; `nodespec.Render` for a spec
-      with no inbounds (edge/certs/drain, empty Xray config).
+### 3.1 Dependent node: micro store, local enforcement, profiles
+
+A node is dependent: the master owns the database, the node keeps only a
+micro SQLite (`internal/native/nodestore`, already implemented: state,
+journal, traffic, bans, meta) and rebuilds it from the master if lost.
+
+- [x] `nodestore`: pure-Go SQLite (static, +4.2 MB: 8.8 → 13.0 MB), 5 tables,
+      tests for state, journal numbering across prune, traffic, bans, schema.
+- [x] Move `desired.Applier` state and `agent.Journal` onto nodestore for
+      `lite` (`OpenApplierBackend`, `StoreJournal`, `Reporter`); `relay` keeps
+      the small files.
+- [ ] Local enforcement in `agent`: a client at `totalBytes`/`expiresAt` is cut
+      on the node from its own counters, reported as an event; the master's
+      `usagemod` reconciles (never fights an already-disabled client).
+- [x] `profile` in the node config and `fbnode enroll -profile`: `lite`
+      (default) and `relay` (edge only, no Xray, no store).
+- [x] Nil-safe `BundleApplier`/`Node.Collect` (relay runs no core; tested).
+- [ ] `nodespec.Render` for a spec with no inbounds (edge/certs/drain, empty
+      Xray config).
 - [ ] Test: the agent opens no listener except `Listen` (the no-admin rule).
 - [ ] Lab `TestRelayNodeForwards`.
 
@@ -192,8 +207,9 @@ The node data plane is done (`lite` = full node). Remaining work:
 | 8 | 5 UI/release | operator-facing release | 1 week |
 | 9 | 6 Operations | sign-off | continuous |
 
-`lite` is not a phase of its own: it is the default node and the work in 3.1
-only adds `relay` and the guard rails.
+`lite` is not a phase of its own: it is the default node. Its work in 3.1 is
+the micro store wiring (already built), local quota enforcement and the
+`relay` profile with its guard rails.
 
 ## What "pilot" means, precisely
 

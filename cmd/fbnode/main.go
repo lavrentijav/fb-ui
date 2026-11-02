@@ -27,6 +27,8 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/enroll"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/failban"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/hlc"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/nodestore"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
@@ -62,6 +64,9 @@ type config struct {
 		Bin    string `json:"bin"`
 		Config string `json:"config"`
 	} `json:"xray"`
+	// Profile is "lite" (the full node data plane, with a micro store) or
+	// "relay" (edge-only forwarding, no Xray, no store). Empty means lite.
+	Profile string `json:"profile"`
 	// Listen is the edge address (default ":443").
 	Listen      string   `json:"listen"`
 	RebindEvery duration `json:"rebindEvery"`
@@ -78,12 +83,18 @@ func load(path string) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &config{DataDir: "/var/lib/fbnode", Listen: ":443"}
+	c := &config{DataDir: "/var/lib/fbnode", Listen: ":443", Profile: "lite"}
 	if err := json.Unmarshal(b, c); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if c.Node == "" || len(c.Masters) == 0 || c.Xray.Bin == "" {
-		return nil, errors.New("node, masters and xray.bin are required")
+	if c.Profile != "lite" && c.Profile != "relay" {
+		return nil, fmt.Errorf("profile must be lite or relay, not %q", c.Profile)
+	}
+	if c.Node == "" || len(c.Masters) == 0 {
+		return nil, errors.New("node and masters are required")
+	}
+	if c.Profile == "lite" && c.Xray.Bin == "" {
+		return nil, errors.New("xray.bin is required in the lite profile (use relay for an edge-only hop)")
 	}
 	if c.Xray.Config == "" {
 		c.Xray.Config = filepath.Join(c.DataDir, "xray.json")
@@ -134,8 +145,12 @@ func runEnroll(args []string, stderr io.Writer) error {
 	dir := fs.String("dir", "/etc/fbnode", "where to write ca.pem, cert.pem, key.pem and config.json")
 	masters := fs.String("masters", "", "master name=URL pairs, comma separated (tls://<name>.m.<zone>:443)")
 	xrayBin := fs.String("xray", "/usr/local/x-ui/bin/xray-linux-amd64", "xray binary")
+	profile := fs.String("profile", "lite", "node profile: lite (full node) or relay (edge only)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *profile != "lite" && *profile != "relay" {
+		return fmt.Errorf("-profile must be lite or relay, not %q", *profile)
 	}
 	if *master == "" || *token == "" || *node == "" || *masters == "" {
 		return errors.New("-master, -token, -node and -masters are required")
@@ -161,7 +176,7 @@ func runEnroll(args []string, stderr io.Writer) error {
 		targets[name] = url
 	}
 	cfg := map[string]any{
-		"node": *node, "masters": targets,
+		"node": *node, "profile": *profile, "masters": targets,
 		"ca":      filepath.Join(*dir, "ca.pem"),
 		"cert":    filepath.Join(*dir, "cert.pem"),
 		"key":     filepath.Join(*dir, "key.pem"),
@@ -195,30 +210,78 @@ func run(path string, logger *log.Logger) error {
 	slices.Sort(masters)
 	inbox := wire.NodeInbox(c.Node)
 
-	xr := &xrayrun.Runner{Bin: c.Xray.Bin, Config: c.Xray.Config, Output: logger.Writer()}
-	defer xr.Stop()
-	edge := &edgerun.Runner{Listen: c.Listen, Logf: logger.Printf}
-	defer edge.Close()
-	pres := &presence.Map{}
-	dns := vdns.NewManager(logger.Printf)
-	defer dns.Close()
-	bundles := &agent.BundleApplier{Xray: xr, Edge: edge, DNS: dns, Node: c.Node, Presence: pres}
-	app, err := desired.OpenApplier(filepath.Join(c.DataDir, "state"), func(ctx context.Context, st desired.State) error {
+	var bundles *agent.BundleApplier
+	apply := func(ctx context.Context, st desired.State) error {
 		logger.Printf("applying bundle %.12s (stamp %s)", st.Hash, st.Stamp)
 		return bundles.Apply(ctx, st)
-	})
-	if err != nil {
-		return err
 	}
-	journal, err := agent.OpenJournal(filepath.Join(c.DataDir, "journal"), c.Node)
-	if err != nil {
-		return err
+	// The full node keeps its durable facts in a micro SQLite; a relay keeps
+	// the two small files and runs no core.
+	var store *nodestore.Store
+	var app *desired.Applier
+	var journal agent.Reporter
+	var xr *xrayrun.Runner
+	var dns *vdns.Manager
+	var pres *presence.Map
+	if c.Profile == "relay" {
+		app, err = desired.OpenApplier(filepath.Join(c.DataDir, "state"), apply)
+		if err != nil {
+			return err
+		}
+		fileJournal, err := agent.OpenJournal(filepath.Join(c.DataDir, "journal"), c.Node)
+		if err != nil {
+			return err
+		}
+		journal = fileJournal
+	} else {
+		store, err = nodestore.Open(filepath.Join(c.DataDir, "node.db"))
+		if err != nil {
+			return err
+		}
+		defer store.Close()
+		app, err = desired.OpenApplierBackend(desired.Backend{
+			Load: func() (desired.State, error) {
+				st, err := store.State(context.Background())
+				if errors.Is(err, nodestore.ErrNoState) {
+					return desired.State{}, desired.ErrNoState
+				}
+				if err != nil {
+					return desired.State{}, err
+				}
+				stamp, err := hlc.Parse(st.Stamp)
+				if err != nil {
+					return desired.State{}, err
+				}
+				return desired.State{Node: st.Node, Hash: st.Hash, Stamp: stamp, Config: st.Config}, nil
+			},
+			Save: func(st desired.State) error {
+				return store.SaveState(context.Background(), nodestore.State{
+					Node: st.Node, Hash: st.Hash, Stamp: st.Stamp.String(), Config: st.Config,
+				})
+			},
+		}, apply)
+		if err != nil {
+			return err
+		}
+		journal = agent.OpenStoreJournal(store, c.Node)
+		xr = &xrayrun.Runner{Bin: c.Xray.Bin, Config: c.Xray.Config, Output: logger.Writer()}
+		defer xr.Stop()
+		dns = vdns.NewManager(logger.Printf)
+		defer dns.Close()
+		pres = &presence.Map{}
 	}
 	defer journal.Close()
+	edge := &edgerun.Runner{Listen: c.Listen, Logf: logger.Printf}
+	defer edge.Close()
+	bundles = &agent.BundleApplier{Xray: xr, Edge: edge, DNS: dns, Node: c.Node, Presence: pres}
 	prober := probe.NATS(probe.Config{URLs: c.Masters, TLS: tlsCfg, Inbox: inbox})
 	sel := pick.New(masters, prober, pick.Settings{RebindEvery: c.RebindEvery.Duration, MinPacket: c.MinPacket})
+	var xrayIface agent.Xray
+	if xr != nil {
+		xrayIface = xr
+	}
 	node := &agent.Node{
-		Name: c.Node, Applier: app, Xray: xr, Log: logger.Printf, DrainState: edge.DrainState,
+		Name: c.Node, Applier: app, Xray: xrayIface, Log: logger.Printf, DrainState: edge.DrainState,
 		Health: reports.HealthOf, Version: version,
 		ReportEvery: c.ReportEvery.Duration, PullEvery: c.PullEvery.Duration, Heartbeat: c.Heartbeat.Duration,
 		Sender: &agent.Sender{
@@ -229,9 +292,12 @@ func run(path string, logger *log.Logger) error {
 			},
 		},
 	}
-	ipLimit := &agent.IPLimit{
-		Xray: xr, Applier: bundles, Limiter: &failban.Limiter{Hold: c.BanHold.Duration},
-		Every: c.BanEvery.Duration, Log: logger.Printf,
+	var ipLimit *agent.IPLimit
+	if xr != nil {
+		ipLimit = &agent.IPLimit{
+			Xray: xr, Applier: bundles, Limiter: &failban.Limiter{Hold: c.BanHold.Duration},
+			Every: c.BanEvery.Duration, Log: logger.Printf,
+		}
 	}
 	pr := agent.NewPresence(c.Node, xr, pres, bundles, func(ctx context.Context) (*nats.Conn, error) {
 		m := sel.Current()
@@ -245,9 +311,11 @@ func run(path string, logger *log.Logger) error {
 	if err := node.Start(ctx); err != nil {
 		logger.Printf("restoring the last state: %v", err)
 	}
-	logger.Printf("node %s, masters %v", c.Node, masters)
+	logger.Printf("node %s (%s), masters %v", c.Node, c.Profile, masters)
 	go pr.Run(ctx)
-	go ipLimit.Run(ctx)
+	if ipLimit != nil {
+		go ipLimit.Run(ctx)
+	}
 	node.Run(ctx)
 	return nil
 }

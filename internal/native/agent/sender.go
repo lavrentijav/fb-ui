@@ -14,7 +14,7 @@ import (
 
 // Sender drains the journal to the master pick has bound the node to.
 type Sender struct {
-	Journal *Journal
+	Journal Reporter
 	Select  *pick.Selector
 	// Dial connects to a master's client port (TLS, wire.NodeInbox prefix).
 	Dial    func(ctx context.Context, master string) (*nats.Conn, error)

@@ -72,6 +72,9 @@ func (b *BundleApplier) applyDNS(bundle *nodespec.Bundle) {
 }
 
 func (b *BundleApplier) applyXray(ctx context.Context, bundle *nodespec.Bundle) error {
+	if b.Xray == nil {
+		return nil // relay: this node forwards, it does not run a core
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	var where map[string]string

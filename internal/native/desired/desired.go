@@ -45,6 +45,9 @@ type reply struct {
 	Err   string `json:"err,omitempty"`
 }
 
+// ErrNoState means a node has not applied a state yet.
+var ErrNoState = errors.New("desired: no state yet")
+
 // Render builds a node's state on this master.
 type Render func(ctx context.Context, node string) (State, error)
 
@@ -72,10 +75,18 @@ func Serve(nc *nats.Conn, master string, render Render) (*nats.Subscription, err
 	})
 }
 
+// Backend is where the applied state is kept. A relay uses the file (nil
+// backend); a full node keeps it in its micro SQLite.
+type Backend struct {
+	Load func() (State, error)
+	Save func(State) error
+}
+
 // Applier keeps the node's applied state on disk and applies newer ones.
 type Applier struct {
-	path  string
-	apply func(ctx context.Context, st State) error
+	path    string
+	backend *Backend
+	apply   func(ctx context.Context, st State) error
 
 	mu  sync.Mutex
 	cur State
@@ -97,6 +108,21 @@ func OpenApplier(dir string, apply func(context.Context, State) error) (*Applier
 		if err := json.Unmarshal(b, &a.cur); err != nil {
 			return nil, fmt.Errorf("desired: %s: %w", a.path, err)
 		}
+	}
+	return a, nil
+}
+
+// OpenApplierBackend loads the last applied state from backend; a Load that
+// answers ErrNoState (wrapped or not) means a fresh node.
+func OpenApplierBackend(backend Backend, apply func(context.Context, State) error) (*Applier, error) {
+	a := &Applier{backend: &backend, apply: apply}
+	st, err := backend.Load()
+	switch {
+	case errors.Is(err, ErrNoState), errors.Is(err, os.ErrNotExist):
+	case err != nil:
+		return nil, err
+	default:
+		a.cur = st
 	}
 	return a, nil
 }
@@ -154,6 +180,13 @@ func (a *Applier) Pull(ctx context.Context, nc *nats.Conn, master, node string) 
 }
 
 func (a *Applier) save(st State) error {
+	if a.backend != nil {
+		if err := a.backend.Save(st); err != nil {
+			return err
+		}
+		a.cur = st
+		return nil
+	}
 	b, err := json.Marshal(st)
 	if err != nil {
 		return err

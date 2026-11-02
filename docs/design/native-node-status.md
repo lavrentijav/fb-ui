@@ -11,9 +11,10 @@ Status: 2026-11-02, branch `native` at `ec6812efb`. Verdict up front:
   masters, the admin API is unauthenticated, and there is no migration from
   the panel's database. Details and a checklist below.
 - **Sub-nodes:** `lite` is the full node (complete data plane, no admin/user
-  surface) and is the default `fbnode` build; `relay` is the only reduced
-  profile (edge only, no Xray). The production plan is in
-  `native-prod-plan.md`.
+  surface, dependent on the master) and is the default `fbnode` build; it
+  keeps a micro SQLite (state, journal, traffic counters, bans) and never a
+  copy of the panel database. `relay` is the only reduced profile (edge only,
+  no Xray, no SQLite). The production plan is in `native-prod-plan.md`.
 
 ## 1. What fbnode does today
 
@@ -112,82 +113,86 @@ Master (not ready → ready):
 6. Backup/restore of the JetStream directory and the Postgres schema; an
    upgrade path that replays the op log on a new binary.
 
-## 4. Node profiles: `lite` (the default node) and `relay`
+## 4. The node is dependent: micro store, not a database
 
-The split is **not** "small feature set vs big one". It is **data plane vs
-control plane**:
+A node in this architecture is **not** a small panel. It holds no copy of the
+panel's database — no clients table, no inbounds table, no groups, no
+settings, no users. The master is the only source of truth; the node receives
+a rendered spec and reports back. What it keeps locally is a **micro SQLite**
+(`internal/native/nodestore`, pure-Go driver, CGO-free) with only the facts a
+node must not lose:
 
-| | `fbmaster` | `fbnode` (`lite`, default) | `fbnode --profile relay` |
-|---|---|---|---|
-| Admin UI / panel | yes | no | no |
-| Admin API, API tokens, sessions | yes | **no** | no |
-| Groups, subscriptions, settings, templates, audit, webhooks, notifications | yes | **no** | no |
-| Serves users (inbounds, edge 443, certs) | — | yes | no |
-| Cascades, balancers, routing rules | — | yes | routes only (edge splice) |
-| Virtual networks: data plane, per-network DNS, presence, routing | — | yes | no |
-| IP limits / fail2ban | — | yes | no |
-| Reports, health, journal, drain | — | yes | yes (health/edge only) |
-| Sidecars (TUIC, MTProto, AmneziaWG) | — | yes (to port) | no |
-| Self-update / Xray install | yes | yes | yes (no Xray) |
+| Table | What | Why it is local |
+|---|---|---|
+| `state` | the last applied desired state (node, hash, stamp, config) | start serving before any master answers |
+| `journal` | numbered reports, unacked until a master confirms | at-least-once traffic delivery, no double counting |
+| `traffic` | per-client up/down counters | enforce quota/expiry without a master round trip |
+| `bans` | IP bans the limit watcher issued (ip, email, reason, until, hits) | survive a restart, still block the device |
+| `meta` | schema version, journal cursor | numbering/version safety |
 
-So **`lite` is the full node**: it does everything a node must do — every
-transport and protocol, every cascade shape, routing, certificates, virtual
-networks, limits, accounting — and only refuses the things that belong to the
-operator: no admin interaction, no user/group management, no embedded panel.
-There is nothing to cut from the data plane; `lite` is the normal `fbnode`
-build. The name is kept because it is what a sub-node gets: a node, not a
-panel.
+That is the whole schema (5 tables, ~100 lines of SQL). Rebuilt from the
+master if lost: a node store is disposable, never migrated — an unknown schema
+version is refused rather than half-read. Cost, measured: the static agent
+grows from 8.8 MB to **13.0 MB** with the pure-Go SQLite driver (+4.2 MB), and
+RSS stays dominated by Xray.
 
-### What "no admin/user interaction" means concretely
+### What a node still does in full
 
-The agent must never expose a management surface:
+"Nodet" here does not mean fewer features. A node keeps the **complete data
+plane**: every transport and protocol, edge 443, cascades and balancers,
+routing rules, certificates, virtual networks (data, per-network DNS,
+presence-based routing), IP limits, traffic counting, quotas, reports, health,
+journal, drain, sidecars. Traffic and everything around it is local:
 
-- no listening HTTP port except the edge; it dials the masters outbound only;
-- no API tokens, no sessions, no audit/webhook/notification configuration;
-- no group CRUD, no subscription management, no settings/template editing;
-- state is pushed (desired state) and reported (journal); an operator changes a
-  node only through a master.
+- counts per email from the Xray stats API, durably in `traffic`;
+- enforces a client's `totalBytes`/`expiresAt` from its own spec **locally**,
+  so a user is cut at the limit even if the master is unreachable; the master
+  stays authoritative and corrects the counters on the next report;
+- keeps its own bans and applies them through Xray/fail2ban;
+- reports deltas from the `journal`, which survives restarts and failover.
 
-This is already true of `cmd/fbnode`; the plan is to keep it true and to make
-the build/test enforce it (a test asserting the agent opens no listener other
-than `Listen`).
+### What it deliberately does not have
 
-### Profile `relay` — edge only, no Xray
+- no admin API, no API tokens, no sessions, no panel, no UI;
+- no group or user management, no subscription management, no settings or
+  template editing;
+- **no listener except the public edge** — it dials the masters outbound; an
+  operator changes a node only through a master.
 
-For a cheap country front, a CDN-side hop, or a hop in a cascade chain. The
-edge terminates TLS and splices to an upstream with `Reverse{Kind:"tcp"}`; the
-agent still pulls state, applies `Edge`/`Certs`/`Drain`, reports health and
-journals. It never starts Xray, never counts traffic, never runs vdns/presence/
-IP-limit. ~10–15 MB RSS; no per-user accounting on that hop.
+That is what "lite" means: the full node without the operator surface.
 
-- Master side: the spec has no inbounds and no exits; `nodespec.Render` must
-  still produce `Edge`/`Certs`/`Drain` and an empty Xray config (today it always
-  produces a full one).
-- The relay must still rotate certificates: edge/certs are applied even when
-  Xray is nil.
+### Profile `relay` (the only reduced one)
 
-### Implementation shape (one binary, two profiles)
+For a cheap country front or a CDN-side hop: edge-only forwarding with
+`Reverse{Kind:"tcp"}`, no Xray, no traffic accounting, no vdns/presence/IP
+limits, and **no SQLite** (the journal/state files it already has are enough;
+this keeps the relay small). ~10–15 MB RSS. Master side: a spec with no
+inbounds renders edge/certs/drain and an empty Xray config.
 
-1. `config.json`: `"profile": "lite" | "relay"` (default `lite`).
-2. `cmd/fbnode`:
-   - `lite`: today's wiring (Xray, edge, DNS, presence, IP limits, journal).
-   - `relay`: `xray.bin` optional; skip `xrayrun`, `vdns`, `presence`,
-     `IPLimit`; `BundleApplier.Xray = nil`; `Node.Xray = nil`.
-3. `agent.BundleApplier`: nil-guard Xray and DNS; always apply edge/certs/drain.
-4. `agent.Node.Collect`: with nil Xray, send a heartbeat with health only.
-5. `nodespec.Render`: a spec with no inbounds/exits renders edge/certs/drain
-   and an empty Xray config.
-6. Enforce the no-admin rule in a test: the agent's only listener is `Listen`.
-7. Tests: nil-safe apply/collect per profile, and a netlab
-   `TestRelayNodeForwards` (a relay passes a tunnel to an exit, reports health,
-   traffic stays zero on the relay).
+### Implementation shape
+
+1. `config.json`: `"profile": "lite" | "relay"` (default `lite`), and
+   `fbnode enroll -profile relay` writes it for a forwarding hop.
+2. `cmd/fbnode`: `lite` wires nodestore, Xray, edge, DNS, presence, limits;
+   `relay` skips Xray/DNS/presence/limits and keeps the file journal.
+3. `desired.Applier` and `agent.Journal` are on nodestore for `lite`
+   (`OpenApplierBackend`, `StoreJournal`, `Reporter` interface) and stay
+   file-based for `relay` — done.
+4. Local enforcement lives in `agent` next to `ipLimit`: compare the counter
+   with the spec's `totalBytes`/`expiresAt`, stop the client through Xray,
+   report the event; the master's `usagemod` remains the reconciler.
+5. A test asserts the agent opens no listener except `Listen` (the no-admin
+   rule), and a netlab `TestRelayNodeForwards` covers the forwarding hop.
 
 ### Recommendation
 
-Ship `lite` as the default and only node artifact; add `relay` as a runtime
-profile of the same binary first. Build tags (`no_xray`, `no_vdns`,
-`no_failban`) only if a relay image must be handed to untrusted hosts and its
-size matters.
+`lite` is the default and the only node artefact; `relay` is a runtime profile
+of the same binary. The micro store is implemented, tested and wired
+(`internal/native/nodestore`): the applied state and the report journal already
+live in it for `lite` (`desired.OpenApplierBackend`, `agent.StoreJournal`),
+and the file journal remains for `relay`. Tests cover state across reopen,
+journal numbering across prune, traffic, bans with expiry and schema
+refusal. Local quota enforcement is the remaining piece.
 
 ## 5. One-paragraph summary for the operator
 
