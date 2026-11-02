@@ -19,6 +19,27 @@ func PeerTag(node string) string { return "vnet-" + node }
 // its loopback resolver.
 func DNSTag(network string) string { return "vnet-dns-" + network }
 
+// Bans blocks every connection from the given source addresses before any
+// other rule; an empty list leaves the config untouched.
+func Bans(xray []byte, bans []string) ([]byte, error) {
+	if len(bans) == 0 {
+		return xray, nil
+	}
+	var cfg obj
+	if err := json.Unmarshal(xray, &cfg); err != nil {
+		return nil, err
+	}
+	routing, _ := cfg["routing"].(obj)
+	old, _ := routing["rules"].([]any)
+	rule := obj{"type": "field", "sourceIP": slices.Sorted(slices.Values(bans)),
+		"outboundTag": nodespec.Block, "ruleTag": "bans"}
+	merged := append([]any{}, old[:min(1, len(old))]...) // the api rule stays first
+	merged = append(merged, rule)
+	merged = append(merged, old[min(1, len(old)):]...)
+	routing["rules"] = merged
+	return json.MarshalIndent(cfg, "", "  ")
+}
+
 // Patch places the network rules right after the api rule, adds the
 // cascades it uses, and blocks the rest of the network range.
 func Patch(xray []byte, t *nodespec.VNet, where map[string]string, self string) ([]byte, error) {

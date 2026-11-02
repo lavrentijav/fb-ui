@@ -187,6 +187,55 @@ func parseStats(out []byte) ([]UserTraffic, error) {
 	return out2, nil
 }
 
+// OnlineIP is one address a user connected from, and when it was last seen.
+type OnlineIP struct {
+	Email    string
+	IP       string
+	LastSeen int64
+}
+
+// OnlineIPs lists every user's live addresses (policy statsUserOnline).
+func (r *Runner) OnlineIPs(ctx context.Context) (map[string][]OnlineIP, error) {
+	if r.API == "" {
+		return nil, errors.New("xrayrun: no API address")
+	}
+	out, err := exec.CommandContext(ctx, r.Bin, "api", "statsonlineiplist", "--server="+r.API, "-all").Output()
+	if err != nil {
+		return nil, fmt.Errorf("xrayrun: online ips: %w", err)
+	}
+	return parseOnlineIPs(out)
+}
+
+func parseOnlineIPs(out []byte) (map[string][]OnlineIP, error) {
+	var res struct {
+		Users []struct {
+			Email string `json:"email"`
+			IPs   []struct {
+				IP       string `json:"ip"`
+				LastSeen int64  `json:"last_seen"`
+			} `json:"ips"`
+		} `json:"users"`
+	}
+	if len(bytes.TrimSpace(out)) == 0 {
+		return map[string][]OnlineIP{}, nil
+	}
+	if err := json.Unmarshal(out, &res); err != nil {
+		return nil, fmt.Errorf("xrayrun: online ips: %w", err)
+	}
+	got := make(map[string][]OnlineIP, len(res.Users))
+	for _, u := range res.Users {
+		if u.Email == "" {
+			continue
+		}
+		for _, e := range u.IPs {
+			if e.IP != "" {
+				got[u.Email] = append(got[u.Email], OnlineIP{Email: u.Email, IP: e.IP, LastSeen: e.LastSeen})
+			}
+		}
+	}
+	return got, nil
+}
+
 // Online lists the users with a live connection (policy statsUserOnline).
 func (r *Runner) Online(ctx context.Context) ([]string, error) {
 	if r.API == "" {

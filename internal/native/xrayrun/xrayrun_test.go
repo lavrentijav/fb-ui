@@ -11,6 +11,25 @@ import (
 	"time"
 )
 
+func TestParseOnlineIPs(t *testing.T) {
+	got, err := parseOnlineIPs([]byte(`{"users":[
+		{"email":"alice","ips":[{"ip":"10.0.9.2","last_seen":1700000000},{"ip":"10.0.9.1","last_seen":1700000100}]},
+		{"email":"","ips":[{"ip":"10.0.9.9"}]},
+		{"email":"bob","ips":[]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || len(got["alice"]) != 2 {
+		t.Fatalf("got %+v", got)
+	}
+	if got["alice"][0] != (OnlineIP{Email: "alice", IP: "10.0.9.2", LastSeen: 1700000000}) {
+		t.Fatalf("alice %+v", got["alice"])
+	}
+	if got, err := parseOnlineIPs([]byte(`{}`)); err != nil || len(got) != 0 {
+		t.Fatalf("empty: %v %v", got, err)
+	}
+}
+
 func TestParseOnline(t *testing.T) {
 	got, err := parseOnline([]byte(`{ "users": [ "user>>>alice>>>online", "user>>>bob>>>online" ] }`))
 	if err != nil || !slices.Equal(got, []string{"alice", "bob"}) {

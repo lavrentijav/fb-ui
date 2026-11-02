@@ -168,7 +168,11 @@ func (l *lab) setBundle(t *testing.T, cmd *exec.Cmd, spec nodespec.Spec) {
 }
 
 func getVia(socks int, target string) (string, error) {
-	proxy, _ := url.Parse(fmt.Sprintf("socks5h://%s:%d", ipOf("client"), socks))
+	return getViaFrom("client", socks, target)
+}
+
+func getViaFrom(host string, socks int, target string) (string, error) {
+	proxy, _ := url.Parse(fmt.Sprintf("socks5h://%s:%d", ipOf(host), socks))
 	c := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(proxy)}}
 	resp, err := c.Get(target)
 	if err != nil {

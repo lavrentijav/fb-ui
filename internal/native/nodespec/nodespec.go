@@ -94,6 +94,9 @@ type Client struct {
 	ID    string `json:"id"`
 	// Reverse lets the client take connections from the node (its own tunnel).
 	Reverse bool `json:"reverse,omitempty"`
+	// LimitIP caps how many addresses the user may connect from at once;
+	// the node bans the extra ones (0 = no limit).
+	LimitIP int `json:"limitIp,omitempty"`
 }
 
 // ReverseTag is the node's outbound into a user's reverse tunnel.
@@ -227,6 +230,9 @@ func (s *Spec) Validate() error {
 		for _, c := range ib.Clients {
 			if c.Email == "" || emails[c.Email] || !validUUID.MatchString(c.ID) || strings.Contains(c.Email, ">>>") {
 				return fmt.Errorf("nodespec: inbound %s: bad or repeated client %q", ib.Tag, c.Email)
+			}
+			if c.LimitIP < 0 {
+				return fmt.Errorf("nodespec: inbound %s: client %q has a negative IP limit", ib.Tag, c.Email)
 			}
 			emails[c.Email] = true
 		}

@@ -23,6 +23,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/agent"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/failban"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pick"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
@@ -60,6 +61,8 @@ type config struct {
 	MinPacket   int      `json:"minPacket"`
 	ReportEvery duration `json:"reportEvery"`
 	PullEvery   duration `json:"pullEvery"`
+	BanEvery    duration `json:"banEvery"`
+	BanHold     duration `json:"banHold"`
 }
 
 func load(path string) (*config, error) {
@@ -154,6 +157,10 @@ func run(path string, logger *log.Logger) error {
 			},
 		},
 	}
+	ipLimit := &agent.IPLimit{
+		Xray: xr, Applier: bundles, Limiter: &failban.Limiter{Hold: c.BanHold.Duration},
+		Every: c.BanEvery.Duration, Log: logger.Printf,
+	}
 	pr := agent.NewPresence(c.Node, xr, pres, bundles, func(ctx context.Context) (*nats.Conn, error) {
 		m := sel.Current()
 		if m == "" {
@@ -168,6 +175,7 @@ func run(path string, logger *log.Logger) error {
 	}
 	logger.Printf("node %s, masters %v", c.Node, masters)
 	go pr.Run(ctx)
+	go ipLimit.Run(ctx)
 	node.Run(ctx)
 	return nil
 }

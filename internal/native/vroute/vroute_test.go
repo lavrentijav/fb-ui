@@ -209,3 +209,34 @@ func TestPatchDeliversDNSQueries(t *testing.T) {
 		t.Fatal("no dns outbound")
 	}
 }
+
+func TestBansBlockSourcesFirst(t *testing.T) {
+	x, err := vroute.Bans(base(t), []string{"10.0.9.2", "10.0.9.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Routing struct {
+			Rules []struct {
+				InboundTag  []string
+				SourceIP    []string `json:"sourceIP"`
+				OutboundTag string
+			}
+		} `json:"routing"`
+	}
+	if err := json.Unmarshal(x, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Routing.Rules) < 2 || cfg.Routing.Rules[0].OutboundTag != "api" {
+		t.Fatalf("the api rule is no longer first: %+v", cfg.Routing.Rules)
+	}
+	bans := cfg.Routing.Rules[1]
+	if bans.OutboundTag != nodespec.Block || !slices.Equal(bans.SourceIP, []string{"10.0.9.1", "10.0.9.2"}) {
+		t.Fatalf("ban rule %+v", bans)
+	}
+	in := base(t)
+	out, err := vroute.Bans(in, nil)
+	if err != nil || string(out) != string(in) {
+		t.Fatal("an empty ban list changed the config")
+	}
+}

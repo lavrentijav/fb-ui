@@ -171,3 +171,21 @@ func TestRenderGroupBalancer(t *testing.T) {
 		t.Fatalf("observatory %+v", o)
 	}
 }
+
+func TestBundleCarriesTheStrictestIPLimit(t *testing.T) {
+	s := Spec{Node: "ru4", Inbounds: []Inbound{
+		{Tag: "a", Port: 1, Network: "ws", Path: "/a", Route: Direct, Clients: []Client{{Email: "alice", ID: uid, LimitIP: 3}}},
+		{Tag: "b", Port: 2, Network: "ws", Path: "/b", Route: Direct, Clients: []Client{{Email: "alice", ID: uid, LimitIP: 1}, {Email: "bob", ID: uid}}},
+	}}
+	b, err := Render(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Limits["alice"] != 1 || b.Limits["bob"] != 0 {
+		t.Fatalf("limits %v", b.Limits)
+	}
+	s.Inbounds[0].Clients[0].LimitIP = -1
+	if _, err := Render(s); err == nil {
+		t.Fatal("a negative limit was accepted")
+	}
+}

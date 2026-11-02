@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
@@ -26,6 +28,7 @@ type BundleApplier struct {
 
 	mu   sync.Mutex
 	last *nodespec.Bundle
+	bans []string
 }
 
 func (b *BundleApplier) Apply(ctx context.Context, st desired.State) error {
@@ -79,12 +82,42 @@ func (b *BundleApplier) applyXray(ctx context.Context, bundle *nodespec.Bundle) 
 	if err != nil {
 		return err
 	}
+	if x, err = vroute.Bans(x, b.bans); err != nil {
+		return err
+	}
 	b.Xray.API = bundle.API
 	if err := b.Xray.Apply(ctx, x); err != nil {
 		return err
 	}
 	b.last = bundle
 	return nil
+}
+
+// Limits is each user's IP limit from the last bundle.
+func (b *BundleApplier) Limits() map[string]int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.last == nil || len(b.last.Limits) == 0 {
+		return nil
+	}
+	return maps.Clone(b.last.Limits)
+}
+
+// SetBans blocks the given source addresses; an unchanged set does nothing.
+func (b *BundleApplier) SetBans(ctx context.Context, bans []string) error {
+	sorted := slices.Sorted(slices.Values(bans))
+	b.mu.Lock()
+	if slices.Equal(b.bans, sorted) {
+		b.mu.Unlock()
+		return nil
+	}
+	b.bans = sorted
+	last := b.last
+	b.mu.Unlock()
+	if last == nil {
+		return nil
+	}
+	return b.applyXray(ctx, last)
 }
 
 // Repatch applies the last bundle again with the fleet's current presence.

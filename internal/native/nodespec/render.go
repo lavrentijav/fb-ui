@@ -20,6 +20,9 @@ type Bundle struct {
 	Certs []Cert `json:"certs,omitempty"`
 	Drain Drain  `json:"drain,omitzero"`
 	VNet  *VNet  `json:"vnet,omitempty"`
+	// Limits is each user's IP limit (the strictest, if it appears on
+	// several inbounds); the node enforces them itself.
+	Limits map[string]int `json:"limits,omitempty"`
 }
 
 // Edge is the node's 443 table: SNI routes, then HTTP routes for names the
@@ -80,6 +83,7 @@ func Render(s Spec) (Bundle, error) {
 	}
 	var edge Edge
 	terminated := map[string]bool{}
+	limits := map[string]int{}
 	for _, ib := range s.Inbounds {
 		clients := make([]any, 0, len(ib.Clients))
 		for _, c := range ib.Clients {
@@ -88,6 +92,9 @@ func Render(s Spec) (Bundle, error) {
 				client["reverse"] = obj{"tag": ReverseTag(c.Email)}
 			}
 			clients = append(clients, client)
+			if c.LimitIP > 0 && (limits[c.Email] == 0 || c.LimitIP < limits[c.Email]) {
+				limits[c.Email] = c.LimitIP
+			}
 		}
 		inbounds = append(inbounds, obj{
 			"tag": ib.Tag, "listen": "127.0.0.1", "port": ib.Port, "protocol": "vless",
@@ -179,7 +186,7 @@ func Render(s Spec) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet}, nil
+	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet, Limits: limits}, nil
 }
 
 // HopOutbound is a cascade to one exit node's inbound.

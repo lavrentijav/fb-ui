@@ -21,6 +21,7 @@ an inbound that is not listening yet.
 | `CertIDs` | certificates the masters issue and renew (ACME); resolved into `Certs` at render, with the node's own `node:<name>` for names no group certificate covers. A name whose certificate is not issued yet is left out of the edge (refused like an unknown SNI), not the whole bundle |
 | `DirectAllow` | private CIDRs `direct` may reach (Xray blocks private targets by default) |
 | `Drain` | maintenance: the edge refuses new tunnels, open ones finish (idle ones closed after `Idle`); the node reports the tunnels still open, masters keep the newest state per node |
+| `Client.LimitIP` | an IP limit per user, rendered into `Bundle.Limits` (the strictest, if the user is on several inbounds). The **node** enforces it with `internal/native/failban`: every `banEvery` (default 10 s) it reads `xray api statsonlineiplist -all`, keeps the user's newest `LimitIP` addresses and bans the rest as a `sourceIP → block` rule applied live (`adrules`); an address counts as live for `banHold` (default 2 min) after it was last seen, so a banned device does not come back as the newest one |
 | always | `direct`, `block`, stats API on 127.0.0.1:10085, per-user traffic counters |
 
 Inbounds behind the edge trust `X-Edge-Proxy` in `trustedXForwardedFor`, so
@@ -62,7 +63,9 @@ Found by the lab, now handled:
   issues); Ed25519 stays for the fleet's internal mTLS only;
 - Xray 26 `freedom` blackholes private destinations unless `finalRules`
   allow them (`DirectAllow`);
-- without `trustedXForwardedFor` Xray logs every client as 127.0.0.1.
+- without `trustedXForwardedFor` Xray logs every client as 127.0.0.1;
+- the online-stats API reports `lastSeen` 0/stale on this core, so IP limits
+  order addresses by when the node first saw them, not by the reported time.
 
 ## Next steps (in order)
 
@@ -101,4 +104,8 @@ Found by the lab, now handled:
    with `adrules`, removals last). Anything else — log, api, dns, policy,
    observatory, the default (first) outbound — restarts Xray, as does any
    failed call.
-6. Subscriptions served by masters, pointing at group names.
+6. ~~IP limits on the node~~ — done (`TestIPLimitBansTheOlderDevice`: two
+   devices of one user, `limitIp: 1`; the one that connected first is blocked
+   on the node within seconds, the newer one keeps working). The master only
+   carries the limit in the spec; nothing is reported back.
+7. Subscriptions served by masters, pointing at group names.
