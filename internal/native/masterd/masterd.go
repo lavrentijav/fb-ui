@@ -36,6 +36,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/provision"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/register"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
@@ -45,6 +46,10 @@ const SpecTable = "nodespec"
 
 // SubTokenTable maps a subscription token to the client's email.
 const SubTokenTable = "subtoken"
+
+// FleetTable holds fleet-wide values; key "servers" is the cascade client id
+// every exit uses and every entry dials.
+const FleetTable = "fleetid"
 
 type Config struct {
 	Name     string
@@ -497,6 +502,7 @@ func (d *Daemon) Handler() http.Handler {
 	d.mountEnroll(mux)
 	mux.HandleFunc("POST /provision/preflight", d.preflight)
 	mux.HandleFunc("POST /provision/install", d.install)
+	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -602,6 +608,159 @@ func (d *Daemon) install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+// registerNode builds a node's spec from a role and a public name and writes
+// it, so an installed node starts serving with its first pull.
+func (d *Daemon) registerNode(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var body struct {
+		register.Request
+		Overwrite bool   `json:"overwrite"`
+		Wait      string `json:"wait"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+	_, _ = m.CatchUp(ctx)
+	if _, exists := d.store.State.Get(SpecTable, body.Node); exists && !body.Overwrite {
+		http.Error(w, "a spec for "+body.Node+" already exists (set overwrite)", http.StatusConflict)
+		return
+	}
+	serversID, err := d.serversID(ctx, m)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if body.CascadeTo != "" && !d.waitSpec(ctx, m, body.CascadeTo, 15*time.Second) {
+		http.Error(w, "no spec for exit "+body.CascadeTo+" (not registered or not replicated yet)", http.StatusUnprocessableEntity)
+		return
+	}
+	peers := map[string]nodespec.Spec{}
+	for _, s := range d.specs() {
+		peers[s.Node] = s
+	}
+	spec, err := register.Build(body.Request, serversID, peers)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	b, err := nodespec.Render(spec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if err := d.wantNodeCert(ctx, m, spec, b); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	raw, err := register.Encode(spec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, err := m.Set(ctx, SpecTable, spec.Node, map[string]any{"spec": raw}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	reported := false
+	if wait, _ := time.ParseDuration(body.Wait); wait > 0 {
+		reported = d.waitReport(ctx, spec.Node, wait)
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"node": spec.Node, "summary": register.Describe(spec), "spec": spec, "reported": reported,
+	})
+}
+
+// waitSpec waits for a spec written on another master to replicate here.
+func (d *Daemon) waitSpec(ctx context.Context, m *master.Master, node string, wait time.Duration) bool {
+	deadline := time.Now().Add(wait)
+	for {
+		_, _ = m.CatchUp(ctx)
+		if _, ok := d.store.State.Get(SpecTable, node); ok {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
+
+// serversID is the fleet's cascade identity, created on first use.
+func (d *Daemon) serversID(ctx context.Context, m *master.Master) (string, error) {
+	for _, key := range d.store.State.Keys(FleetTable) {
+		if key != "servers" {
+			continue
+		}
+		rec, _ := d.store.State.Get(FleetTable, key)
+		var id string
+		if json.Unmarshal(rec["uuid"], &id) == nil && id != "" {
+			return id, nil
+		}
+	}
+	id, err := register.NewServersID()
+	if err != nil {
+		return "", err
+	}
+	_, err = m.Set(ctx, FleetTable, "servers", map[string]any{"uuid": id})
+	return id, err
+}
+
+// waitReport waits until a recent report of node appears in any master's
+// report stream; it only looks at the newest scan entries, which is enough
+// while a node reports every few seconds.
+func (d *Daemon) waitReport(ctx context.Context, node string, wait time.Duration) bool {
+	deadline := time.Now().Add(wait)
+	for {
+		for _, master := range d.cfg.Masters {
+			first, last, err := d.bus.ReportRange(ctx, master)
+			if err != nil || last == 0 {
+				continue
+			}
+			from := uint64(1)
+			if last > 200 {
+				from = last - 200
+			}
+			if first > from {
+				from = first
+			}
+			for seq := last; seq >= from && seq > 0; seq-- {
+				raw, err := d.bus.GetReport(ctx, master, seq)
+				if err != nil {
+					break
+				}
+				var rep struct {
+					Node string `json:"n"`
+				}
+				if json.Unmarshal(raw, &rep) == nil && rep.Node == node {
+					return true
+				}
+				if seq == from {
+					break
+				}
+			}
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 // mountEnroll serves token minting and redemption once a CA is configured.

@@ -88,12 +88,43 @@ The install endpoint needs the master to be able to read an `fbnode` build
 (`Config.NodeBinary`). The node then enrols as in `native-nodes.md`: the
 identity is the same, so it joins the fleet on its first pull.
 
+## Register
+
+`POST /provision/register` turns a role and a public name into a spec, so an
+installed node serves with its first pull:
+
+```json
+{"node":"ru4","role":"entry","host":"ru.lab.firewalk.test",
+ "port":12054,"path":"/ws","cascadeTo":"de2","country":"de","vnet":true,
+ "overwrite":false,"wait":"60s"}
+```
+
+- `role: "exit"` builds a `cascade` inbound (client `servers`) with a public
+  host, and a `VNetHop` so other nodes reach it by name on 443.
+- `role: "entry"` builds the `vpn` inbound; with `cascadeTo` it adds an
+  `Exit` whose hop is the exit's cascade inbound (found in the exit's spec, so
+  register the exit first). Without it the inbound routes `direct`.
+- The cascade identity (`servers`) is one UUID per fleet, kept in `fleetid`
+  and created on first use, so every exit and entry agree.
+- The spec is written through the same path as `PUT /nodes/{node}/spec`,
+  which also asks for the node's certificate for the terminated names.
+- A spec that already exists is refused (409) unless `overwrite`; an
+  `cascadeTo` node that is not registered (or not replicated here yet) is
+  waited for up to 15 s, then refused (422) with a clear message.
+- `wait` (optional) waits a bounded time for the node's first report and
+  answers `reported`.
+
+Answer: `{node, summary, spec, reported}`.
+
 ## Next steps
 
 1. ~~Preflight~~ — done.
 2. ~~Install + enrol~~ — done (`TestInstallNodeOverSSH`: a master installs onto
    a bare server over real SSH, the started agent joins the fleet and applies
    its spec).
-3. Register: create the node's spec from a template after it reports once.
-4. DNS and certificate for the new node's name.
+3. ~~Register~~ — done (`TestRegisterBuildsTheFleet`: an exit and an entry
+   registered through two masters; the running nodes apply the specs, the
+   entry grows `proxy_de` to the exit).
+4. DNS record and certificate for the new node's name (the spec asks for the
+   certificate; the A record still needs the DNS pool).
 5. Rollback of a successful install, and reinstall/upgrade.
