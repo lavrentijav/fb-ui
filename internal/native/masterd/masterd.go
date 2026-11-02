@@ -88,10 +88,19 @@ type Config struct {
 	RenewBefore time.Duration
 	// PoolName is the masters' shared name (master.firewalk.top), resolving to
 	// every live master; empty keeps this master out of any pool.
-	PoolName  string
-	PublicIP  string         // this master's address in the pool
+	PoolName string
+	// PublicIP is this master's address in the pool; PublicIPs carries several
+	// (a host reached by more than one address). Empty means the master detects
+	// its own addresses and keeps them up to date.
+	PublicIP  string
+	PublicIPs []string
 	PoolRoots *x509.CertPool // what the pool check trusts (nil: the system's)
 	PoolEvery time.Duration  // default 20 s
+	// PoolMaxDownFraction is the share of masters that must fail an address
+	// before it leaves DNS (default 0.5); PoolMaxRecords caps how many
+	// addresses a name resolves to (0 = every live one).
+	PoolMaxDownFraction float64
+	PoolMaxRecords      int
 	// FleetCA, when set, lets masters enrol nodes: a one-time token becomes
 	// a node.<name> certificate signed by this CA.
 	FleetCA *fleetca.CA
@@ -117,6 +126,7 @@ type Daemon struct {
 	dns      atomic.Pointer[dnsacct.Accounts]
 	host     atomic.Pointer[mhost.Host]
 	vnets    atomic.Pointer[vnet.Store]
+	pool     atomic.Pointer[pool.Pool]
 	presence *presence.Map
 	api      *http.Server
 }
@@ -208,13 +218,28 @@ func poolCertID(name string) string { return "pool:" + name }
 func (d *Daemon) runPool(ctx context.Context, m *master.Master, accounts *dnsacct.Accounts) {
 	name := d.cfg.PoolName
 	for ctx.Err() == nil {
-		err := errors.Join(pool.Announce(ctx, m, d.store.State, d.cfg.PublicIP), d.wantPoolCert(ctx, m))
+		err := errors.Join(d.announceIPs(ctx, m), d.wantPoolCert(ctx, m))
 		if err == nil {
 			break
 		}
 		d.logf("pool: %v", err)
 		time.Sleep(time.Second)
 	}
+	// a moved machine or a new public address is picked up without a restart
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if err := d.announceIPs(ctx, m); err != nil {
+					d.logf("pool: %v", err)
+				}
+			}
+		}
+	}()
 	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		d.logf("pool: %v", err)
@@ -234,6 +259,7 @@ func (d *Daemon) runPool(ctx context.Context, m *master.Master, accounts *dnsacc
 	}}
 	p := &pool.Pool{
 		Master: m, State: d.store.State, Name: name, DNS: dnsFor, Logf: d.cfg.Logf,
+		MaxDownFraction: d.cfg.PoolMaxDownFraction, MaxRecords: d.cfg.PoolMaxRecords,
 		Check: func(ctx context.Context, ip string) error {
 			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://"+net.JoinHostPort(ip, "443")+"/healthz", nil)
 			resp, err := client.Do(req)
@@ -247,11 +273,28 @@ func (d *Daemon) runPool(ctx context.Context, m *master.Master, accounts *dnsacc
 			return nil
 		},
 	}
+	d.pool.Store(p)
 	every := d.cfg.PoolEvery
 	if every <= 0 {
 		every = 20 * time.Second
 	}
 	p.Run(ctx, every)
+}
+
+// announceIPs writes this master's pool addresses: an operator's manual list,
+// the configured addresses, or the ones it detects on its own.
+func (d *Daemon) announceIPs(ctx context.Context, m *master.Master) error {
+	if _, manual := pool.Manual(d.store.State, m.Name()); manual {
+		return nil
+	}
+	switch {
+	case len(d.cfg.PublicIPs) > 0:
+		return pool.Announce(ctx, m, d.store.State, d.cfg.PublicIPs)
+	case d.cfg.PublicIP != "":
+		return pool.Announce(ctx, m, d.store.State, []string{d.cfg.PublicIP})
+	default:
+		return pool.AnnounceAuto(ctx, m, d.store.State, pool.DetectIPs())
+	}
 }
 
 func (d *Daemon) wantPoolCert(ctx context.Context, m *master.Master) error {
@@ -511,6 +554,9 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/install", d.install)
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
+	mux.HandleFunc("GET /net/ips", d.netIPs)
+	mux.HandleFunc("PUT /net/ips", d.setNetIPs)
+	mux.HandleFunc("GET /net/health", d.netHealth)
 	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
 	mux.HandleFunc("GET /inbounds/{node}", func(w http.ResponseWriter, r *http.Request) {
 		if m := d.m.Load(); m != nil {

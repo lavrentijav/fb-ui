@@ -164,6 +164,41 @@ Found by the lab, now handled:
 9. Sidecars (TUIC, MTProto, AmneziaWG) and the master's view of node state
    (reports → API) are the rest of the fbnode track.
 
+## The pool name, several addresses and failover (done 2026-11-02)
+
+The pool name (`master.<zone>`) is what the panel and the subscriptions are
+reached by. Each master now announces **a list** of addresses (the `masters`
+record carries `ips`, keeping the first as the legacy `ip`):
+
+- `Config.PublicIPs` (or the older single `PublicIP`) declares them; with
+  neither, a master detects the global unicast addresses of its own
+  interfaces (`pool.DetectIPs`) and re-announces them every minute, so a
+  machine that moves or gains a public address updates itself.
+- An operator can pin the list (`PUT /net/ips {"ips":[...]}` on the master's
+  admin API; `{"auto": true}` goes back to detection). A pinned list is not
+  overwritten by detection.
+- Every master checks every address the way a client would
+  (`https://<ip>:443/healthz` with the pool name as SNI) and publishes its
+  verdict in the `iphealth` table (one record per master and address).
+  An address leaves DNS only when **a share of the fleet** calls it down
+  (`MaxDownFraction`, default half) after `Down` consecutive failures, so one
+  master with a blocked route does not move everybody off a working address.
+  Verdicts older than `HealthTTL` are ignored, so a dead master stops voting.
+- The lease holder writes the live addresses as A records. When an address
+  blocks, the next live one takes its place; `MaxRecords` can cap how many a
+  name resolves to. If more than half the known addresses look gone, the pool
+  keeps the last good records instead of shrinking to whatever one master
+  still reaches (the "never empty the pool" rule).
+- `pool.Failover(ctx, ips, fn)` is the server-side primitive to try the next
+  address when one does not answer.
+
+Tests: `TestManyAddressesPerMaster` (several addresses, a blocked one leaves
+and returns), `TestOneBlockedMasterDoesNotDropAnAddress` (1 of 3 failing keeps
+it; 2 of 3 drops it), `TestMaxRecordsKeepsTheNextAddressReady`,
+`TestManualAddressesSurviveAutoDetection` and `TestFailoverStopsAtTheFirstAnswer`.
+The admin API also answers `GET /net/ips` (announced, detected, failing) and
+`GET /net/health`.
+
 ## Clients
 
 A client is a record per node, inbound and email (`client` table, key
