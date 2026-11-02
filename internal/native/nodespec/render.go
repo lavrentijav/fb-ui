@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/edge"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/sidecar"
 )
 
 // Bundle is what the node receives: the Xray config as is, the edge table
@@ -26,6 +27,9 @@ type Bundle struct {
 	// Quotas is each user's traffic allowance and expiry, so the node can stop
 	// a client that reached its limit even when no master answers.
 	Quotas map[string]Quota `json:"quotas,omitempty"`
+	// Sidecars are the small proxy processes to run next to the core (TUIC,
+	// MTProto, AmneziaWG). The node applies the set; a removed one is stopped.
+	Sidecars []sidecar.Spec `json:"sidecars,omitempty"`
 }
 
 // Quota is one user's allowance as the node sees it.
@@ -208,7 +212,10 @@ func Render(s Spec) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	return Bundle{Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet, Limits: limits, Quotas: quotas}, nil
+	return Bundle{
+		Xray: raw, Edge: edge, API: api, Certs: s.Certs, Drain: s.Drain, VNet: s.VNet,
+		Limits: limits, Quotas: quotas, Sidecars: s.Sidecars,
+	}, nil
 }
 
 // HopOutbound is a cascade to one exit node's inbound.

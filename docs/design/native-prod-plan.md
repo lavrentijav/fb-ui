@@ -154,10 +154,16 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
   serving; upgrade to a good build reports the new version.
 
 ### 3.4 Sidecars (parity with the main line)
-- [ ] TUIC, MTProto (mtg), AmneziaWG as agent-managed processes with the same
-      hot-apply/drain/health rules as Xray (one process group per sidecar, a
-      supervised restart).
-- [ ] Their configs become part of the node bundle (renderer + `Bundle`).
+- [x] `internal/native/sidecar`: a generic supervisor with the same rules as
+      Xray — only a changed spec restarts (hash of binary/args/env/config), a
+      config file is written atomically, an unexpected exit is restarted with
+      backoff while the spec is still desired, and removing it stops the
+      process (SIGTERM, then kill after a timeout). `Bundle.Sidecars` carries
+      the set and `nodespec.Spec` validates it, so a bad sidecar fails the
+      render rather than the node.
+- [ ] Renderers for TUIC, MTProto (mtg) and AmneziaWG: their configs from the
+      old panel's models into `sidecar.Spec` (this is the remaining work — the
+      process manager is done).
 - [ ] Traffic accounting from sidecars where the sidecar exposes it; otherwise
       document "not counted" and surface it.
 - Acceptance: lab: each sidecar carries a tunnel, a config change does not cut

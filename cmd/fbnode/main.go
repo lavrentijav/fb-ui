@@ -35,6 +35,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/reports"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/selfupdate"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/sidecar"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vdns"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/wire"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
@@ -410,6 +411,11 @@ func run(path string, logger *log.Logger) error {
 	}, logger.Printf)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if c.Profile != "relay" {
+		sidecars := sidecar.New(ctx, logger.Printf)
+		defer sidecars.StopAll()
+		bundles.Sidecars = sidecars
+	}
 	if err := node.Start(ctx); err != nil {
 		logger.Printf("restoring the last state: %v", err)
 	}

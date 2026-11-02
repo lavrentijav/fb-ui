@@ -58,8 +58,11 @@ fixes in `pool` and `sub`.
    sha256, swaps with a `.previous` file, and the next starts roll back after
    three failures; a healthy run clears the marker. Still missing: a signature
    over the manifest and a master command to trigger it.
-2. **No sidecars** (TUIC, MTProto, AmneziaWG) — parity with the main line's
-   node. Not needed for a VLESS-only pilot.
+2. **No sidecars yet** (TUIC, MTProto, AmneziaWG) — the supervisor exists
+   (`internal/native/sidecar`: atomic config, restart only on change,
+   backoff restart, stop on removal, tested) and `Bundle.Sidecars` carries the
+   set; what remains is a renderer per protocol. Not needed for a VLESS-only
+   pilot.
 3. **Xray is not installed or upgraded by us.** `provision` refuses a host
    whose `xray.bin` is missing; there is no download/upgrade of the core.
 4. **No per-node history.** Only the newest report is kept (`/nodes/state`);

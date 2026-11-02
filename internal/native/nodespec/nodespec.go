@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/native/sidecar"
 )
 
 // Built-in outbounds every node has.
@@ -34,7 +36,10 @@ type Spec struct {
 	Exits []Exit `json:"exits,omitempty"`
 	// Reverse are edge routes to local services other than inbounds.
 	Reverse []Reverse `json:"reverse,omitempty"`
-	Certs   []Cert    `json:"certs,omitempty"`
+	// Sidecars are the proxy processes to run next to the core (TUIC,
+	// MTProto, AmneziaWG); each carries its own binary, arguments and config.
+	Sidecars []sidecar.Spec `json:"sidecars,omitempty"`
+	Certs    []Cert         `json:"certs,omitempty"`
 	// CertIDs name certificates the masters issue and renew; a master
 	// adds them to Certs when it renders the bundle.
 	CertIDs []string `json:"certIds,omitempty"`
@@ -197,6 +202,16 @@ var (
 func (s *Spec) Validate() error {
 	if s.Node == "" {
 		return fmt.Errorf("nodespec: node name missing")
+	}
+	seen := map[string]bool{}
+	for _, sc := range s.Sidecars {
+		if err := sc.Validate(); err != nil {
+			return fmt.Errorf("nodespec: %w", err)
+		}
+		if seen[sc.Name] {
+			return fmt.Errorf("nodespec: sidecar %q twice", sc.Name)
+		}
+		seen[sc.Name] = true
 	}
 	outs := []string{Direct, Block}
 	for _, e := range s.Exits {

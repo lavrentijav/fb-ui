@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/native/sidecar"
 )
 
 const (
@@ -211,5 +213,26 @@ func TestBundleCarriesQuotas(t *testing.T) {
 	}
 	if _, ok := b.Quotas["bob"]; ok {
 		t.Fatalf("an unlimited client got a quota: %+v", b.Quotas)
+	}
+}
+
+func TestBundleCarriesSidecarsAndValidatesThem(t *testing.T) {
+	s := Spec{Node: "ru4", Inbounds: []Inbound{
+		{Tag: "a", Port: 1, Network: "ws", Path: "/a", Route: Direct},
+	}, Sidecars: []sidecar.Spec{{
+		Name: "tuic", Binary: "/usr/local/bin/tuic", Args: []string{"-c", "/etc/tuic.json"},
+		ConfigPath: "/etc/tuic.json", Config: []byte(`{}`),
+	}}}
+	b, err := Render(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(b.Sidecars) != 1 || b.Sidecars[0].Name != "tuic" || b.Sidecars[0].Binary != "/usr/local/bin/tuic" {
+		t.Fatalf("sidecars %+v", b.Sidecars)
+	}
+	// a bad sidecar fails the render instead of reaching the node
+	s.Sidecars[0].Binary = "relative"
+	if _, err := Render(s); err == nil {
+		t.Fatal("a relative sidecar binary passed validation")
 	}
 }

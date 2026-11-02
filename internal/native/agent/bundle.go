@@ -12,6 +12,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/sidecar"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vdns"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vroute"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/xrayrun"
@@ -25,6 +26,8 @@ type BundleApplier struct {
 	DNS      *vdns.Manager // nil: no internal names
 	Node     string
 	Presence *presence.Map // nil: no network routing
+	// Sidecars supervises the extra proxy processes; nil on a relay.
+	Sidecars *sidecar.Supervisor
 
 	mu       sync.Mutex
 	last     *nodespec.Bundle
@@ -47,6 +50,11 @@ func (b *BundleApplier) Apply(ctx context.Context, st desired.State) error {
 		return err
 	}
 	b.applyDNS(&bundle)
+	if b.Sidecars != nil {
+		if err := b.Sidecars.Apply(bundle.Sidecars); err != nil {
+			return fmt.Errorf("agent: sidecars: %w", err)
+		}
+	}
 	return nil
 }
 
