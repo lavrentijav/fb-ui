@@ -150,11 +150,18 @@ func TestManagerStartsMovesAndStopsResolvers(t *testing.T) {
 		t.Fatalf("tcp answer: %v %d", err, len(resp.Answers))
 	}
 
-	// a new port in a later bundle moves the listener
-	port2 := freePort(t)
-	addr2 := net.JoinHostPort("127.0.0.1", strconv.Itoa(port2))
-	m.Update("local", []Name{{Name: "alice", IP: "100.64.0.7", Network: "n1"}},
-		[]Resolver{{Network: "n1", Port: port2}})
+	// a new port in a later bundle moves the listener; a port taken between
+	// the probe and the bind is retried, as the agent would on the next bundle
+	var addr2 string
+	for range 5 {
+		port2 := freePort(t)
+		addr2 = net.JoinHostPort("127.0.0.1", strconv.Itoa(port2))
+		m.Update("local", []Name{{Name: "alice", IP: "100.64.0.7", Network: "n1"}},
+			[]Resolver{{Network: "n1", Port: port2}})
+		if answers(addr2, "alice.local") {
+			break
+		}
+	}
 	if !answers(addr2, "alice.local") {
 		t.Fatal("the resolver did not move to the new port")
 	}

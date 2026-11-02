@@ -34,6 +34,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/provision"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
@@ -490,6 +491,7 @@ func (d *Daemon) Handler() http.Handler {
 	})
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	d.mountEnroll(mux)
+	mux.HandleFunc("POST /provision/preflight", d.preflight)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -505,6 +507,29 @@ func (d *Daemon) Handler() http.Handler {
 	})
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	return mux
+}
+
+// preflight inspects a server over SSH before anything is installed. It is
+// on the admin API only: it takes credentials, so the admin API must stay on
+// loopback until the session login exists.
+func (d *Daemon) preflight(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		provision.Target
+		Auth    provision.Auth `json:"auth"`
+		HostKey string         `json:"hostKey"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+	defer cancel()
+	res, err := provision.Preflight(ctx, body.Target, body.Auth, body.HostKey)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // mountEnroll serves token minting and redemption once a CA is configured.
