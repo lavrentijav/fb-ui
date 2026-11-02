@@ -74,6 +74,13 @@ shrink Node's role, then drop it.
    during a split. Moved to the foundation — see `native-multimaster.md`
    (JetStream mirrors between masters + Postgres projection with field-level LWW).
 
+## Readiness (2026-11-02)
+
+See `native-node-status.md`: the agent is pilot-ready for entry/exit nodes; the
+master is not production-ready (no entrypoint, no master join, no DB
+migration, unauthenticated admin API). That file also designs `relay` and
+`lite` profiles for sub-nodes.
+
 ## Open questions
 
 - ~~Store for journals/replication~~ — decided 2026-09-29: JetStream
