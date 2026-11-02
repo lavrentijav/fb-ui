@@ -250,3 +250,31 @@ traffic counted. It reads node state through `module.ReportAware` and the
 usage snapshots, so it works without Postgres. `GET /dashboard` on the
 master's admin API answers the same, and `GET /api/v1/dashboard/online`
 answers just the node numbers. Tag `no_dashboard`.
+
+## Groups
+
+A group is a **named set of client emails** (`group` table, key = name,
+fields `remark`, `emails`). Membership lives on the group, not on each client
+record: a client has a record per node and inbound, so the email is the stable
+identity. That makes the useful bulk operations one write each:
+
+- `POST /api/v1/groups {name, remark, emails, overwrite}` creates or replaces;
+  `GET|DELETE /api/v1/groups(/{name})` lists (with a summary) or removes.
+- `POST /api/v1/groups/{name}/members {emails, add}` adds or removes members.
+- `POST /api/v1/groups/{name}/enable {enable}` turns every member's records on
+  or off across all nodes and inbounds, answering how many changed (idempotent).
+- `POST /api/v1/groups/{name}/attach {node, inbound}` creates the missing
+  records for the members, reusing an email's existing uuid so a person keeps
+  one identity; a member with no identity anywhere is refused with a clear
+  error rather than given a random uuid.
+- `POST /api/v1/groups/{name}/detach {node, inbound}` removes the members'
+  records from that inbound only.
+
+A summary counts records, enabled/disabled/expired and the traffic used from
+the usage snapshots — per email, so the same person on two nodes is not
+counted twice. The same operations exist on the master's admin API
+(`/groups`, `/groups/{name}/{op}`), tag `no_groups`.
+
+`TestGroupsBulkOperations` covers it end to end: two clients, a group, attach
+to a second inbound (both records reach the node's config), disable the group
+(both leave the config), detach (only the second inbound's records go).

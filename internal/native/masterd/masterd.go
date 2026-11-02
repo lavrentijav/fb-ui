@@ -33,6 +33,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/edgerun"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/enroll"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/groups"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/hosts"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/inbounds"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
@@ -600,6 +601,26 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
+	mux.HandleFunc("GET /groups", func(w http.ResponseWriter, r *http.Request) {
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		apiserver.JSON(w, http.StatusOK, groups.Summaries(d.store.State, time.Now()))
+	})
+	mux.HandleFunc("POST /groups", d.saveGroup)
+	mux.HandleFunc("POST /groups/{name}/{op}", d.groupOp)
+	mux.HandleFunc("DELETE /groups/{name}", func(w http.ResponseWriter, r *http.Request) {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		if err := groups.Delete(r.Context(), h, r.PathValue("name")); err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	})
 	mux.HandleFunc("GET /dashboard", func(w http.ResponseWriter, r *http.Request) {
 		h := d.host.Load()
 		if h == nil {
@@ -928,6 +949,86 @@ func (d *Daemon) deleteClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// saveGroup creates or replaces a client group.
+func (d *Daemon) saveGroup(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var body struct {
+		Name      string   `json:"name"`
+		Remark    string   `json:"remark"`
+		Emails    []string `json:"emails"`
+		Overwrite bool     `json:"overwrite"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	g, err := groups.Save(r.Context(), h, groups.Group{Name: body.Name, Remark: body.Remark, Emails: body.Emails}, body.Overwrite)
+	if err != nil {
+		code := http.StatusBadRequest
+		if err == groups.ErrExists {
+			code = http.StatusConflict
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, g)
+}
+
+// groupOp runs one bulk operation: members, enable, attach, detach.
+func (d *Daemon) groupOp(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	name, op := r.PathValue("name"), r.PathValue("op")
+	var body struct {
+		Emails  []string `json:"emails"`
+		Add     bool     `json:"add"`
+		Enable  bool     `json:"enable"`
+		Node    string   `json:"node"`
+		Inbound string   `json:"inbound"`
+		UUID    string   `json:"uuid"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body)
+	var out any
+	var err error
+	code := http.StatusBadRequest
+	switch op {
+	case "members":
+		var g groups.Group
+		g, err = groups.SetMembers(r.Context(), h, name, body.Emails, body.Add)
+		out = g
+	case "enable":
+		var n int
+		n, err = groups.SetEnabled(r.Context(), h, name, body.Enable)
+		out = map[string]int{"changed": n}
+	case "attach":
+		var n int
+		n, err = groups.Attach(r.Context(), h, name, body.Node, body.Inbound, body.UUID)
+		out = map[string]int{"created": n}
+	case "detach":
+		var n int
+		n, err = groups.Detach(r.Context(), h, name, body.Node, body.Inbound)
+		out = map[string]int{"removed": n}
+	default:
+		http.Error(w, "unknown operation "+op, http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		if err == groups.ErrNoGroup {
+			code = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, out)
 }
 
 // saveHost stores one advertised address for a node's inbound.
