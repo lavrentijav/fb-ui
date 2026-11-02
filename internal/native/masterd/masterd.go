@@ -46,6 +46,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/register"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/templates"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/usage"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
 
@@ -518,6 +519,22 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
 	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
+	mux.HandleFunc("GET /usage", func(w http.ResponseWriter, r *http.Request) {
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		out := map[string]int64{}
+		for _, email := range d.store.State.Keys(usage.Table) {
+			rec, ok := d.store.State.Get(usage.Table, email)
+			if !ok {
+				continue
+			}
+			var n int64
+			_ = json.Unmarshal(rec["bytes"], &n)
+			out[email] = n
+		}
+		apiserver.JSON(w, http.StatusOK, out)
+	})
 	mux.HandleFunc("GET /clients", func(w http.ResponseWriter, _ *http.Request) {
 		apiserver.JSON(w, http.StatusOK, clients.List(d.store.State))
 	})

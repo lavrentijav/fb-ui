@@ -20,6 +20,9 @@ func (d *Daemon) startModules(ctx context.Context, m *master.Master) {
 	h := mhost.New(m, d.store.State, mhost.Options{})
 	d.host.Store(h)
 	for _, mod := range module.All() {
+		if ra, ok := mod.(module.ReportAware); ok {
+			ra.SetReportSource(d.bus, d.cfg.Masters)
+		}
 		go mod.Run(ctx, h)
 	}
 	if d.cfg.APIListen == "" {

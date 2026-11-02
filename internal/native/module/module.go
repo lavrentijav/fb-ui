@@ -81,6 +81,18 @@ type Module interface {
 	Run(ctx context.Context, h Host)
 }
 
+// ReportSource is the node-report streams of every master (the bus).
+type ReportSource interface {
+	ReportRange(ctx context.Context, master string) (first, last uint64, err error)
+	GetReport(ctx context.Context, master string, seq uint64) ([]byte, error)
+}
+
+// ReportAware is implemented by a module that needs the report streams, which
+// only a running master can give it.
+type ReportAware interface {
+	SetReportSource(src ReportSource, masters []string)
+}
+
 // SessionAuth is implemented by a module that turns a browser cookie into a
 // principal, so the interface does not keep an API token in JavaScript.
 type SessionAuth interface {

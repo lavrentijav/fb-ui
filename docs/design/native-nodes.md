@@ -188,3 +188,26 @@ subscription while the record stays.
 `TestClientsReachNodesAndSubscriptions` creates a client through ru2, sees it
 in ru4's Xray config and in the subscription from de2, then disables it and
 sees it leave both.
+
+## Traffic and allowances
+
+`internal/native/usage` accumulates per-client bytes from the node reports;
+`usagemod` runs on the leader:
+
+1. For each master's report stream it reads past a cursor (`usage_cursor`,
+   field `seq`), adds each report's deltas to the totals and writes the cursor
+   back. Only the leader does this, and each report is counted once (its
+   `(node, seq)` is the stream's position).
+2. It snapshots changed totals into the `usage` table (field `bytes`), so a
+   restart or another master reading the projection sees the same numbers.
+3. It disables every enabled client whose total reached `totalBytes` and
+   emits `client.exhausted` (`{email, node, inbound, bytes}`). The sweep only
+   touches an enabled record, so it is idempotent.
+
+API: `GET /api/v1/usage` (email → bytes), `GET /api/v1/usage/{email}`,
+`POST /api/v1/usage/{email}/reset`; the admin API also exposes `GET /usage`
+read from the projection. Tag `no_usage`.
+
+`TestUsageDisablesAnExhaustedClient`: a client with a 1 KB allowance loads a
+page through ru4, the master counts the bytes from ru4's report and disables
+the client, which then leaves the node's config.
