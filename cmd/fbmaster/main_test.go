@@ -7,11 +7,16 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/masterjoin"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/module/modtest"
 )
 
 func writeConfig(t *testing.T, dir string, extra map[string]any) string {
@@ -209,4 +214,50 @@ func TestMasterStartsAndGuardsItsAdminSurface(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("the master did not stop")
 	}
+}
+
+// A new master joins with a token minted by a live one: it gets the CA and a
+// certificate, and the token works once.
+func TestJoinWritesTheIdentityFromAToken(t *testing.T) {
+	liveCA, err := fleetca.New("fleet")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := modtest.NewHost("fi1")
+	secret, err := masterjoin.NewSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := masterjoin.Mint(context.Background(), writer{h}, secret, "ru2", time.Hour, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(masterjoin.Handler(liveCA, writer{h}, h, time.Now))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	token := masterjoin.Token(secret, liveCA)
+	if err := runJoin([]string{"-master", srv.URL, "-token", token, "-name", "ru2", "-dir", dir, "-hosts", "ru2.m.example"}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"ca.pem", "master.pem", "master-key.pem"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Fatalf("%s: %v", f, err)
+		}
+	}
+	// the token is spent
+	if err := runJoin([]string{"-master", srv.URL, "-token", token, "-name", "ru2", "-dir", dir}, io.Discard); err == nil {
+		t.Fatal("the token was accepted twice")
+	}
+}
+
+// writer adapts the test host to masterjoin.Writer.
+type writer struct{ h *modtest.Host }
+
+func (w writer) Set(ctx context.Context, table, key string, fields map[string]any) error {
+	_, err := w.h.Set(ctx, table, key, fields)
+	return err
+}
+func (w writer) Delete(ctx context.Context, table, key string) error {
+	_, err := w.h.Delete(ctx, table, key)
+	return err
 }

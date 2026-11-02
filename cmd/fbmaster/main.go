@@ -14,6 +14,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/masterd"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/masterjoin"
 )
 
 // version is stamped at build time with -ldflags "-X main.version=...".
@@ -125,6 +127,13 @@ func (c *Config) normalize() error {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "join" {
+		if err := runJoin(os.Args[2:], os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, "fbmaster join:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	path := flag.String("c", "/etc/fbmaster/config.json", "config file")
 	check := flag.Bool("check", false, "validate the config and exit")
 	createCA := flag.Bool("create-ca", false, "create the fleet CA when missing (first master only)")
@@ -149,6 +158,54 @@ func main() {
 	if err := run(c, *createCA, logger); err != nil {
 		logger.Fatal(err)
 	}
+}
+
+// runJoin redeems a one-time join token at a live master and writes this
+// master's CA and certificate, ready for its config file.
+func runJoin(args []string, stderr io.Writer) error {
+	fs := flag.NewFlagSet("join", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	master := fs.String("master", "", "live master URL (http://host:port or https://master.<zone>)")
+	token := fs.String("token", "", "one-time token from POST /master/tokens")
+	name := fs.String("name", "", "this master's name")
+	dir := fs.String("dir", "/etc/fbmaster", "where to write ca.pem, master.pem and master-key.pem")
+	hosts := fs.String("hosts", "", "extra names/IPs the gateway certificate should cover, comma separated")
+	insecure := fs.Bool("insecure", false, "skip TLS verification of the live master (only for a first http/https bootstrap)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *master == "" || *token == "" || *name == "" {
+		return errors.New("-master, -token and -name are required")
+	}
+	var tlsConf *tls.Config
+	if *insecure {
+		tlsConf = &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12} // token pin still verifies the CA
+	}
+	list := dedupe(strings.Split(*hosts, ","))
+	res, err := masterjoin.Exchange(context.Background(), *master, *token, *name, list, tlsConf)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(*dir, 0o700); err != nil {
+		return err
+	}
+	for _, f := range []struct {
+		name string
+		body string
+		mode os.FileMode
+	}{
+		{"ca.pem", res.CA, 0o644},
+		{"master.pem", res.Cert, 0o644},
+		{"master-key.pem", res.Key, 0o600},
+	} {
+		if err := os.WriteFile(filepath.Join(*dir, f.name), []byte(f.body), f.mode); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(stderr, "joined as %s; wrote %s/{ca.pem,master.pem,master-key.pem}\n", *name, *dir)
+	fmt.Fprintf(stderr, "config paths: caCert %s, cert %s, key %s\n",
+		filepath.Join(*dir, "ca.pem"), filepath.Join(*dir, "master.pem"), filepath.Join(*dir, "master-key.pem"))
+	return nil
 }
 
 // checkConfig reports what the master would do without starting it.

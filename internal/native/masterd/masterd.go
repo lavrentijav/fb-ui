@@ -37,6 +37,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/hosts"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/inbounds"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/masterjoin"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
@@ -358,6 +359,7 @@ func (d *Daemon) Public() http.Handler {
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	d.mountSubAPI(mux)
 	d.mountEnroll(mux)
+	d.mountMasterJoin(mux)
 	d.mountUI(mux)
 	return mux
 }
@@ -562,6 +564,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	d.mountSubAPI(mux)
 	d.mountEnroll(mux)
+	d.mountMasterJoin(mux)
 	d.mountUI(mux)
 	mux.HandleFunc("POST /provision/preflight", d.preflight)
 	mux.HandleFunc("POST /provision/install", d.install)
@@ -1441,6 +1444,52 @@ func (d *Daemon) mountEnroll(mux *http.ServeMux) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"node": body.Node, "token": enroll.Token(secret, d.cfg.FleetCA), "caPin": enroll.Pin(d.cfg.FleetCA),
+		})
+	})
+}
+
+// mountMasterJoin lets a new master redeem a one-time token for a gateway
+// certificate signed by the fleet CA, and lets an operator mint such a token.
+func (d *Daemon) mountMasterJoin(mux *http.ServeMux) {
+	if d.cfg.FleetCA == nil {
+		return
+	}
+	redeem := masterjoin.Handler(d.cfg.FleetCA, enrollStore{d.m.Load}, d.store.State, time.Now)
+	mux.Handle("POST /master/join", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		redeem.ServeHTTP(w, r)
+	}))
+	mux.HandleFunc("POST /master/tokens", func(w http.ResponseWriter, r *http.Request) {
+		if d.m.Load() == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		var body struct {
+			Name string `json:"name"`
+			TTL  string `json:"ttl"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ttl, err := time.ParseDuration(body.TTL)
+		if err != nil || ttl <= 0 {
+			ttl = time.Hour
+		}
+		secret, err := masterjoin.NewSecret()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := masterjoin.Mint(r.Context(), enrollStore{d.m.Load}, secret, body.Name, ttl, time.Now()); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"master": body.Name, "token": masterjoin.Token(secret, d.cfg.FleetCA),
+			"caPin": masterjoin.Pin(d.cfg.FleetCA),
 		})
 	})
 }

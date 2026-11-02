@@ -7,14 +7,14 @@ import (
 )
 
 func TestPublicAdminPathKeepsCredentialsPathsOpen(t *testing.T) {
-	open := []string{"/healthz", "/ready", "/enroll", "/enroll/tokens", "/sub/abc", "/panel/", "/panel/api/webhooks/list"}
+	open := []string{"/healthz", "/ready", "/enroll", "/enroll/tokens", "/master/join", "/sub/abc", "/panel/", "/panel/api/webhooks/list"}
 	for _, p := range open {
 		r := httptest.NewRequest("GET", p, nil)
 		if !PublicAdminPath(r) {
 			t.Fatalf("%s should need no admin credential", p)
 		}
 	}
-	closed := []string{"/", "/templates", "/hosts", "/sub", "/nodes/state", "/net/ips", "/enrollx", "/panelx"}
+	closed := []string{"/", "/templates", "/hosts", "/sub", "/master/tokens", "/nodes/state", "/net/ips", "/enrollx", "/panelx"}
 	for _, p := range closed {
 		r := httptest.NewRequest("GET", p, nil)
 		if PublicAdminPath(r) {

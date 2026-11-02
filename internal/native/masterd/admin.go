@@ -66,6 +66,8 @@ func PublicAdminPath(r *http.Request) bool {
 		return true
 	case p == "/enroll", strings.HasPrefix(p, "/enroll/"):
 		return true
+	case p == "/master/join":
+		return true
 	case strings.HasPrefix(p, "/sub/"):
 		return true
 	case p == "/panel", strings.HasPrefix(p, "/panel/"):

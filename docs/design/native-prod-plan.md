@@ -75,14 +75,18 @@ else can wait; this cannot.
 
 ## Phase 2 — Fleet join, CA distribution, pool
 
-- [ ] Master join token: minted by a master, redeems into a gateway
-      certificate signed by the fleet CA (mirror `enroll` for nodes). Until
-      then a joining master needs `caCert`, `caKey` (or a CA-signed
-      `cert`/`key` pair) copied by hand.
-- [ ] CA distribution: a joining master gets the CA certificate; it must not
-      need the CA key unless it is allowed to issue (flag per master).
-- [ ] Document the trust model: which masters may issue node certificates,
-      which may issue gateway certificates.
+- [x] Master join token (`internal/native/masterjoin`): `POST /master/tokens`
+      mints a one-time token (name, ttl) and answers the token plus the CA
+      fingerprint; `POST /master/join` redeems it for a gateway certificate
+      signed by the fleet CA. The token is `mst1_<secret>_<caPin>`, so the
+      joining host pins the CA out of band. `fbmaster join -master -token
+      -name -dir` writes `ca.pem`, `master.pem`, `master-key.pem` (0600 key)
+      and prints the config paths.
+- [x] CA distribution: the joining master receives the CA certificate; it
+      needs no CA key to serve or connect. (A master that must issue shares
+      the key, as today; a per-master "issuer" flag is still open.)
+- [ ] Document the trust model in full: which masters may issue node
+      certificates, which may issue gateway certificates.
 - [ ] Pool DNS: first-run guidance for the pool name, the DNS account
       (`PUT /dns/{id}`) and the certificate; a check that warns when the pool
       name has no certificate or no A record.
