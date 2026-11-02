@@ -20,6 +20,7 @@ import {
   GlobalOutlined,
   HeartOutlined,
   ImportOutlined,
+  KeyOutlined,
   LogoutOutlined,
   MenuOutlined,
   MessageOutlined,
@@ -75,6 +76,7 @@ type IconName =
   | 'notifications'
   | 'webhooks'
   | 'audit'
+  | 'access'
   | 'setting'
   | 'tool'
   | 'cluster'
@@ -99,6 +101,7 @@ const iconByName: Record<IconName, ComponentType> = {
   notifications: MessageOutlined,
   webhooks: ApiOutlined,
   audit: ReadOutlined,
+  access: KeyOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -261,6 +264,7 @@ export default function AppSidebar() {
       { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
       { key: '/xray', icon: 'tool', title: t('menu.xray'), section: 'routing' },
       { key: '/settings', icon: 'setting', title: t('menu.settings'), section: 'system' },
+      { key: '/access', icon: 'access', title: t('menu.access'), section: 'system' },
       { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
       { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
       { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },

@@ -157,7 +157,8 @@
     "vnet": "Virtual networks",
     "notifications": "Notifications",
     "webhooks": "Webhooks",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "access": "Access"
   },
   "pages": {
     "login": {
@@ -2780,6 +2781,36 @@
       "path": "Route",
       "ip": "Address",
       "filterActor": "Filter by actor"
+    },
+    "access": {
+      "title": "Access",
+      "intro": "API tokens authenticate scripts and the panel itself; a browser session is minted from a token and lasts until it expires. Deleting a token ends its sessions at once.",
+      "createToken": "New API token",
+      "tokensTab": "API tokens",
+      "sessionsTab": "Sessions",
+      "name": "Name",
+      "nameRequired": "A name is required",
+      "scope": "Scope",
+      "admin": "Administrator",
+      "monitor": "Monitoring only",
+      "created": "Created",
+      "expires": "Expires",
+      "expired": "Expired",
+      "sessions": "Sessions",
+      "actions": "Actions",
+      "ttl": "Lifetime",
+      "ttlHint": "A token that never expires is convenient but cannot be aged out; prefer a fixed lifetime.",
+      "tokenCreated": "Token created",
+      "tokenOnce": "Copy it now: this is the only time the token is shown, and only its hash is stored.",
+      "deleteConfirm": "Delete the token {name}?",
+      "deleteDesc": "Its {count} browser session(s) end immediately. Scripts using it stop working.",
+      "signedOut": "{count} session(s) ended",
+      "signOutAll": "End every session of this token",
+      "signedInAt": "Signed in",
+      "endSession": "End session",
+      "endSessionConfirm": "End the session of {name}?",
+      "noTokens": "No API tokens yet",
+      "noSessions": "No live sessions"
     }
   },
   "tgbot": {

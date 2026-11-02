@@ -81,6 +81,24 @@ Three pages under **Система**, all against APIs that already existed:
 The sidebar's Settings submenu now holds General, Security and Subscription
 only; notifications moved to their own entry.
 
+## Access page (done 2026-11-02)
+
+**Access** (`/access`) is the operator's view of the API's own credentials:
+
+- **API tokens** (`GET /api/v1/access/tokens`) lists name, scope, creation and
+  expiry, whether it is still live and how many browser sessions it holds. A
+  new token (`POST /api/v1/access/tokens {name, scope, ttlHours}`) is answered
+  once and only its hash is stored; deleting one (`DELETE
+  /api/v1/access/tokens/{id}`) also ends its sessions, and the last live admin
+  token cannot be deleted so nobody can lock the fleet out.
+- **Sessions** (`GET /api/v1/access/sessions`) lists the browsers logged in
+  through a token (name, scope, signed-in and expiry); `DELETE
+  /api/v1/access/sessions/{id}` ends one and `POST
+  /api/v1/access/tokens/{id}/signout` ends all of a token's.
+
+`accessmod` is the module (`no_access` cuts it); tokens gained an `at` stamp
+and sessions already carried name, scope, expiry and their token's hash.
+
 ## Still to do
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for

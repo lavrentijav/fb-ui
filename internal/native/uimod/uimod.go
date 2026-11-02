@@ -64,6 +64,7 @@ func (m *Module) Mount(r module.Router, h module.Host) {
 			"name":    name,
 			"scope":   scope,
 			"expires": expires.UnixMilli(),
+			"at":      h.Now().UnixMilli(),
 		}); err != nil {
 			apiserver.Error(w, http.StatusInternalServerError, err.Error())
 			return

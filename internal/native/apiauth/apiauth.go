@@ -37,7 +37,9 @@ func Create(ctx context.Context, h module.Host, name string, scope module.Scope,
 	if ttl > 0 {
 		expires = h.Now().Add(ttl).UnixMilli()
 	}
-	_, err := h.Set(ctx, Table, hash(token), map[string]any{"name": name, "scope": scope, "expires": expires})
+	_, err := h.Set(ctx, Table, hash(token), map[string]any{
+		"name": name, "scope": scope, "expires": expires, "at": h.Now().UnixMilli(),
+	})
 	return token, err
 }
 
