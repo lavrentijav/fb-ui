@@ -7,6 +7,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 
 import { useTheme } from '@/hooks/useTheme';
 import AppSidebar from '@/layouts/AppSidebar';
+import { HttpUtil } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 
 interface Member {
@@ -23,11 +24,16 @@ interface Network {
   members: Member[];
 }
 
+// A native master answers the old panel surface through the subscriptions
+// module, so the panel's session cookie authenticates this list.
 async function fetchNetworks(): Promise<Network[]> {
-  const res = await fetch('/vnet/networks', { credentials: 'same-origin' });
-  const body = (await res.json().catch(() => ({}))) as Network[] & { error?: string };
-  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-  return body;
+  const msg = (await HttpUtil.get('/panel/api/vnets/list', undefined, { silent: true })) as {
+    success?: boolean;
+    msg?: string;
+    obj?: Network[];
+  };
+  if (!msg?.success) throw new Error(msg?.msg || 'HTTP /panel/api/vnets/list');
+  return msg.obj ?? [];
 }
 
 export default function VirtualNetworksPage() {

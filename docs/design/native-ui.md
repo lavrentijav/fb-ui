@@ -62,9 +62,16 @@ Two operator pages under **Доступ**:
   subscribers manage their own networks from the subscription page -- and
   reads `GET /vnet/networks`.
 
-Both talk to the master's admin API on the same origin as the panel, so they
-work against a native master today; the lab covers the list, the switch and
-the network view.
+Both used the master's loopback admin API, which the panel (served at
+`/panel`) cannot reach; they now go through the **subs** module:
+`GET /api/v1/subs`, `PUT /api/v1/subs/{email}`, `POST
+/api/v1/subs/{email}/password`, `POST /api/v1/subs/{token}/enable`, `DELETE
+/api/v1/subs/{token}` and `GET /api/v1/subs/networks`, with the old
+`/panel/api/subscriptions/*` and `/panel/api/vnets/list` mapped onto them, so
+the page's session cookie authenticates the calls. The module reads the same
+op-log tables (`subtoken`, `nodespec`, `subhost`, `client`, `usage`, `vnet`,
+`vnet_member`, `vuser`, `uname`) as the rest of the fleet; the admin
+endpoints on the loopback API remain for scripts and the lab.
 
 ## System pages (done 2026-11-02)
 

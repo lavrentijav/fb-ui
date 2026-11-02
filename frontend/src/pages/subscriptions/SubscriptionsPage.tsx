@@ -29,7 +29,7 @@ import {
 
 import { useTheme } from '@/hooks/useTheme';
 import AppSidebar from '@/layouts/AppSidebar';
-import { SizeFormatter } from '@/utils';
+import { HttpUtil, SizeFormatter } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 
 interface Subscription {
@@ -52,15 +52,15 @@ interface Secret {
   url: string;
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    credentials: 'same-origin',
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-  return body;
+// The page talks to the old panel surface, which a native master answers
+// through the subscriptions module, so the session cookie authenticates it.
+async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  const msg =
+    method === 'GET'
+      ? await HttpUtil.get(path, undefined, { silent: true })
+      : await HttpUtil.post(path, body, { silent: true });
+  if (!msg?.success) throw new Error(msg?.msg || `HTTP ${path}`);
+  return msg.obj as T;
 }
 
 export default function SubscriptionsPage() {
@@ -79,7 +79,7 @@ export default function SubscriptionsPage() {
 
   const { data: rows = [], isFetching: loading, error, refetch } = useQuery({
     queryKey: ['subscriptions'],
-    queryFn: () => call<Subscription[]>('/sub'),
+    queryFn: () => call<Subscription[]>('GET', '/panel/api/subscriptions/list'),
   });
 
   const load = useCallback(async () => {
@@ -103,9 +103,8 @@ export default function SubscriptionsPage() {
   const setEnabled = useCallback(
     async (s: Subscription, enable: boolean) => {
       try {
-        await call(`/sub/${s.token}/enable`, {
-          method: 'POST',
-          body: JSON.stringify({ enable }),
+        await call('POST', `/panel/api/subscriptions/enable/${encodeURIComponent(s.token)}`, {
+          enable,
         });
         await load();
       } catch (e) {
@@ -119,10 +118,8 @@ export default function SubscriptionsPage() {
     async (s: Subscription) => {
       try {
         const out = await call<{ user?: string; password: string }>(
-          `/sub/${s.email}/password`,
-          {
-            method: 'POST',
-          },
+          'POST',
+          `/panel/api/subscriptions/password/${encodeURIComponent(s.email)}`,
         );
         setSecret({
           title: t('pages.subscriptions.resetPassword'),
@@ -218,7 +215,7 @@ export default function SubscriptionsPage() {
                   okText: t('delete'),
                   cancelText: t('cancel'),
                   onOk: async () => {
-                    await call(`/sub/${r.token}`, { method: 'DELETE' });
+                    await call('POST', `/panel/api/subscriptions/del/${encodeURIComponent(r.token)}`);
                     await load();
                   },
                 })
@@ -287,10 +284,17 @@ export default function SubscriptionsPage() {
           setBusy(true);
           try {
             const values = await form.validateFields();
-            const out = await call<{ token: string; email: string; user: string; password?: string; url: string }>(
-              `/sub/${encodeURIComponent(values.email)}`,
-              { method: 'PUT', body: JSON.stringify({ user: values.user, password: values.password }) },
-            );
+            const out = await call<{
+              token: string;
+              email: string;
+              user: string;
+              password?: string;
+              url: string;
+            }>('POST', '/panel/api/subscriptions/create', {
+              email: values.email,
+              user: values.user,
+              password: values.password,
+            });
             setCreateOpen(false);
             form.resetFields();
             setSecret({
