@@ -17,6 +17,8 @@ import (
 type Scope string
 
 const (
+	// ScopePublic marks a route that needs no token (a login page).
+	ScopePublic  Scope = ""
 	ScopeAdmin   Scope = "admin"
 	ScopeMonitor Scope = "monitor"
 )
@@ -77,6 +79,12 @@ type Module interface {
 	// Run is the module's background work; it returns when ctx ends. It runs on
 	// every master, so work that must happen once checks Host.Leader.
 	Run(ctx context.Context, h Host)
+}
+
+// SessionAuth is implemented by a module that turns a browser cookie into a
+// principal, so the interface does not keep an API token in JavaScript.
+type SessionAuth interface {
+	Principal(cookie string) (name string, scope Scope, ok bool)
 }
 
 // Middlewarer is implemented by a module that wraps every API request

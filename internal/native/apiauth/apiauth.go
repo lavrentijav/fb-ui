@@ -21,6 +21,10 @@ func hash(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// Hash is the key a token is stored under; a session keeps it, never the
+// token itself.
+func Hash(token string) string { return hash(token) }
+
 // Create makes a token and returns it; this is the only time it is visible.
 // ttl 0 means it never expires.
 func Create(ctx context.Context, h module.Host, name string, scope module.Scope, ttl time.Duration) (string, error) {
@@ -43,6 +47,27 @@ func Verify(h module.Host, bearer string) (module.Scope, string, bool) {
 		return "", "", false
 	}
 	rec, ok := h.Get(Table, hash(bearer))
+	if !ok {
+		return "", "", false
+	}
+	var scope module.Scope
+	var name string
+	var expires int64
+	_ = json.Unmarshal(rec["scope"], &scope)
+	_ = json.Unmarshal(rec["name"], &name)
+	_ = json.Unmarshal(rec["expires"], &expires)
+	if expires > 0 && h.Now().UnixMilli() >= expires {
+		return "", "", false
+	}
+	return scope, name, true
+}
+
+// ByHash answers a stored key (a session keeps the hash, not the token).
+func ByHash(h module.Host, hash string) (module.Scope, string, bool) {
+	if hash == "" {
+		return "", "", false
+	}
+	rec, ok := h.Get(Table, hash)
 	if !ok {
 		return "", "", false
 	}

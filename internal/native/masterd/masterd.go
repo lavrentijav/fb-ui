@@ -16,11 +16,15 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/certs"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/desired"
@@ -86,6 +90,10 @@ type Config struct {
 	// NodeBinary is a local fbnode build that POST /provision/install uploads
 	// to a server; empty disables installing.
 	NodeBinary string
+	// UIDir is a built interface (an index.html with its assets); when set,
+	// the master serves it at /panel and the old /panel/api surface next to
+	// /api/v1, so the interface talks to the native master.
+	UIDir string
 	// APIListen is where /api/v1 is served (for example "127.0.0.1:8443");
 	// empty serves no API and runs no modules' routes. Modules still run.
 	APIListen string
@@ -292,6 +300,7 @@ func (d *Daemon) Public() http.Handler {
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
 	d.mountEnroll(mux)
+	d.mountUI(mux)
 	return mux
 }
 
@@ -608,6 +617,56 @@ func (d *Daemon) install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+// mountUI serves the built interface and the old panel API it calls, at
+// /panel and /panel/api. It needs the master's modules, so it is a no-op
+// until the master is ready.
+func (d *Daemon) mountUI(mux *http.ServeMux) {
+	if d.cfg.UIDir == "" {
+		return
+	}
+	mux.Handle("/panel/", http.HandlerFunc(d.serveUI))
+	mux.HandleFunc("GET /panel", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/panel/", http.StatusFound)
+	})
+}
+
+// serveUI answers the interface's files, falling back to index.html so the
+// client-side router owns the paths, and hands /panel/api to the modules'
+// legacy adapter.
+func (d *Daemon) serveUI(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/panel/api/") {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		withLegacy(module.All(), apiserver.New(h, module.All())).ServeHTTP(w, r)
+		return
+	}
+	file := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/panel"), "/")
+	file = path.Clean("/" + file)
+	if file == "/" || file == "/index.html" {
+		d.serveIndex(w, r)
+		return
+	}
+	full := filepath.Join(d.cfg.UIDir, file)
+	if st, err := os.Stat(full); err != nil || st.IsDir() {
+		d.serveIndex(w, r) // a client-side route
+		return
+	}
+	http.ServeFile(w, r, full)
+}
+
+func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
+	index := filepath.Join(d.cfg.UIDir, "index.html")
+	if _, err := os.Stat(index); err != nil {
+		http.Error(w, "no interface built in "+d.cfg.UIDir, http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-cache")
+	http.ServeFile(w, r, index)
 }
 
 // registerNode builds a node's spec from a role and a public name and writes
