@@ -141,3 +141,20 @@ Answer: `{node, summary, spec, reported}`.
 6. Node state and maintenance — done (`GET /nodes/state`,
    `POST /nodes/{node}/drain`; the lab registers nodes, sees them online and
    toggles maintenance).
+
+## Templates
+
+A template is a **node spec shape without clients**, saved under a name and
+stamped onto many nodes. It carries two placeholders:
+
+- `{{NODE_NAME}}` — the node name (default: the target node's name);
+- `{{NODE_DOMAIN}}` — the node's public domain, supplied per target.
+
+`POST /templates {name, remark, spec}` saves one (refused if it has clients or
+no inbounds/exits); `GET /templates` lists; `DELETE /templates/{name}` drops
+it; `POST /templates/{name}/apply {nodes, domain, names, dryRun}` fills the
+spec for each node and writes it through the normal spec write, so the node
+picks it up on its next pull and its certificate is requested for the names
+it terminates. A node whose `{{NODE_DOMAIN}}` was not supplied is reported
+(`missing`) and left alone; `dryRun` renders and validates without writing.
+The same operations are mirrored in `templatesmod` under `/api/v1/templates`.

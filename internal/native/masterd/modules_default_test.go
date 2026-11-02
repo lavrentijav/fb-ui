@@ -1,4 +1,4 @@
-//go:build !no_audit && !no_webhook && !no_routing && !no_certs && !no_ui
+//go:build !no_audit && !no_webhook && !no_routing && !no_certs && !no_ui && !no_templates
 
 package masterd
 
@@ -14,7 +14,7 @@ func TestDefaultBuildRegistersTheOptionalModules(t *testing.T) {
 	for _, m := range module.All() {
 		names = append(names, m.Name())
 	}
-	for _, want := range []string{"audit", "webhooks", "routing", "certs", "ui"} {
+	for _, want := range []string{"audit", "webhooks", "routing", "certs", "ui", "templates"} {
 		if !slices.Contains(names, want) {
 			t.Fatalf("module %q missing from the default build: %v", want, names)
 		}

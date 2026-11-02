@@ -40,6 +40,7 @@ var hosts = []host{
 	{"ru2m", "10.0.1.2", []string{"ru2.m.lab.firewalk.test"}},
 	{"de2m", "10.0.1.3", []string{"de2.m.lab.firewalk.test"}},
 	{"ru4", "10.0.2.4", []string{"ru4.lab.firewalk.test", "ru.lab.firewalk.test"}},
+	{"ru7", "10.0.2.7", []string{"ru7.lab.firewalk.test"}},
 	{"de1", "10.0.3.1", []string{"de1.lab.firewalk.test"}},
 	{"de2", "10.0.3.2", []string{"de2.lab.firewalk.test"}},
 	{"web", "10.0.8.1", []string{"web.lab.test", "mail.lab.firewalk.test"}},

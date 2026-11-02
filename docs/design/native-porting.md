@@ -34,7 +34,7 @@ main-line commit that has been reviewed. The main line is
 | Area | State on `native` |
 |---|---|
 | Node agent (`fbnode`) | in progress: `cmd/fbnode` runs (journal, nearest-master pick, desired state, Xray control, edge 443, certs, drain, presence, live network routing, IP limits/fail2ban, self-enrollment via `fbnode enroll`); missing: sidecars, master↔agent runtime |
-| Provisioning | in progress: SSH preflight, install+enrol and register (`internal/native/provision`, `POST /provision/preflight|install|register`); missing: DNS record, rollback of a successful install, upgrade |
+| Provisioning | in progress: SSH preflight, install+enrol, register and templates (`internal/native/provision`, `POST /provision/preflight|install|register`, `/templates`); missing: DNS record, rollback of a successful install, upgrade |
 | Virtual networks (phase 1) | in progress: users, addresses, names, per-network DNS resolver (`internal/native/vdns`), networks, invites, presence, in-network routing, client config; lab `TestMembersOnDifferentNodes` passes; missing: exposes by name/allocated port |
 | Master ↔ agent runtime | in progress: `GET /nodes/state` merges spec registry with the newest reports (online, last seen, drain, online users); agents send heartbeats when idle |
 | Master modules / build tags | in progress: module registry (`internal/native/module`), `/api/v1` server and API tokens, `mhost` (leader lease), modules `audit`, `webhooks`, `certs` (status, rollback), `routing` (lists, rules, ASN, tester; rules compiled into `nodespec.Spec.Rules`), adapter `compat` for the old `/panel/api`; tags `no_audit`, `no_webhook`, `no_routing`, `no_certs`, `no_compat`. Missing: the rest of the modules, session login |

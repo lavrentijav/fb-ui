@@ -43,6 +43,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/provision"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/register"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/templates"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
 
@@ -515,6 +516,23 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
 	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
+	mux.HandleFunc("GET /templates", func(w http.ResponseWriter, _ *http.Request) {
+		apiserver.JSON(w, http.StatusOK, templates.List(d.store.State))
+	})
+	mux.HandleFunc("POST /templates", d.saveTemplate)
+	mux.HandleFunc("DELETE /templates/{name}", func(w http.ResponseWriter, r *http.Request) {
+		m := d.m.Load()
+		if m == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		if err := templates.Delete(r.Context(), m, r.PathValue("name")); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	})
+	mux.HandleFunc("POST /templates/{name}/apply", d.applyTemplate)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -677,6 +695,61 @@ func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = io.WriteString(w, html)
+}
+
+// saveTemplate stores a spec template (a shape without clients).
+func (d *Daemon) saveTemplate(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var body templates.Save
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, _ = m.CatchUp(r.Context())
+	t, err := templates.SaveTemplate(r.Context(), m, d.store.State, body)
+	if err != nil {
+		code := http.StatusBadRequest
+		if err == templates.ErrExists {
+			code = http.StatusConflict
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, t)
+}
+
+// applyTemplate stamps a template onto nodes; each applied spec goes through
+// the normal write, so a node picks it up on its next pull.
+func (d *Daemon) applyTemplate(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var body templates.ApplyRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	name := r.PathValue("name")
+	if !d.waitKey(r.Context(), m, templates.Table, name, 15*time.Second) {
+		http.Error(w, "no such template (not replicated here yet)", http.StatusNotFound)
+		return
+	}
+	out, err := templates.Stamp(r.Context(), d.store.State, m, name, body)
+	if err != nil {
+		code := http.StatusBadRequest
+		if err == templates.ErrNoTemplate {
+			code = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, out)
 }
 
 // setDrain puts a node in or out of maintenance through its spec; the agent
@@ -852,6 +925,25 @@ func (d *Daemon) registerNode(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"node": spec.Node, "summary": register.Describe(spec), "spec": spec, "reported": reported,
 	})
+}
+
+// waitKey waits for a record written on another master to replicate here.
+func (d *Daemon) waitKey(ctx context.Context, m *master.Master, table, key string, wait time.Duration) bool {
+	deadline := time.Now().Add(wait)
+	for {
+		_, _ = m.CatchUp(ctx)
+		if _, ok := d.store.State.Get(table, key); ok {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
 }
 
 // waitSpec waits for a spec written on another master to replicate here.

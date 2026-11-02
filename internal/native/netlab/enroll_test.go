@@ -143,9 +143,16 @@ func TestNodeEnrollsItself(t *testing.T) {
 	}
 	// a token works once: redeemed through ru2, refused by fi1 after it replicates
 	token := f.enrollToken(t, "fi1", "ru4")
-	if code := redeem("ru2", token); code != http.StatusOK {
-		t.Fatalf("a fresh token answered %d", code)
-	}
+	eventually(t, 20*time.Second, "a fresh token is accepted once it replicates", func() (bool, string) {
+		switch code := redeem("ru2", token); code {
+		case http.StatusOK:
+			return true, ""
+		case http.StatusUnauthorized:
+			return false, "not replicated yet"
+		default:
+			return false, fmt.Sprintf("answered %d", code)
+		}
+	})
 	eventually(t, 20*time.Second, "the spent token is refused everywhere", func() (bool, string) {
 		if code := redeem("fi1", token); code != http.StatusUnauthorized {
 			return false, fmt.Sprintf("answered %d", code)
