@@ -24,18 +24,48 @@ type envelope struct {
 // the old panel it answers 200 with success=false for a failed call; refused
 // credentials keep their 401/403 so callers can tell them from a bad request.
 func Handler(mods []module.Module, api http.Handler) http.Handler {
+	return HandlerWithFallback(mods, api, nil)
+}
+
+// HandlerWithFallback is Handler with a last resort for an unmapped route:
+// fallback sees the request with "/panel/api" already stripped (so a master can
+// answer /panel/api/server/status from its /server/status handler). When
+// fallback is nil, or answers 404, the old envelope explains that the section
+// is not available on a native master.
+func HandlerWithFallback(mods []module.Module, api http.Handler, fallback http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	for _, m := range mods {
 		for _, lr := range m.Legacy() {
 			mux.Handle(lr.Method+" "+lr.Old, serve(lr, api))
 		}
 	}
-	// Anything else the old page calls (the panel-local Xray view, server
-	// metrics, and the pages whose sections the native master simply does not
-	// have) answers the old envelope with a clear refusal, so a screen shows a
-	// message instead of an empty 404.
-	mux.Handle("/panel/api/", unsupported())
+	mux.Handle("/panel/api/", unmapped(fallback))
 	return mux
+}
+
+// unmapped tries the fallback with the prefix stripped, then refuses.
+func unmapped(fallback http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if fallback != nil {
+			inner := r.Clone(r.Context())
+			inner.URL.Path = strings.TrimPrefix(r.URL.Path, "/panel/api")
+			if inner.URL.Path == "" {
+				inner.URL.Path = "/"
+			}
+			inner.RequestURI = ""
+			rec := httptest.NewRecorder()
+			fallback.ServeHTTP(rec, inner)
+			if rec.Code != http.StatusNotFound {
+				for k, v := range rec.Header() {
+					w.Header()[k] = v
+				}
+				w.WriteHeader(rec.Code)
+				_, _ = w.Write(rec.Body.Bytes())
+				return
+			}
+		}
+		unsupported().ServeHTTP(w, r)
+	})
 }
 
 // unsupported is the answer for an old route no module maps.

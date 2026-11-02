@@ -566,6 +566,7 @@ func (d *Daemon) Handler() http.Handler {
 	d.mountEnroll(mux)
 	d.mountMasterJoin(mux)
 	d.mountUI(mux)
+	d.serveFleetView(mux)
 	mux.HandleFunc("POST /provision/preflight", d.preflight)
 	mux.HandleFunc("POST /provision/install", d.install)
 	mux.HandleFunc("POST /provision/register", d.registerNode)
@@ -885,7 +886,9 @@ func (d *Daemon) serveUI(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "starting", http.StatusServiceUnavailable)
 			return
 		}
-		withLegacy(module.All(), apiserver.New(h, module.All())).ServeHTTP(w, r)
+		// the modules' routes first, then the master's own aggregate read
+		// paths (inbounds/clients/nodes/status) in the old shapes
+		withLegacyFallback(module.All(), apiserver.New(h, module.All()), d.Handler()).ServeHTTP(w, r)
 		return
 	}
 	file := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/panel"), "/")

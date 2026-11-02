@@ -117,6 +117,56 @@ const iconByName: Record<IconName, ComponentType> = {
   routing: SwapOutlined,
 };
 
+type NavTab = { key: string; icon: IconName; title: string; section: SectionId };
+
+// fullTabs is the whole interface (the main line's panel).
+function fullTabs(t: (k: string) => string): NavTab[] {
+  return [
+    { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
+    { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
+    { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
+    { key: '/subscriptions', icon: 'subscriptions', title: t('menu.subscriptions'), section: 'access' },
+    { key: '/vnet', icon: 'vnet', title: t('menu.vnet'), section: 'access' },
+    { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
+    { key: '/cascades', icon: 'network', title: t('menu.network'), section: 'fleet' },
+    { key: '/templates', icon: 'templates', title: t('menu.templates'), section: 'fleet' },
+    { key: '/edge', icon: 'edge', title: t('menu.edge'), section: 'entry' },
+    { key: '/certs', icon: 'certs', title: t('menu.certs'), section: 'entry' },
+    { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
+    { key: '/xray', icon: 'tool', title: t('menu.xray'), section: 'routing' },
+    { key: '/settings', icon: 'setting', title: t('menu.settings'), section: 'system' },
+    { key: '/access', icon: 'access', title: t('menu.access'), section: 'system' },
+    { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
+    { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
+    { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },
+    { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
+    { key: LOGOUT_KEY, icon: 'logout', title: t('logout'), section: 'system' },
+  ];
+}
+
+// nativeTabs is what a native master backs: no panel-local core, no cascade
+// graph, no edge table, no old settings object; hosts stands alone.
+function nativeTabs(t: (k: string) => string): NavTab[] {
+  return [
+    { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
+    { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
+    { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
+    { key: '/subscriptions', icon: 'subscriptions', title: t('menu.subscriptions'), section: 'access' },
+    { key: '/vnet', icon: 'vnet', title: t('menu.vnet'), section: 'access' },
+    { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
+    { key: '/templates', icon: 'templates', title: t('menu.templates'), section: 'fleet' },
+    { key: '/hosts', icon: 'hosts', title: t('menu.hosts'), section: 'entry' },
+    { key: '/certs', icon: 'certs', title: t('menu.certs'), section: 'entry' },
+    { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
+    { key: '/access', icon: 'access', title: t('menu.access'), section: 'system' },
+    { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
+    { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
+    { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },
+    { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
+    { key: LOGOUT_KEY, icon: 'logout', title: t('logout'), section: 'system' },
+  ];
+}
+
 function DonateButton({ ariaLabel }: { ariaLabel: string }) {
   return (
     <a
@@ -249,29 +299,15 @@ export default function AppSidebar() {
   const currentTheme: 'light' | 'dark' = isDark ? 'dark' : 'light';
   const panelVersion = window.X_UI_CUR_VER || '';
 
-  const tabs = useMemo<{ key: string; icon: IconName; title: string; section: SectionId }[]>(
-    () => [
-      { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
-      { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
-      { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
-      { key: '/subscriptions', icon: 'subscriptions', title: t('menu.subscriptions'), section: 'access' },
-      { key: '/vnet', icon: 'vnet', title: t('menu.vnet'), section: 'access' },
-      { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
-      { key: '/cascades', icon: 'network', title: t('menu.network'), section: 'fleet' },
-      { key: '/templates', icon: 'templates', title: t('menu.templates'), section: 'fleet' },
-      { key: '/edge', icon: 'edge', title: t('menu.edge'), section: 'entry' },
-      { key: '/certs', icon: 'certs', title: t('menu.certs'), section: 'entry' },
-      { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
-      { key: '/xray', icon: 'tool', title: t('menu.xray'), section: 'routing' },
-      { key: '/settings', icon: 'setting', title: t('menu.settings'), section: 'system' },
-      { key: '/access', icon: 'access', title: t('menu.access'), section: 'system' },
-      { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
-      { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
-      { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },
-      { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
-      { key: LOGOUT_KEY, icon: 'logout', title: t('logout'), section: 'system' },
-    ],
-    [t],
+  // A native master runs no core of its own and keeps no panel-local database:
+  // the Xray core editor, the cascade graph and the edge-route table have no
+  // data source there, so they are not offered. Hosts (the advertised
+  // addresses) do, and it is its own entry in that mode because the merged
+  // Edge page holds the half that is missing.
+  const native = !!window.X_UI_NATIVE;
+  const tabs = useMemo<NavTab[]>(
+    () => (native ? nativeTabs(t) : fullTabs(t)),
+    [t, native],
   );
 
   const navItems = useMemo(() => tabs.filter((tab) => tab.icon !== 'logout'), [tabs]);

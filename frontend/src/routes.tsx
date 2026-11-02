@@ -18,6 +18,7 @@ const NetworkPage = lazy(() => import('@/pages/network/NetworkPage'));
 const FiltersPage = lazy(() => import('@/pages/filters/FiltersPage'));
 const CertsPage = lazy(() => import('@/pages/certs/CertsPage'));
 const EdgeHostsPage = lazy(() => import('@/pages/edge/EdgeHostsPage'));
+const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
 const TemplatesPage = lazy(() => import('@/pages/templates/TemplatesPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const XrayPage = lazy(() => import('@/pages/xray/XrayPage'));
@@ -60,7 +61,16 @@ const routes: RouteObject[] = [
       { path: 'cascades', element: withSuspense(<NetworkPage />) },
       { path: 'network', element: <Navigate to="/cascades" replace /> },
       { path: 'filters', element: withSuspense(<FiltersPage />) },
-      { path: 'hosts', element: <Navigate to="/edge#hosts" replace /> },
+      // a native master backs hosts but not the edge-route table, so /hosts is
+      // its own page there and a tab of Edge elsewhere
+      {
+        path: 'hosts',
+        element: window.X_UI_NATIVE ? (
+          withSuspense(<HostsPage />)
+        ) : (
+          <Navigate to="/edge#hosts" replace />
+        ),
+      },
       { path: 'certs', element: withSuspense(<CertsPage />) },
       { path: 'edge', element: withSuspense(<EdgeHostsPage />) },
       { path: 'templates', element: withSuspense(<TemplatesPage />) },
