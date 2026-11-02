@@ -109,7 +109,10 @@ type VNet struct {
 }
 
 type VMember struct {
-	Email   string `json:"email"`
+	Email string `json:"email"`
+	// Rev is the reverse-tunnel user's email on the same inbound; empty
+	// means Email (older tables).
+	Rev     string `json:"rev,omitempty"`
 	IP      string `json:"ip"`
 	Network string `json:"network"`
 }

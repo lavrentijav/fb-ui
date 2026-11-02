@@ -19,7 +19,11 @@ func (s *Store) Fill(spec *nodespec.Spec, specs map[string]nodespec.Spec) {
 		if ib.VNet {
 			t.Entry = append(t.Entry, ib.Tag)
 			for _, u := range users {
-				ib.Clients = append(ib.Clients, nodespec.Client{Email: u.Email, ID: u.UUID, Reverse: true})
+				ib.Clients = append(ib.Clients, nodespec.Client{Email: u.Email, ID: u.UUID})
+				if u.RevUUID != "" {
+					ib.Clients = append(ib.Clients,
+						nodespec.Client{Email: RevEmail(u.Email), ID: u.RevUUID, Reverse: true})
+				}
 			}
 		}
 		if slices.ContainsFunc(ib.Clients, func(c nodespec.Client) bool { return c.Email == CascadeUser }) {
@@ -31,7 +35,7 @@ func (s *Store) Fill(spec *nodespec.Spec, specs map[string]nodespec.Spec) {
 	}
 	for _, u := range users {
 		if m, ok := s.NetworkOf(u.ID); ok {
-			t.Members = append(t.Members, nodespec.VMember{Email: u.Email, IP: u.IP, Network: m.Network})
+			t.Members = append(t.Members, nodespec.VMember{Email: u.Email, Rev: RevEmail(u.Email), IP: u.IP, Network: m.Network})
 		}
 	}
 	for node, other := range specs {

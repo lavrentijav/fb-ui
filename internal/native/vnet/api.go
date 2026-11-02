@@ -13,6 +13,8 @@ func API(s *Store, where func() map[string]string) http.Handler {
 	mux := http.NewServeMux()
 	auth := func(h func(http.ResponseWriter, *http.Request, User)) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// any master may take the request: see the changes made through others
+			_, _ = s.Master.CatchUp(r.Context())
 			token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 			u, ok := s.UserByToken(token)
 			if !ok {

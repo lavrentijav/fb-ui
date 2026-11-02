@@ -38,7 +38,12 @@ type Reader interface {
 	Keys(table string) []string
 }
 
-type User struct{ ID, Email, UUID, Token, IP string }
+type User struct{ ID, Email, UUID, RevUUID, Token, IP string }
+
+// RevEmail is the user's reverse-tunnel identity on the same inbound: Xray
+// forbids a reverse-enabled user from making forward requests, so one user
+// cannot both expose its tunnel and send into the network.
+func RevEmail(email string) string { return email + "#rev" }
 
 type Member struct{ User, Network, Role string }
 
@@ -99,6 +104,25 @@ func (s *Store) settle(ctx context.Context) error {
 	return err
 }
 
+// waitFor gives a write made through another master time to arrive here.
+func (s *Store) waitFor(ctx context.Context, ok func() bool) bool {
+	for range 20 {
+		if ok() {
+			return true
+		}
+		_, _ = s.Master.CatchUp(ctx)
+		if ok() {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	return ok()
+}
+
 // randomAddr is an address in 100.64.0.0/10 that is not a .0 or .255.
 func randomAddr() string {
 	var b [4]byte
@@ -119,7 +143,7 @@ func (s *Store) CreateUser(ctx context.Context, id string) (User, error) {
 	if u, ok := s.User(id); ok {
 		return u, nil
 	}
-	u := User{ID: id, Email: id, UUID: uuid4(), Token: random(24)}
+	u := User{ID: id, Email: id, UUID: uuid4(), RevUUID: uuid4(), Token: random(24)}
 	for range 5 {
 		ip := randomAddr()
 		if _, taken := s.State.Get(AddrTable, ip); taken {
@@ -143,7 +167,7 @@ func (s *Store) CreateUser(ctx context.Context, id string) (User, error) {
 		return User{}, err
 	}
 	_, err := s.Master.Set(ctx, UserTable, id, map[string]any{
-		"email": u.Email, "uuid": u.UUID, "token": u.Token, "ip": u.IP,
+		"email": u.Email, "uuid": u.UUID, "revuuid": u.RevUUID, "token": u.Token, "ip": u.IP,
 	})
 	return u, err
 }
@@ -153,7 +177,7 @@ func (s *Store) User(id string) (User, bool) {
 	if !ok {
 		return User{}, false
 	}
-	return User{ID: id, Email: str(rec, "email"), UUID: str(rec, "uuid"), Token: str(rec, "token"), IP: str(rec, "ip")}, true
+	return User{ID: id, Email: str(rec, "email"), UUID: str(rec, "uuid"), RevUUID: str(rec, "revuuid"), Token: str(rec, "token"), IP: str(rec, "ip")}, true
 }
 
 func (s *Store) UserByToken(token string) (User, bool) {
@@ -220,6 +244,7 @@ func (s *Store) CreateNetwork(ctx context.Context, user, title string) (string, 
 func canInvite(m Member) bool { return m.Role == "owner" || m.Role == "admin" }
 
 func (s *Store) Invite(ctx context.Context, by string, ttl time.Duration, uses int) (string, error) {
+	s.waitFor(ctx, func() bool { _, ok := s.NetworkOf(by); return ok })
 	m, ok := s.NetworkOf(by)
 	if !ok {
 		return "", ErrNoNetwork
@@ -253,6 +278,7 @@ func (s *Store) Join(ctx context.Context, user, code string) error {
 	if _, in := s.NetworkOf(user); in {
 		return ErrInNetwork
 	}
+	s.waitFor(ctx, func() bool { _, ok := s.State.Get(InviteTable, code); return ok })
 	rec, ok := s.State.Get(InviteTable, code)
 	if !ok || num(rec, "uses") <= 0 || s.now().UnixMilli() > num(rec, "expires") {
 		return ErrBadInvite

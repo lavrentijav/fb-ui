@@ -12,8 +12,10 @@ import (
 // Presence publishes this node's online users and re-routes the network
 // whenever the fleet's presence changes.
 type Presence struct {
-	Node  string
-	Xray  interface{ Online(context.Context) ([]string, error) }
+	Node string
+	Xray interface {
+		Online(context.Context) ([]string, error)
+	}
 	Map   *presence.Map
 	Conn  func(ctx context.Context) (*nats.Conn, error)
 	Every time.Duration // default 2 s
@@ -23,7 +25,9 @@ type Presence struct {
 	watched *nats.Conn
 }
 
-func NewPresence(node string, x interface{ Online(context.Context) ([]string, error) }, m *presence.Map,
+func NewPresence(node string, x interface {
+	Online(context.Context) ([]string, error)
+}, m *presence.Map,
 	a *BundleApplier, conn func(ctx context.Context) (*nats.Conn, error), log func(string, ...any)) *Presence {
 	return &Presence{Node: node, Xray: x, Map: m, Conn: conn, Log: log, repatch: a.Repatch}
 }

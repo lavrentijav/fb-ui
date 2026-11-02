@@ -20,7 +20,8 @@ func TestClientConfigIsValidXray(t *testing.T) {
 		t.Skip("no xray binary")
 	}
 	cfg, err := vnet.ClientConfig(
-		vnet.User{Email: "alice", UUID: "11111111-1111-4111-8111-111111111111", IP: "100.64.0.7"},
+		vnet.User{Email: "alice", UUID: "11111111-1111-4111-8111-111111111111",
+			RevUUID: "22222222-2222-4222-8222-222222222222", IP: "100.64.0.7"},
 		vnet.ClientEntry{Address: "ru.example", Port: 443, SNI: "ru.example", Host: "ru.example", Network: "ws", Path: "/ws"},
 		[]map[string]any{{"tag": "socks", "listen": "127.0.0.1", "port": 10808, "protocol": "socks"}},
 	)
@@ -45,7 +46,13 @@ func TestClientConfigIsValidXray(t *testing.T) {
 		} `json:"routing"`
 	}
 	_ = json.Unmarshal(cfg, &parsed)
-	if tag := parsed.Outbounds[0].Settings.Reverse.Tag; tag == "" || parsed.Routing.Rules[0].InboundTag[0] != tag {
+	var tag string
+	for _, o := range parsed.Outbounds {
+		if o.Settings.Reverse.Tag != "" {
+			tag = o.Settings.Reverse.Tag
+		}
+	}
+	if tag == "" || parsed.Routing.Rules[0].InboundTag[0] != tag {
 		t.Fatalf("the reverse tag %q and the rule for it differ", tag)
 	}
 	f := filepath.Join(t.TempDir(), "c.json")

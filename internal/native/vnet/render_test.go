@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
 )
 
 const uid = "11111111-1111-4111-8111-111111111111"
@@ -27,18 +28,25 @@ func TestFillAddsUsersAndTable(t *testing.T) {
 	de2 := nodespec.Spec{Node: "de2", VNetHop: &nodespec.Hop{Address: "de2.x", Port: 443, ID: uid, Network: "ws", Path: "/c", SNI: "de2.x"}}
 	s.Fill(&ru4, map[string]nodespec.Spec{"ru4": ru4, "de2": de2})
 
-	var alice nodespec.Client
+	var alice, aliceRev nodespec.Client
 	for _, c := range ru4.Inbounds[0].Clients {
-		if c.Email == "alice" {
+		switch c.Email {
+		case "alice":
 			alice = c
+		case vnet.RevEmail("alice"):
+			aliceRev = c
 		}
 	}
-	if alice.ID != a.UUID || !alice.Reverse || len(ru4.Inbounds[0].Clients) != 2 {
+	if alice.ID != a.UUID || alice.Reverse || aliceRev.ID != a.RevUUID || !aliceRev.Reverse ||
+		len(ru4.Inbounds[0].Clients) != 4 {
 		t.Fatalf("vpn clients %+v", ru4.Inbounds[0].Clients)
 	}
 	v := ru4.VNet
 	if v == nil || v.Cascade != "cascade" || !slices.Equal(v.Entry, []string{"vpn"}) || v.Peers["de2"].Address != "de2.x" {
 		t.Fatalf("table %+v", v)
+	}
+	if v.Members[0].Rev != vnet.RevEmail(v.Members[0].Email) {
+		t.Fatalf("member has no reverse identity: %+v", v.Members[0])
 	}
 	if len(v.Members) != 2 || v.Members[0].Network != n {
 		t.Fatalf("members %+v", v.Members)

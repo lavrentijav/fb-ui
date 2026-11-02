@@ -32,13 +32,17 @@ func Patch(xray []byte, t *nodespec.VNet, where map[string]string, self string) 
 	peers := map[string]bool{}
 	for _, m := range t.Members {
 		users := slices.Sorted(slices.Values(byNet[m.Network]))
-		switch node := where[m.Email]; {
+		rev := m.Rev
+		if rev == "" {
+			rev = m.Email
+		}
+		switch node := where[rev]; {
 		case node == self:
 			rules = append(rules,
-				obj{"type": "field", "inboundTag": t.Entry, "user": users, "ip": []string{m.IP}, "outboundTag": nodespec.ReverseTag(m.Email)})
+				obj{"type": "field", "inboundTag": t.Entry, "user": users, "ip": []string{m.IP}, "outboundTag": nodespec.ReverseTag(rev)})
 			if t.Cascade != "" {
 				rules = append(rules,
-					obj{"type": "field", "inboundTag": []string{t.Cascade}, "ip": []string{m.IP}, "outboundTag": nodespec.ReverseTag(m.Email)})
+					obj{"type": "field", "inboundTag": []string{t.Cascade}, "ip": []string{m.IP}, "outboundTag": nodespec.ReverseTag(rev)})
 			}
 		case node != "":
 			if _, ok := t.Peers[node]; ok {

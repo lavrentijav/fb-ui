@@ -25,6 +25,16 @@ func ClientConfig(u User, e ClientEntry, inbounds []map[string]any) ([]byte, err
 		"tag": "vpn", "protocol": "vless", "streamSettings": hop["streamSettings"],
 		"settings": map[string]any{
 			"address": e.Address, "port": e.Port, "id": u.UUID, "email": u.Email, "encryption": "none",
+		},
+	}
+	revID := u.RevUUID
+	if revID == "" {
+		revID = u.UUID
+	}
+	rev := map[string]any{
+		"tag": "rev", "protocol": "vless", "streamSettings": hop["streamSettings"],
+		"settings": map[string]any{
+			"address": e.Address, "port": e.Port, "id": revID, "email": RevEmail(u.Email), "encryption": "none",
 			"reverse": map[string]any{"tag": "from-node"},
 		},
 	}
@@ -38,7 +48,7 @@ func ClientConfig(u User, e ClientEntry, inbounds []map[string]any) ([]byte, err
 	cfg := map[string]any{
 		"log":       map[string]any{"loglevel": "warning"},
 		"inbounds":  inbounds,
-		"outbounds": []any{vpn, local},
+		"outbounds": []any{vpn, rev, local},
 		"routing": map[string]any{"rules": []any{
 			map[string]any{"type": "field", "inboundTag": []string{"from-node"}, "outboundTag": "local"},
 			map[string]any{"type": "field", "ip": []string{nodespec.VNetPrefix}, "outboundTag": "vpn"},
