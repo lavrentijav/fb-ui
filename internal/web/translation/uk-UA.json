@@ -105,7 +105,21 @@
     "support": "Підтримка",
     "qrTitle": "Скануйте. Імпортуйте. Підключайтеся.",
     "qrHint": "Відскануйте в клієнтському застосунку. Нікому не показуйте цей код.",
-    "saveQr": "Зберегти QR"
+    "saveQr": "Зберегти QR",
+    "tabAccount": "Manage",
+    "accountHint": "Log in with your login and password to manage this subscription and its virtual network.",
+    "accountUser": "Login",
+    "accountPassword": "Password",
+    "vnetTitle": "Virtual network",
+    "vnetAddress": "Internal address",
+    "vnetNetwork": "Network",
+    "vnetRole": "Role",
+    "vnetNewTitle": "New network title",
+    "vnetCreate": "Create network",
+    "vnetInviteCode": "Invite code",
+    "vnetJoin": "Join with code",
+    "vnetInvite": "Invite",
+    "vnetLeave": "Leave network"
   },
   "menu": {
     "theme": "Тема",

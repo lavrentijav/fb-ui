@@ -38,6 +38,13 @@ without it, and the UI module can be cut with `-tags no_ui`.
   asks for an API token and posts it to `/api/v1/ui/login`, which sets the
   session cookie (the old username/password flow stays for the main line).
 
+## Subscription page (done 2026-11-02)
+
+The subscription page is a separate build entry (`subpage.html`) served by the
+master at `/sub/<token>` for browsers (raw links for clients), with the login
+and the virtual network in a **Manage** tab backed by `/api/v1/sub/*`. See
+`native-nodes.md` for the API.
+
 ## Still to do
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for

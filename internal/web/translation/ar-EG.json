@@ -105,7 +105,21 @@
     "support": "الدعم",
     "qrTitle": "امسح. استورد. اتصل.",
     "qrHint": "امسح الرمز بتطبيق العميل. لا تشارك هذا الرمز مع أحد.",
-    "saveQr": "حفظ QR"
+    "saveQr": "حفظ QR",
+    "tabAccount": "Manage",
+    "accountHint": "Log in with your login and password to manage this subscription and its virtual network.",
+    "accountUser": "Login",
+    "accountPassword": "Password",
+    "vnetTitle": "Virtual network",
+    "vnetAddress": "Internal address",
+    "vnetNetwork": "Network",
+    "vnetRole": "Role",
+    "vnetNewTitle": "New network title",
+    "vnetCreate": "Create network",
+    "vnetInviteCode": "Invite code",
+    "vnetJoin": "Join with code",
+    "vnetInvite": "Invite",
+    "vnetLeave": "Leave network"
   },
   "menu": {
     "theme": "الثيم",

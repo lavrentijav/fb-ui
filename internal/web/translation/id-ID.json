@@ -105,7 +105,21 @@
     "support": "Dukungan",
     "qrTitle": "Pindai. Impor. Terhubung.",
     "qrHint": "Pindai dengan aplikasi klien Anda. Jaga kerahasiaan kode ini.",
-    "saveQr": "Simpan QR"
+    "saveQr": "Simpan QR",
+    "tabAccount": "Manage",
+    "accountHint": "Log in with your login and password to manage this subscription and its virtual network.",
+    "accountUser": "Login",
+    "accountPassword": "Password",
+    "vnetTitle": "Virtual network",
+    "vnetAddress": "Internal address",
+    "vnetNetwork": "Network",
+    "vnetRole": "Role",
+    "vnetNewTitle": "New network title",
+    "vnetCreate": "Create network",
+    "vnetInviteCode": "Invite code",
+    "vnetJoin": "Join with code",
+    "vnetInvite": "Invite",
+    "vnetLeave": "Leave network"
   },
   "menu": {
     "theme": "Tema",

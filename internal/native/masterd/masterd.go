@@ -47,6 +47,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/provision"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/register"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/subauth"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/templates"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/usage"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
@@ -306,6 +307,7 @@ func (d *Daemon) Public() http.Handler {
 	})
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
+	d.mountSubAPI(mux)
 	d.mountEnroll(mux)
 	d.mountUI(mux)
 	return mux
@@ -486,24 +488,8 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
-	mux.HandleFunc("PUT /sub/{email}", func(w http.ResponseWriter, r *http.Request) {
-		m := d.m.Load()
-		if m == nil {
-			http.Error(w, "starting", http.StatusServiceUnavailable)
-			return
-		}
-		email := r.PathValue("email")
-		if email == "" {
-			http.Error(w, "an email is required", http.StatusBadRequest)
-			return
-		}
-		token, err := d.subToken(r.Context(), m, email)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
-	})
+	mux.HandleFunc("PUT /sub/{email}", d.createSubscription)
+	mux.HandleFunc("POST /sub/{email}/password", d.resetSubPassword)
 	mux.HandleFunc("DELETE /sub/{token}", func(w http.ResponseWriter, r *http.Request) {
 		m := d.m.Load()
 		if m == nil {
@@ -515,7 +501,9 @@ func (d *Daemon) Handler() http.Handler {
 		}
 	})
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
+	d.mountSubAPI(mux)
 	d.mountEnroll(mux)
+	d.mountUI(mux)
 	mux.HandleFunc("POST /provision/preflight", d.preflight)
 	mux.HandleFunc("POST /provision/install", d.install)
 	mux.HandleFunc("POST /provision/register", d.registerNode)
@@ -1441,45 +1429,496 @@ func (d *Daemon) specs() []nodespec.Spec {
 	return out
 }
 
-// subToken is the token an email already has, or a new one.
-func (d *Daemon) subToken(ctx context.Context, m *master.Master, email string) (string, error) {
+// subToken answers the subscription token for email, creating it (and its
+// login) when missing. user defaults to the email; a non-empty pass sets a new
+// password and overwrites the login. The password is never returned here — the
+// callers that mint one answer it once.
+func (d *Daemon) subToken(ctx context.Context, m *master.Master, email, user, passHash string) (string, error) {
 	// a token minted on another master may not have replicated here yet
 	_, _ = m.CatchUp(ctx)
-	for _, token := range d.store.State.Keys(SubTokenTable) {
-		rec, ok := d.store.State.Get(SubTokenTable, token)
+	var token string
+	for _, key := range d.store.State.Keys(SubTokenTable) {
+		rec, ok := d.store.State.Get(SubTokenTable, key)
 		var have string
 		if ok && json.Unmarshal(rec["email"], &have) == nil && have == email {
-			return token, nil
+			token = key
+			break
 		}
 	}
-	buf := make([]byte, 24)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
+	if token == "" {
+		buf := make([]byte, 24)
+		if _, err := rand.Read(buf); err != nil {
+			return "", err
+		}
+		token = hex.EncodeToString(buf)
 	}
-	token := hex.EncodeToString(buf)
-	_, err := m.Set(ctx, SubTokenTable, token, map[string]any{"email": email})
+	fields := map[string]any{"email": email, "enable": true}
+	if rec, ok := d.store.State.Get(SubTokenTable, token); ok {
+		var enabled bool
+		_ = json.Unmarshal(rec["enable"], &enabled)
+		fields["enable"] = enabled
+		if u, _ := rec["user"]; len(u) > 0 {
+			var have string
+			if json.Unmarshal(u, &have) == nil {
+				fields["user"] = have
+			}
+		}
+		if p, _ := rec["pass"]; len(p) > 0 {
+			var have string
+			if json.Unmarshal(p, &have) == nil {
+				fields["pass"] = have
+			}
+		}
+	}
+	if user != "" {
+		fields["user"] = user
+	} else if _, ok := fields["user"]; !ok {
+		fields["user"] = email
+	}
+	if passHash != "" {
+		fields["pass"] = passHash
+	}
+	_, err := m.Set(ctx, SubTokenTable, token, fields)
 	return token, err
 }
 
-// serveSub is a client's subscription: the link list, base64-encoded.
+// wantsHTML reports whether the caller is a browser rather than a client.
+func wantsHTML(r *http.Request) bool {
+	if r.Method != http.MethodGet {
+		return false
+	}
+	if v := r.URL.Query().Get("format"); v != "" {
+		return v == "page"
+	}
+	return strings.Contains(strings.ToLower(r.Header.Get("Accept")), "text/html")
+}
+
+// serveSub is a client's subscription: a browser gets the page, a client the
+// base64 link list.
 func (d *Daemon) serveSub(w http.ResponseWriter, r *http.Request) {
 	if m := d.m.Load(); m != nil {
 		_, _ = m.CatchUp(r.Context())
 	}
-	rec, ok := d.store.State.Get(SubTokenTable, r.PathValue("token"))
-	if !ok {
+	token := r.PathValue("token")
+	rec, ok := subauth.Get(d.store.State, token)
+	if !ok || !rec.Enable {
 		http.NotFound(w, r)
 		return
 	}
-	var email string
-	_ = json.Unmarshal(rec["email"], &email)
-	links := sub.LinksWith(d.effectiveSpecs(), email, hosts.Endpoints(hosts.List(d.store.State)))
+	links := sub.LinksWith(d.effectiveSpecs(), rec.Email, hosts.Endpoints(hosts.List(d.store.State)))
+	if wantsHTML(r) {
+		d.serveSubPage(w, r, token, rec)
+		return
+	}
 	if len(links) == 0 {
-		http.Error(w, "no inbounds for "+email, http.StatusNotFound)
+		http.Error(w, "no inbounds for "+rec.Email, http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = io.WriteString(w, sub.Base64(links))
+}
+
+// subPageData is what the subscription page reads from window.
+type subPageData struct {
+	SID        string   `json:"sId"`
+	User       string   `json:"user"`
+	Enabled    bool     `json:"enabled"`
+	Links      []string `json:"links"`
+	Emails     []string `json:"emails"`
+	SubURL     string   `json:"subUrl"`
+	SubJSONURL string   `json:"subJsonUrl"`
+	SubTitle   string   `json:"subTitle"`
+	UsedByte   int64    `json:"usedByte"`
+	TotalByte  int64    `json:"totalByte"`
+	Expire     int64    `json:"expire"`
+	Datepicker string   `json:"datepicker"`
+}
+
+// serveSubPage serves the built subscription page (UIDir/subpage.html) with
+// the subscription baked in. Assets are absolute (/assets/...), so they are
+// pointed at the panel's static mount.
+func (d *Daemon) serveSubPage(w http.ResponseWriter, r *http.Request, token string, rec subauth.Record) {
+	if d.cfg.UIDir == "" {
+		http.Error(w, "no interface built", http.StatusNotFound)
+		return
+	}
+	page, err := os.ReadFile(filepath.Join(d.cfg.UIDir, "subpage.html"))
+	if err != nil {
+		http.Error(w, "no subscription page built", http.StatusNotFound)
+		return
+	}
+	links := sub.LinksWith(d.effectiveSpecs(), rec.Email, hosts.Endpoints(hosts.List(d.store.State)))
+	up, total, expire := d.emailUsage(rec.Email)
+	data := subPageData{
+		SID: token, User: rec.User, Enabled: rec.Enable, Links: links, Emails: []string{rec.Email},
+		SubURL: r.URL.Path, SubJSONURL: r.URL.Path + "?format=json",
+		SubTitle: rec.User, UsedByte: up, TotalByte: total, Expire: expire, Datepicker: "gregorian",
+	}
+	baked, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	html := string(page)
+	if i := strings.Index(html, `/assets/`); i >= 0 {
+		html = strings.ReplaceAll(html, `"/assets/`, `"/panel/assets/`)
+		html = strings.ReplaceAll(html, `href="/assets/`, `href="/panel/assets/`)
+	}
+	inject := `<script>window.X_UI_BASE_PATH="/";window.__SUB_PAGE_DATA__=` + string(baked) + `;window.__SUB_MANAGE__="/api/v1/sub";</script></head>`
+	html = strings.Replace(html, "</head>", inject, 1)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.WriteString(w, html)
+}
+
+// emailUsage sums an email's counted traffic and the allowance/expiry of its
+// first client record.
+func (d *Daemon) emailUsage(email string) (used, total, expire int64) {
+	if rec, ok := d.store.State.Get(usage.Table, email); ok {
+		_ = json.Unmarshal(rec["bytes"], &used)
+	}
+	for _, c := range clients.List(d.store.State) {
+		if c.Email != email {
+			continue
+		}
+		if c.TotalGB > total {
+			total = c.TotalGB
+		}
+		if c.ExpiresAt != 0 && (expire == 0 || c.ExpiresAt < expire) {
+			expire = c.ExpiresAt / 1000
+		}
+	}
+	return
+}
+
+// createSubscription creates or updates a subscription: PUT /sub/{email} with
+// an optional {"user","password"}. A new login gets a generated password,
+// answered once (or the one in the body).
+func (d *Daemon) createSubscription(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	email := r.PathValue("email")
+	if email == "" {
+		http.Error(w, "an email is required", http.StatusBadRequest)
+		return
+	}
+	var body struct {
+		User     string `json:"user"`
+		Password string `json:"password"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body)
+	if body.User != "" && !subauth.ValidUser(body.User) {
+		http.Error(w, subauth.ErrUser.Error(), http.StatusBadRequest)
+		return
+	}
+	existing, have := d.subByEmail(email)
+	pass := ""
+	switch {
+	case body.Password != "":
+		h, err := subauth.Password(body.Password)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		pass = h
+	case have && existing.PassHash != "":
+		// keep the current password
+	default:
+		gen, err := subauth.NewPassword()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		h, err := subauth.Password(gen)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		pass = h
+		body.Password = gen
+	}
+	token, err := d.subToken(r.Context(), m, email, body.User, pass)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rec, _ := subauth.Get(d.store.State, token)
+	out := map[string]any{"token": token, "email": email, "user": rec.User, "url": "/sub/" + token}
+	if body.Password != "" {
+		out["password"] = body.Password // shown once
+	}
+	apiserver.JSON(w, http.StatusOK, out)
+}
+
+// resetSubPassword regenerates a subscription's password and answers it once.
+func (d *Daemon) resetSubPassword(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	email := r.PathValue("email")
+	rec, ok := d.subByEmail(email)
+	if !ok {
+		http.Error(w, subauth.ErrNoSubscription.Error(), http.StatusNotFound)
+		return
+	}
+	gen, err := subauth.NewPassword()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	h, err := subauth.Password(gen)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, err := m.Set(r.Context(), subauth.Table, rec.Token, map[string]any{"pass": h}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, map[string]any{"token": rec.Token, "user": rec.User, "password": gen})
+}
+
+// subByEmail finds the subscription token for an email.
+func (d *Daemon) subByEmail(email string) (subauth.Record, bool) {
+	for _, token := range d.store.State.Keys(subauth.Table) {
+		rec, ok := subauth.Get(d.store.State, token)
+		if ok && rec.Email == email {
+			return rec, true
+		}
+	}
+	return subauth.Record{}, false
+}
+
+// subLogin checks a subscription login and sets its management cookie.
+func (d *Daemon) subLogin(w http.ResponseWriter, r *http.Request) {
+	h := d.host.Load()
+	if h == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var body struct {
+		User     string `json:"user"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body); err != nil {
+		apiserver.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if m := d.m.Load(); m != nil {
+		_, _ = m.CatchUp(r.Context())
+	}
+	rec, err := subauth.Login(d.store.State, body.User, body.Password)
+	if err != nil {
+		apiserver.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	cookie, expires, err := subauth.NewSession(r.Context(), h, rec.Token)
+	if err != nil {
+		apiserver.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: subauth.CookieName, Value: cookie, Path: "/", HttpOnly: true,
+		SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil, Expires: expires,
+	})
+	apiserver.JSON(w, http.StatusOK, map[string]any{"user": rec.User, "email": rec.Email, "expires": expires.UnixMilli()})
+}
+
+// subSession answers the subscription behind the management cookie.
+func (d *Daemon) subSession(r *http.Request) (subauth.Record, bool) {
+	if m := d.m.Load(); m != nil {
+		_, _ = m.CatchUp(r.Context())
+	}
+	c, err := r.Cookie(subauth.CookieName)
+	if err != nil || c.Value == "" {
+		return subauth.Record{}, false
+	}
+	return subauth.FromCookie(d.store.State, c.Value, time.Now())
+}
+
+// mountSubAPI is the subscription's management surface, under /api/v1/sub. It
+// is registered before the catch-all so its more specific patterns win.
+func (d *Daemon) mountSubAPI(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/v1/sub/login", d.subLogin)
+	mux.HandleFunc("POST /api/v1/sub/logout", func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie(subauth.CookieName); err == nil && c.Value != "" {
+			if h := d.host.Load(); h != nil {
+				_ = subauth.EndSession(r.Context(), h, c.Value)
+			}
+		}
+		http.SetCookie(w, &http.Cookie{Name: subauth.CookieName, Value: "", Path: "/", HttpOnly: true, MaxAge: -1})
+		apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	})
+	mux.HandleFunc("GET /api/v1/sub/me", d.subMe)
+	mux.HandleFunc("GET /api/v1/sub/vnet", d.subVnet)
+	mux.HandleFunc("POST /api/v1/sub/vnet", d.subVnetCreate)
+	mux.HandleFunc("POST /api/v1/sub/vnet/invites", d.subVnetInvite)
+	mux.HandleFunc("POST /api/v1/sub/vnet/join", d.subVnetJoin)
+	mux.HandleFunc("POST /api/v1/sub/vnet/leave", d.subVnetLeave)
+}
+
+// subMe is the subscription's own view: who they are, their links, traffic
+// and expiry, and their virtual network.
+func (d *Daemon) subMe(w http.ResponseWriter, r *http.Request) {
+	rec, ok := d.subSession(r)
+	if !ok {
+		apiserver.Error(w, http.StatusUnauthorized, "log in first")
+		return
+	}
+	if m := d.m.Load(); m != nil {
+		_, _ = m.CatchUp(r.Context())
+	}
+	used, total, expire := d.emailUsage(rec.Email)
+	links := sub.LinksWith(d.effectiveSpecs(), rec.Email, hosts.Endpoints(hosts.List(d.store.State)))
+	out := map[string]any{
+		"user": rec.User, "email": rec.Email, "links": links,
+		"usedBytes": used, "totalBytes": total, "expire": expire,
+	}
+	if st := d.vnets.Load(); st != nil {
+		out["vnet"] = d.vnetView(r, st, rec.Email)
+	}
+	apiserver.JSON(w, http.StatusOK, out)
+}
+
+// vnetView answers a user's network and peers, creating the network user on
+// first look, so a subscription can use virtual networks without a separate
+// account.
+func (d *Daemon) vnetView(r *http.Request, st *vnet.Store, email string) map[string]any {
+	if _, ok := st.User(email); !ok {
+		if _, err := st.CreateUser(r.Context(), email); err != nil {
+			return map[string]any{"error": err.Error()}
+		}
+	}
+	u, _ := st.User(email)
+	out := map[string]any{"user": u.Email, "ip": u.IP, "name": u.Name}
+	if m, in := st.NetworkOf(email); in {
+		online := d.presence.Where()
+		var members []map[string]any
+		for _, mm := range st.Members(m.Network) {
+			peer, _ := st.User(mm.User)
+			members = append(members, map[string]any{
+				"id": mm.User, "name": peer.Name, "ip": peer.IP, "role": mm.Role, "node": online[peer.Email],
+			})
+		}
+		out["network"] = m.Network
+		out["role"] = m.Role
+		out["members"] = members
+	}
+	return out
+}
+
+func (d *Daemon) subVnet(w http.ResponseWriter, r *http.Request) {
+	rec, ok := d.subSession(r)
+	if !ok {
+		apiserver.Error(w, http.StatusUnauthorized, "log in first")
+		return
+	}
+	st := d.vnets.Load()
+	if st == nil {
+		apiserver.Error(w, http.StatusServiceUnavailable, "starting")
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, d.vnetView(r, st, rec.Email))
+}
+
+func (d *Daemon) subVnetCreate(w http.ResponseWriter, r *http.Request) {
+	rec, ok := d.subSession(r)
+	if !ok {
+		apiserver.Error(w, http.StatusUnauthorized, "log in first")
+		return
+	}
+	st := d.vnets.Load()
+	if st == nil {
+		apiserver.Error(w, http.StatusServiceUnavailable, "starting")
+		return
+	}
+	var body struct{ Title string }
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body)
+	if _, err := st.CreateUser(r.Context(), rec.Email); err != nil {
+		apiserver.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	id, err := st.CreateNetwork(r.Context(), rec.Email, body.Title)
+	if err != nil {
+		apiserver.Error(w, http.StatusConflict, err.Error())
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, map[string]any{"network": id})
+}
+
+func (d *Daemon) subVnetInvite(w http.ResponseWriter, r *http.Request) {
+	rec, ok := d.subSession(r)
+	if !ok {
+		apiserver.Error(w, http.StatusUnauthorized, "log in first")
+		return
+	}
+	st := d.vnets.Load()
+	if st == nil {
+		apiserver.Error(w, http.StatusServiceUnavailable, "starting")
+		return
+	}
+	var body struct {
+		TTL  string `json:"ttl"`
+		Uses int    `json:"uses"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body)
+	ttl, err := time.ParseDuration(body.TTL)
+	if err != nil || ttl <= 0 {
+		ttl = 24 * time.Hour
+	}
+	code, err := st.Invite(r.Context(), rec.Email, ttl, body.Uses)
+	if err != nil {
+		apiserver.Error(w, http.StatusConflict, err.Error())
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, map[string]any{"code": code})
+}
+
+func (d *Daemon) subVnetJoin(w http.ResponseWriter, r *http.Request) {
+	rec, ok := d.subSession(r)
+	if !ok {
+		apiserver.Error(w, http.StatusUnauthorized, "log in first")
+		return
+	}
+	st := d.vnets.Load()
+	if st == nil {
+		apiserver.Error(w, http.StatusServiceUnavailable, "starting")
+		return
+	}
+	var body struct{ Code string }
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body)
+	if _, err := st.CreateUser(r.Context(), rec.Email); err != nil {
+		apiserver.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := st.Join(r.Context(), rec.Email, body.Code); err != nil {
+		apiserver.Error(w, http.StatusConflict, err.Error())
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (d *Daemon) subVnetLeave(w http.ResponseWriter, r *http.Request) {
+	rec, ok := d.subSession(r)
+	if !ok {
+		apiserver.Error(w, http.StatusUnauthorized, "log in first")
+		return
+	}
+	st := d.vnets.Load()
+	if st == nil {
+		apiserver.Error(w, http.StatusServiceUnavailable, "starting")
+		return
+	}
+	if err := st.Leave(r.Context(), rec.Email); err != nil {
+		apiserver.Error(w, http.StatusConflict, err.Error())
+		return
+	}
+	apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // vnetAPI is the users' side of the network, under /api/v1/.

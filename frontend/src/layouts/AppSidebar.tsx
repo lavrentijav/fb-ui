@@ -394,7 +394,9 @@ export default function AppSidebar() {
           children: toMenuItems(items),
         };
       }).filter(Boolean) as MenuProps['items'],
-    [SECTIONS, navItems, toMenuItems, t],
+    // SECTIONS is a module constant: it never changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navItems, toMenuItems, t],
   );
 
   const openLink = useCallback(

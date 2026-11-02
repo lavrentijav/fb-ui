@@ -278,3 +278,34 @@ counted twice. The same operations exist on the master's admin API
 `TestGroupsBulkOperations` covers it end to end: two clients, a group, attach
 to a second inbound (both records reach the node's config), disable the group
 (both leave the config), detach (only the second inbound's records go).
+
+## The subscription page and the subscriber's account
+
+A subscription now has its own login: `PUT /sub/<email> {"user","password"}`
+creates or updates it. Without a password one is generated and answered
+**once**; `POST /sub/<email>/password` regenerates it. The op log keeps only a
+bcrypt hash, never the password.
+
+`GET /sub/<token>` negotiates: a browser (`Accept: text/html`, or
+`?format=page`) gets the built subscription page from `UIDir/subpage.html`
+with `window.__SUB_PAGE_DATA__` baked in (login, links, traffic, expiry) and
+`/assets/` pointed at `/panel/assets/`; a client gets the base64 link list as
+before. This is what fixes the blank page: before, the browser got raw base64.
+
+The page has a **Manage** tab when `window.__SUB_MANAGE__` is set (the native
+master sets it):
+
+- `POST /api/v1/sub/login {user,password}` → HttpOnly `fbui_sub` cookie
+  (`subsession` table, key = sha256 of the cookie, 30 days);
+- `POST /api/v1/sub/logout`;
+- `GET /api/v1/sub/me` → the subscriber's login, email, links, used/total
+  bytes, expiry and virtual network (creating the network user on first look,
+  so a subscriber needs no separate account);
+- `GET|POST /api/v1/sub/vnet`, `POST /api/v1/sub/vnet/{invites,join,leave}` →
+  the subscriber manages their own network: members, invite codes and joining,
+  never anyone else's.
+
+`TestSubscriptionPageAndAccount` covers it end to end: create a subscription
+with a login, open its URL as a browser (page with data and rewritten assets)
+and as a client (links), log in from another master, create a network, invite,
+and a second subscriber joins it.

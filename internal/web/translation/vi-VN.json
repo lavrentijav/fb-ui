@@ -105,7 +105,21 @@
     "support": "Hỗ trợ",
     "qrTitle": "Quét. Nhập. Kết nối.",
     "qrHint": "Quét bằng ứng dụng khách. Không chia sẻ mã này cho người khác.",
-    "saveQr": "Lưu QR"
+    "saveQr": "Lưu QR",
+    "tabAccount": "Manage",
+    "accountHint": "Log in with your login and password to manage this subscription and its virtual network.",
+    "accountUser": "Login",
+    "accountPassword": "Password",
+    "vnetTitle": "Virtual network",
+    "vnetAddress": "Internal address",
+    "vnetNetwork": "Network",
+    "vnetRole": "Role",
+    "vnetNewTitle": "New network title",
+    "vnetCreate": "Create network",
+    "vnetInviteCode": "Invite code",
+    "vnetJoin": "Join with code",
+    "vnetInvite": "Invite",
+    "vnetLeave": "Leave network"
   },
   "menu": {
     "theme": "Chủ đề",

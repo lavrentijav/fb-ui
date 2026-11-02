@@ -105,7 +105,21 @@
     "support": "支持",
     "qrTitle": "扫码。导入。连接。",
     "qrHint": "使用客户端应用扫描。请勿泄露此二维码。",
-    "saveQr": "保存二维码"
+    "saveQr": "保存二维码",
+    "tabAccount": "Manage",
+    "accountHint": "Log in with your login and password to manage this subscription and its virtual network.",
+    "accountUser": "Login",
+    "accountPassword": "Password",
+    "vnetTitle": "Virtual network",
+    "vnetAddress": "Internal address",
+    "vnetNetwork": "Network",
+    "vnetRole": "Role",
+    "vnetNewTitle": "New network title",
+    "vnetCreate": "Create network",
+    "vnetInviteCode": "Invite code",
+    "vnetJoin": "Join with code",
+    "vnetInvite": "Invite",
+    "vnetLeave": "Leave network"
   },
   "menu": {
     "theme": "主题",

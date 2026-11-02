@@ -7,12 +7,14 @@ import {
   ClockCircleOutlined,
   CustomerServiceOutlined,
   LinkOutlined,
+  SettingOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 
 import { ClipboardManager, LanguageManager } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 import { useTheme } from '@/hooks/useTheme';
+import SubAccountTab from './SubAccountTab';
 import SubAppsTab from './SubAppsTab';
 import SubConfigsTab from './SubConfigsTab';
 import SubHeader from './SubHeader';
@@ -140,6 +142,15 @@ export default function SubPage() {
           </>
         ),
         children: <SubConfigsTab links={links} onCopy={copy} />,
+      });
+    }
+    // management exists only where the master provides the API (the native one)
+    if (window.__SUB_MANAGE__) {
+      items.push({
+        key: 'account',
+        icon: <SettingOutlined />,
+        label: t('subscription.tabAccount'),
+        children: <SubAccountTab />,
       });
     }
     return items;

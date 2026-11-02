@@ -24,6 +24,7 @@ interface SubPageData {
   downloadByte?: string | number;
   uploadByte?: string | number;
   usedByte?: string | number;
+  user?: string;
 }
 
 interface Window {
@@ -32,6 +33,7 @@ interface Window {
   X_UI_NATIVE?: boolean;
   X_UI_DB_TYPE?: string;
   __SUB_PAGE_DATA__?: SubPageData;
+  __SUB_MANAGE__?: string;
 }
 
 declare module 'persian-calendar-suite' {
