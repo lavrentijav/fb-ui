@@ -5,6 +5,7 @@ package netlab
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -24,7 +25,9 @@ func (f *fleet) register(t *testing.T, via string, body map[string]any) (int, ma
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
 	var out map[string]any
-	_ = json.Unmarshal(b, &out)
+	if err := json.Unmarshal(b, &out); err != nil {
+		out = map[string]any{"text": string(b)}
+	}
 	return resp.StatusCode, out
 }
 
@@ -80,4 +83,26 @@ func TestRegisterBuildsTheFleet(t *testing.T) {
 	eventually(t, 90*time.Second, "the exit serves its cascade", applied("de2", `"cascade"`))
 	eventually(t, 90*time.Second, "the entry cascades to de2", applied("ru4", `"proxy_de"`))
 	eventually(t, 90*time.Second, "the entry's hop points at de2", applied("ru4", "de2.lab.firewalk.test"))
+
+	// the fleet view: both registered nodes are online and have a spec
+	eventually(t, 60*time.Second, "GET /nodes/state shows both nodes", func() (bool, string) {
+		resp, err := http.Get("http://" + ipOf("fi1m") + ":8080/nodes/state")
+		if err != nil {
+			return false, err.Error()
+		}
+		defer resp.Body.Close()
+		var states []struct {
+			Node    string `json:"node"`
+			HasSpec bool   `json:"hasSpec"`
+			Online  bool   `json:"online"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&states); err != nil {
+			return false, err.Error()
+		}
+		online := map[string]bool{}
+		for _, s := range states {
+			online[s.Node] = s.HasSpec && s.Online
+		}
+		return online["ru4"] && online["de2"], fmt.Sprint(states)
+	})
 }

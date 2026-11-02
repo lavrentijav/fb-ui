@@ -143,3 +143,32 @@ func TestDrainingNodeReportsWithoutTraffic(t *testing.T) {
 		t.Fatalf("reports %+v", got)
 	}
 }
+
+// A quiet node still reports now and then, so the master can tell it apart
+// from a dead one.
+func TestQuietNodeSendsHeartbeats(t *testing.T) {
+	j, err := agent.OpenJournal(t.TempDir(), "nl2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Close()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "desired.json"), []byte(`{"hash":"h"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := desired.OpenApplier(dir, func(context.Context, desired.State) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := &agent.Node{Name: "nl2", Applier: app, Xray: &fakeXray{}, Sender: &agent.Sender{Journal: j}, Heartbeat: 20 * time.Millisecond}
+	n.Collect(context.Background()) // the first pass arms the timer, no report
+	if got := j.Pending(10); len(got) != 0 {
+		t.Fatalf("the first pass reported: %+v", got)
+	}
+	time.Sleep(30 * time.Millisecond)
+	n.Collect(context.Background())
+	got := j.Pending(10)
+	if len(got) != 1 || got[0].Node != "nl2" || got[0].At == 0 || len(got[0].Traffic) != 0 {
+		t.Fatalf("heartbeat %+v", got)
+	}
+}

@@ -24,6 +24,11 @@ an inbound that is not listening yet.
 | `Client.LimitIP` | an IP limit per user, rendered into `Bundle.Limits` (the strictest, if the user is on several inbounds). The **node** enforces it with `internal/native/failban`: every `banEvery` (default 10 s) it reads `xray api statsonlineiplist -all`, keeps the user's newest `LimitIP` addresses and bans the rest as a `sourceIP → block` rule applied live (`adrules`); an address counts as live for `banHold` (default 2 min) after it was last seen, so a banned device does not come back as the newest one |
 | always | `direct`, `block`, stats API on 127.0.0.1:10085, per-user traffic counters |
 
+A node that moves no traffic still reports every `Heartbeat` (default 30 s),
+so a master can tell a quiet node from a dead one; `GET /nodes/state` merges
+the spec registry with the newest report per node: `online`, `lastSeen`,
+`onlineUsers`, `draining`, `drainSince`, `drainActive`.
+
 ## Enrollment
 
 A new node needs only a one-time token:

@@ -67,7 +67,7 @@ func runMaster() int {
 	d, err := masterd.Start(ctx, masterd.Config{
 		ACME: acme, RenewEvery: 2 * time.Second, FleetCA: fleetCA,
 		NodeBinary: os.Getenv("NETLAB_FBNODE"),
-		Name: name, Masters: masters, StoreDir: filepath.Join(dir, "js"),
+		Name:       name, Masters: masters, StoreDir: filepath.Join(dir, "js"),
 		PublicName: publicName(name), EdgeListen: ":443", ClientPort: 4222,
 		ClientTLS: mtls, GatewayTLS: mtls, GatewayHost: "0.0.0.0", GatewayPort: 7222,
 		Advertise: ipOf(masterHosts[name]) + ":7222", Peers: peers,
@@ -188,7 +188,7 @@ func (f *fleet) startNode(t *testing.T, node string) {
 		"node": node, "masters": masters, "ca": f.caPEM,
 		"cert": filepath.Join(dir, "cert.pem"), "key": filepath.Join(dir, "key.pem"),
 		"dataDir": filepath.Join(dir, "data"), "xray": map[string]string{"bin": f.xray},
-		"reportEvery": "1s", "pullEvery": "1s", "banEvery": "1s",
+		"reportEvery": "1s", "pullEvery": "1s", "banEvery": "1s", "heartbeat": "2s",
 	})
 	cmd := spawnCmd(t, node, nil, os.Getenv("NETLAB_FBNODE"), "-c", filepath.Join(dir, "config.json"))
 	if f.nodes == nil {

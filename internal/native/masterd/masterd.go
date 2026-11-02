@@ -36,6 +36,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/nodestate"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/presence"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/probe"
@@ -512,6 +513,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/preflight", d.preflight)
 	mux.HandleFunc("POST /provision/install", d.install)
 	mux.HandleFunc("POST /provision/register", d.registerNode)
+	mux.HandleFunc("GET /nodes/state", d.nodesState)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -676,6 +678,67 @@ func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, html)
 }
 
+// nodesState is the fleet as the interface shows it: every node with a spec
+// plus every node that reported, why it is online and whether it drains.
+func (d *Daemon) nodesState(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	_, _ = m.CatchUp(r.Context())
+	nodes := make([]string, 0, len(d.store.State.Keys(SpecTable)))
+	for _, n := range d.store.State.Keys(SpecTable) {
+		nodes = append(nodes, n)
+	}
+	seen := map[string]bool{}
+	var reps []nodestate.Report
+	for _, master := range d.cfg.Masters {
+		first, last, err := d.bus.ReportRange(r.Context(), master)
+		if err != nil || last == 0 {
+			continue
+		}
+		from := uint64(1)
+		if last > 2000 {
+			from = last - 2000
+		}
+		if first > from {
+			from = first
+		}
+		for seq := last; seq >= from && seq > 0; seq-- {
+			raw, err := d.bus.GetReport(r.Context(), master, seq)
+			if err != nil {
+				break
+			}
+			var rep struct {
+				Node   string   `json:"n"`
+				At     int64    `json:"at"`
+				Online []string `json:"o"`
+				Drain  *struct {
+					Since  int64 `json:"since"`
+					Active int   `json:"active"`
+				} `json:"dr"`
+			}
+			if json.Unmarshal(raw, &rep) != nil || rep.Node == "" || seen[rep.Node] {
+				if seq == from {
+					break
+				}
+				continue
+			}
+			seen[rep.Node] = true
+			r2 := nodestate.Report{Node: rep.Node, At: rep.At, Online: rep.Online}
+			if rep.Drain != nil {
+				r2.Drain = &nodestate.Drain{Since: rep.Drain.Since, Active: rep.Drain.Active}
+			}
+			reps = append(reps, r2)
+			if seq == from {
+				break
+			}
+		}
+	}
+	apiserver.JSON(w, http.StatusOK, nodestate.Aggregate(nodes, reps, time.Now(), nodestate.DefaultStale))
+}
+
 // registerNode builds a node's spec from a role and a public name and writes
 // it, so an installed node starts serving with its first pull.
 func (d *Daemon) registerNode(w http.ResponseWriter, r *http.Request) {
@@ -705,7 +768,7 @@ func (d *Daemon) registerNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if body.CascadeTo != "" && !d.waitSpec(ctx, m, body.CascadeTo, 15*time.Second) {
+	if body.CascadeTo != "" && !d.waitSpec(ctx, m, body.CascadeTo, 30*time.Second) {
 		http.Error(w, "no spec for exit "+body.CascadeTo+" (not registered or not replicated yet)", http.StatusUnprocessableEntity)
 		return
 	}

@@ -66,6 +66,7 @@ type config struct {
 	PullEvery   duration `json:"pullEvery"`
 	BanEvery    duration `json:"banEvery"`
 	BanHold     duration `json:"banHold"`
+	Heartbeat   duration `json:"heartbeat"`
 }
 
 func load(path string) (*config, error) {
@@ -214,7 +215,7 @@ func run(path string, logger *log.Logger) error {
 	sel := pick.New(masters, prober, pick.Settings{RebindEvery: c.RebindEvery.Duration, MinPacket: c.MinPacket})
 	node := &agent.Node{
 		Name: c.Node, Applier: app, Xray: xr, Log: logger.Printf, DrainState: edge.DrainState,
-		ReportEvery: c.ReportEvery.Duration, PullEvery: c.PullEvery.Duration,
+		ReportEvery: c.ReportEvery.Duration, PullEvery: c.PullEvery.Duration, Heartbeat: c.Heartbeat.Duration,
 		Sender: &agent.Sender{
 			Journal: journal, Select: sel,
 			Dial: func(_ context.Context, m string) (*nats.Conn, error) {

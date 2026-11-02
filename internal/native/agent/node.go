@@ -32,6 +32,11 @@ type Node struct {
 
 	ReportEvery time.Duration // 0 = 10s
 	PullEvery   time.Duration // 0 = 15s
+	// Heartbeat sends an empty report when nothing moved, so masters can tell
+	// a quiet node from a dead one (0 = 30s).
+	Heartbeat time.Duration
+
+	lastReport time.Time
 }
 
 // Start brings the last applied state up before any master answers.
@@ -54,7 +59,10 @@ func (n *Node) Collect(ctx context.Context) {
 			r.Drain = &reports.Drain{Since: st.Since, Active: st.Active}
 		}
 	}
-	if len(traffic) == 0 && r.Drain == nil {
+	if n.lastReport.IsZero() {
+		n.lastReport = time.Now() // a fresh start is not yet a missed heartbeat
+	}
+	if len(traffic) == 0 && r.Drain == nil && time.Since(n.lastReport) < n.heartbeat() {
 		return
 	}
 	for _, t := range traffic {
@@ -63,7 +71,16 @@ func (n *Node) Collect(ctx context.Context) {
 	}
 	if _, err := n.Sender.Journal.Add(r); err != nil {
 		n.logf("journal: %v", err)
+		return
 	}
+	n.lastReport = time.Now()
+}
+
+func (n *Node) heartbeat() time.Duration {
+	if n.Heartbeat > 0 {
+		return n.Heartbeat
+	}
+	return 30 * time.Second
 }
 
 // Pull asks the bound master for a newer state and applies it.

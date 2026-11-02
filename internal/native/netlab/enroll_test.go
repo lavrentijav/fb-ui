@@ -65,7 +65,7 @@ func (f *fleet) startEnrolledNode(t *testing.T, node, via string) {
 		"node": node, "masters": masters, "ca": filepath.Join(dir, "ca.pem"),
 		"cert": filepath.Join(dir, "cert.pem"), "key": filepath.Join(dir, "key.pem"),
 		"dataDir": filepath.Join(dir, "data"), "xray": map[string]string{"bin": f.xray},
-		"reportEvery": "1s", "pullEvery": "1s", "banEvery": "1s",
+		"reportEvery": "1s", "pullEvery": "1s", "banEvery": "1s", "heartbeat": "2s",
 	})
 	cmd := spawnCmd(t, node, nil, os.Getenv("NETLAB_FBNODE"), "-c", filepath.Join(dir, "config.json"))
 	if f.nodes == nil {
