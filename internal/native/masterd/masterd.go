@@ -514,6 +514,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/install", d.install)
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
+	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
 	mux.HandleFunc("PUT /users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		s := d.vnets.Load()
 		if s == nil {
@@ -676,6 +677,51 @@ func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = io.WriteString(w, html)
+}
+
+// setDrain puts a node in or out of maintenance through its spec; the agent
+// refuses new tunnels while it drains and lets open ones finish.
+func (d *Daemon) setDrain(w http.ResponseWriter, r *http.Request) {
+	m := d.m.Load()
+	if m == nil {
+		http.Error(w, "starting", http.StatusServiceUnavailable)
+		return
+	}
+	var body struct {
+		On   bool   `json:"on"`
+		Idle string `json:"idle"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	node := r.PathValue("node")
+	rec, ok := d.store.State.Get(SpecTable, node)
+	if !ok {
+		http.Error(w, "no spec for "+node, http.StatusNotFound)
+		return
+	}
+	var spec nodespec.Spec
+	if err := json.Unmarshal(rec["spec"], &spec); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	spec.Drain = nodespec.Drain{On: body.On, Idle: body.Idle}
+	if _, err := nodespec.Render(spec); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	raw, err := json.Marshal(spec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	op, err := m.Set(r.Context(), SpecTable, node, map[string]any{"spec": json.RawMessage(raw)})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"node": node, "stamp": op.Stamp.String(), "drain": spec.Drain})
 }
 
 // nodesState is the fleet as the interface shows it: every node with a spec

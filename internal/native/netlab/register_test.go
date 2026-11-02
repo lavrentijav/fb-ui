@@ -105,4 +105,47 @@ func TestRegisterBuildsTheFleet(t *testing.T) {
 		}
 		return online["ru4"] && online["de2"], fmt.Sprint(states)
 	})
+
+	drain := func(on bool) {
+		t.Helper()
+		body := fmt.Sprintf(`{"on":%t,"idle":"2m"}`, on)
+		resp, err := http.Post("http://"+ipOf("fi1m")+":8080/nodes/de2/drain", "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("drain %t: %d", on, resp.StatusCode)
+		}
+	}
+	draining := func() (bool, string) {
+		resp, err := http.Get("http://" + ipOf("ru2m") + ":8080/nodes/state")
+		if err != nil {
+			return false, err.Error()
+		}
+		defer resp.Body.Close()
+		var states []struct {
+			Node     string `json:"node"`
+			Draining bool   `json:"draining"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&states); err != nil {
+			return false, err.Error()
+		}
+		for _, s := range states {
+			if s.Node == "de2" {
+				return s.Draining, fmt.Sprint(states)
+			}
+		}
+		return false, "de2 is not in the state"
+	}
+	drain(true)
+	eventually(t, 60*time.Second, "de2 reports maintenance", func() (bool, string) {
+		ok, got := draining()
+		return ok, got
+	})
+	drain(false)
+	eventually(t, 60*time.Second, "de2 leaves maintenance", func() (bool, string) {
+		ok, got := draining()
+		return !ok, got
+	})
 }

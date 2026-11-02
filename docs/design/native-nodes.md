@@ -27,7 +27,8 @@ an inbound that is not listening yet.
 A node that moves no traffic still reports every `Heartbeat` (default 30 s),
 so a master can tell a quiet node from a dead one; `GET /nodes/state` merges
 the spec registry with the newest report per node: `online`, `lastSeen`,
-`onlineUsers`, `draining`, `drainSince`, `drainActive`.
+`onlineUsers`, `draining`, `drainSince`, `drainActive`. `POST /nodes/{node}/drain {on, idle}` sets it, and the lab
+toggles it through the API.
 
 ## Enrollment
 

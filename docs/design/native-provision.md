@@ -116,6 +116,16 @@ installed node serves with its first pull:
 
 Answer: `{node, summary, spec, reported}`.
 
+## Fleet state and maintenance
+
+- `GET /nodes/state` merges the spec registry with the newest report per
+  node: `online`, `lastSeen`, `onlineUsers`, `draining`, `drainSince`,
+  `drainActive`. Agents heartbeat when idle, so a quiet node is not reported
+  dead.
+- `POST /nodes/{node}/drain {"on":bool,"idle":"2m"}` writes the node's spec
+  with `Drain` set; the agent refuses new tunnels and lets open ones finish,
+  and the state view shows the drain count fall.
+
 ## Next steps
 
 1. ~~Preflight~~ — done.
@@ -128,3 +138,6 @@ Answer: `{node, summary, spec, reported}`.
 4. DNS record and certificate for the new node's name (the spec asks for the
    certificate; the A record still needs the DNS pool).
 5. Rollback of a successful install, and reinstall/upgrade.
+6. Node state and maintenance — done (`GET /nodes/state`,
+   `POST /nodes/{node}/drain`; the lab registers nodes, sees them online and
+   toggles maintenance).
