@@ -34,6 +34,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/enroll"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/hosts"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/inbounds"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/mhost"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
@@ -519,6 +520,86 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /provision/register", d.registerNode)
 	mux.HandleFunc("GET /nodes/state", d.nodesState)
 	mux.HandleFunc("POST /nodes/{node}/drain", d.setDrain)
+	mux.HandleFunc("GET /inbounds/{node}", func(w http.ResponseWriter, r *http.Request) {
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		spec, ok := inbounds.Spec(d.store.State, r.PathValue("node"))
+		if !ok {
+			http.Error(w, "no spec for that node", http.StatusNotFound)
+			return
+		}
+		apiserver.JSON(w, http.StatusOK, spec.Inbounds)
+	})
+	mux.HandleFunc("POST /inbounds/{node}", func(w http.ResponseWriter, r *http.Request) {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		var in inbounds.Input
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		ib, err := inbounds.Add(r.Context(), h, d.store.State, r.PathValue("node"), in)
+		if err != nil {
+			code := http.StatusBadRequest
+			if err == inbounds.ErrExists {
+				code = http.StatusConflict
+			}
+			http.Error(w, err.Error(), code)
+			return
+		}
+		apiserver.JSON(w, http.StatusCreated, ib)
+	})
+	mux.HandleFunc("PUT /inbounds/{node}/{tag}", func(w http.ResponseWriter, r *http.Request) {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		var in inbounds.Input
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		ib, err := inbounds.Update(r.Context(), h, d.store.State, r.PathValue("node"), r.PathValue("tag"), in)
+		if err != nil {
+			code := http.StatusBadRequest
+			if err == inbounds.ErrNotFound {
+				code = http.StatusNotFound
+			}
+			http.Error(w, err.Error(), code)
+			return
+		}
+		apiserver.JSON(w, http.StatusOK, ib)
+	})
+	mux.HandleFunc("DELETE /inbounds/{node}/{tag}", func(w http.ResponseWriter, r *http.Request) {
+		h := d.host.Load()
+		if h == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		if m := d.m.Load(); m != nil {
+			_, _ = m.CatchUp(r.Context())
+		}
+		if err := inbounds.Remove(r.Context(), h, d.store.State, r.PathValue("node"), r.PathValue("tag")); err != nil {
+			code := http.StatusBadRequest
+			if err == inbounds.ErrNotFound {
+				code = http.StatusNotFound
+			}
+			http.Error(w, err.Error(), code)
+			return
+		}
+		apiserver.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	})
 	mux.HandleFunc("GET /usage", func(w http.ResponseWriter, r *http.Request) {
 		if m := d.m.Load(); m != nil {
 			_, _ = m.CatchUp(r.Context())

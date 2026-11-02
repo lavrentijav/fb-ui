@@ -211,3 +211,27 @@ read from the projection. Tag `no_usage`.
 `TestUsageDisablesAnExhaustedClient`: a client with a 1 KB allowance loads a
 page through ru4, the master counts the bytes from ru4's report and disables
 the client, which then leaves the node's config.
+
+## Editing inbounds
+
+`internal/native/inbounds` is the panel's main write path over a node's spec
+(no separate store):
+
+- `POST /api/v1/inbounds/{node}` adds an inbound (tag, port, network ws/xhttp,
+  path, public host, route, vnet flag) — 409 on a repeated tag, and the port
+  must be free;
+- `PUT /api/v1/inbounds/{node}/{tag}` changes its shape (a tag rename is
+  allowed), keeping the clients already on it;
+- `DELETE /api/v1/inbounds/{node}/{tag}` refuses while a routing rule or an
+  exit still names the tag, so a delete cannot leave a broken route;
+- `GET /api/v1/inbounds/{node}` lists them.
+
+Every write goes through `nodespec.Render` first, so a spec a node could not
+run is never stored. Clients are **not** edited here — they come from the
+`client` table (`inbounds` never accepts a client list), so an inbound edit
+cannot silently drop people. The same operations exist on the master's admin
+API (`/inbounds/...`), tag `no_inbounds`.
+
+`TestInboundEditingReachesTheNode`: an inbound added through ru2 reaches ru4's
+Xray config, a port change moves it, a rule blocks the delete with a clear
+error, and once the rule is gone the delete removes it from the node.

@@ -105,6 +105,11 @@ type Middlewarer interface {
 	Middleware(h Host) func(http.Handler) http.Handler
 }
 
+// Writer writes records; Host implements it.
+type Writer interface {
+	Set(ctx context.Context, table, key string, fields map[string]any) (oplog.Op, error)
+}
+
 // Reader is the read side of the projected state.
 type Reader interface {
 	Get(table, key string) (map[string]json.RawMessage, bool)
