@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -44,6 +45,22 @@ func TestUIServesFilesAndClientRoutes(t *testing.T) {
 		if rec.Code != http.StatusOK || rec.Body.String() != want {
 			t.Fatalf("%s: %d %q", path, rec.Code, rec.Body.String())
 		}
+	}
+}
+
+func TestUIFlagsNativeLogin(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html><head></head><body>app</body></html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	d := &Daemon{cfg: Config{UIDir: dir}}
+	rec := httptest.NewRecorder()
+	d.serveUI(rec, httptest.NewRequest(http.MethodGet, "/panel/nodes", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "X_UI_NATIVE=true") {
+		t.Fatalf("%d %q", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "<body>app</body>") {
+		t.Fatalf("the build was mangled: %q", rec.Body.String())
 	}
 }
 

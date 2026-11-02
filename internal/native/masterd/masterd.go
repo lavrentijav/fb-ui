@@ -661,12 +661,19 @@ func (d *Daemon) serveUI(w http.ResponseWriter, r *http.Request) {
 
 func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
 	index := filepath.Join(d.cfg.UIDir, "index.html")
-	if _, err := os.Stat(index); err != nil {
+	b, err := os.ReadFile(index)
+	if err != nil {
 		http.Error(w, "no interface built in "+d.cfg.UIDir, http.StatusNotFound)
 		return
 	}
+	html := string(b)
+	// the page logs in with an API token here, not a user and password
+	if !strings.Contains(html, "X_UI_NATIVE") {
+		html = strings.Replace(html, "</head>", "<script>window.X_UI_NATIVE=true;</script></head>", 1)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	http.ServeFile(w, r, index)
+	_, _ = io.WriteString(w, html)
 }
 
 // registerNode builds a node's spec from a role and a public name and writes

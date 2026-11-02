@@ -35,6 +35,7 @@ const HEADLINE_INTERVAL_MS = 2000;
 type LoginForm = LoginFormValues;
 
 const basePath = window.X_UI_BASE_PATH || '';
+const native = !!window.X_UI_NATIVE;
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -64,6 +65,11 @@ export default function LoginPage() {
   }, [headlineWords.length]);
 
   useEffect(() => {
+    if (native) {
+      // a native master has API tokens, not users; nothing to fetch
+      setFetched(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const msg = await HttpUtil.post('/getTwoFactorEnable');
@@ -79,12 +85,27 @@ export default function LoginPage() {
   const onSubmit = useCallback(async (values: LoginForm) => {
     setSubmitting(true);
     try {
+      if (native) {
+        const res = await fetch('/api/v1/ui/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ token: values.password.trim() }),
+        });
+        if (res.ok) {
+          window.location.href = '/panel/';
+        } else {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          messageApi.error(body.error || t('pages.login.toasts.wrongUsernameOrPassword'));
+        }
+        return;
+      }
       const msg = await HttpUtil.post('/login', values);
       if (msg.success) window.location.href = basePath + 'panel/';
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [messageApi, t]);
 
   const onLangChange = useCallback((next: string) => {
     setLang(next);
@@ -192,34 +213,37 @@ export default function LoginPage() {
                     className="login-form"
                     onFinish={methods.handleSubmit(onSubmit)}
                   >
-                    <FormField
-                      name="username"
-                      label={t('username')}
-                      rules={{ validate: rhfZodValidate(LoginFormSchema.shape.username) }}
-                    >
-                      <Input
-                        prefix={<UserOutlined />}
-                        autoComplete="username"
-                        size="large"
-                        placeholder={t('username')}
-                        autoFocus
-                      />
-                    </FormField>
+                    {!native && (
+                      <FormField
+                        name="username"
+                        label={t('username')}
+                        rules={{ validate: rhfZodValidate(LoginFormSchema.shape.username) }}
+                      >
+                        <Input
+                          prefix={<UserOutlined />}
+                          autoComplete="username"
+                          size="large"
+                          placeholder={t('username')}
+                          autoFocus
+                        />
+                      </FormField>
+                    )}
 
                     <FormField
                       name="password"
-                      label={t('password')}
+                      label={native ? t('pages.settings.apiToken') : t('password')}
                       rules={{ validate: rhfZodValidate(LoginFormSchema.shape.password) }}
                     >
                       <Input.Password
                         prefix={<LockOutlined />}
-                        autoComplete="current-password"
+                        autoComplete={native ? 'off' : 'current-password'}
                         size="large"
-                        placeholder={t('password')}
+                        placeholder={native ? t('pages.settings.apiToken') : t('password')}
+                        autoFocus={native}
                       />
                     </FormField>
 
-                    {twoFactorEnable && (
+                    {twoFactorEnable && !native && (
                       <FormField
                         name="twoFactorCode"
                         label={t('twoFactorCode')}

@@ -60,8 +60,11 @@ const LOGOUT_KEY = '__logout__';
 const RAIL_WIDTH = 72;
 const SIDER_WIDTH = 220;
 const SIDEBAR_PINNED_KEY = 'sidebar-pinned';
+const SECTIONS: SectionId[] = ['overview', 'access', 'fleet', 'entry', 'routing', 'system'];
 
 let hoveredAcrossRemounts = false;
+
+type SectionId = 'overview' | 'access' | 'fleet' | 'entry' | 'routing' | 'system';
 
 type IconName =
   | 'dashboard'
@@ -234,25 +237,21 @@ export default function AppSidebar() {
   const currentTheme: 'light' | 'dark' = isDark ? 'dark' : 'light';
   const panelVersion = window.X_UI_CUR_VER || '';
 
-  const tabs = useMemo<{ key: string; icon: IconName; title: string }[]>(
+  const tabs = useMemo<{ key: string; icon: IconName; title: string; section: SectionId }[]>(
     () => [
-      { key: '/', icon: 'dashboard', title: t('menu.dashboard') },
-      { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds') },
-      { key: '/clients', icon: 'team', title: t('menu.clients') },
-      { key: '/groups', icon: 'groups', title: t('menu.groups') },
-      { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
-      { key: '/network', icon: 'network', title: t('menu.network') },
-      { key: '/filters', icon: 'filters', title: t('menu.filters') },
-      { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
-      { key: '/certs', icon: 'certs', title: t('menu.certs') },
-      { key: '/edge', icon: 'edge', title: t('menu.edge') },
-      { key: '/templates', icon: 'templates', title: t('menu.templates') },
-      { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
-      { key: '/routing', icon: 'routing', title: t('menu.routing') },
-      { key: '/settings', icon: 'setting', title: t('menu.settings') },
-      { key: '/xray', icon: 'tool', title: t('menu.xray') },
-      { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs') },
-      { key: LOGOUT_KEY, icon: 'logout', title: t('logout') },
+      { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
+      { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
+      { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
+      { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
+      { key: '/cascades', icon: 'network', title: t('menu.network'), section: 'fleet' },
+      { key: '/templates', icon: 'templates', title: t('menu.templates'), section: 'fleet' },
+      { key: '/edge', icon: 'edge', title: t('menu.edge'), section: 'entry' },
+      { key: '/certs', icon: 'certs', title: t('menu.certs'), section: 'entry' },
+      { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
+      { key: '/xray', icon: 'tool', title: t('menu.xray'), section: 'routing' },
+      { key: '/settings', icon: 'setting', title: t('menu.settings'), section: 'system' },
+      { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
+      { key: LOGOUT_KEY, icon: 'logout', title: t('logout'), section: 'system' },
     ],
     [t],
   );
@@ -306,11 +305,29 @@ export default function AppSidebar() {
     return children;
   }, [t, showSubFormats, showSubBalancers]);
 
+  const clientsChildren = useMemo<NonNullable<MenuProps['items']>>(
+    () => [
+      { key: '/clients', icon: <TeamOutlined />, label: t('menu.clients') },
+      { key: '/groups', icon: <TagsOutlined />, label: t('menu.groups') },
+    ],
+    [t],
+  );
+
+  const edgeChildren = useMemo<NonNullable<MenuProps['items']>>(
+    () => [
+      { key: '/edge', icon: <GatewayOutlined />, label: t('menu.edge') },
+      { key: '/hosts', icon: <GlobalOutlined />, label: t('menu.hosts') },
+    ],
+    [t],
+  );
+
   const xrayChildren = useMemo<NonNullable<MenuProps['items']>>(
     () => [
       { key: '/xray#basic', icon: <SettingOutlined />, label: t('pages.xray.basicTemplate') },
+      { key: '/xray#routing', icon: <SwapOutlined />, label: t('menu.routing') },
+      { key: '/xray#outbound', icon: <ExportOutlined />, label: t('menu.outbounds') },
       { key: '/xray#balancer', icon: <ClusterOutlined />, label: t('pages.xray.Balancers') },
-      { key: '/xray#dns', icon: <DatabaseOutlined />, label: 'DNS' },
+      { key: '/xray#dns', icon: <DatabaseOutlined />, label: t('pages.xray.coreDns') },
       { key: '/xray#advanced', icon: <CodeOutlined />, label: t('pages.xray.advancedTemplate') },
     ],
     [t],
@@ -318,6 +335,8 @@ export default function AppSidebar() {
 
   const settingsActive = pathname === '/settings';
   const xrayActive = pathname === '/xray';
+  const clientsActive = pathname === '/clients' || pathname === '/groups';
+  const edgeActive = pathname === '/edge' || pathname === '/hosts';
   const selectedKey = settingsActive
     ? `/settings${hash || '#general'}`
     : xrayActive
@@ -326,7 +345,15 @@ export default function AppSidebar() {
         ? '/'
         : pathname;
 
-  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : null;
+  const openSubmenu = settingsActive
+    ? '/settings'
+    : xrayActive
+      ? '/xray'
+      : clientsActive
+        ? '/clients'
+        : edgeActive
+          ? '/edge'
+          : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));
   if (openSubmenu && !openKeys.includes(openSubmenu)) {
     setOpenKeys([...openKeys, openSubmenu]);
@@ -336,6 +363,12 @@ export default function AppSidebar() {
     (items: typeof tabs): MenuProps['items'] =>
       items.map((tab) => {
         const Icon = iconByName[tab.icon];
+        if (tab.key === '/clients') {
+          return { key: tab.key, icon: <Icon />, label: tab.title, children: clientsChildren };
+        }
+        if (tab.key === '/edge') {
+          return { key: tab.key, icon: <Icon />, label: tab.title, children: edgeChildren };
+        }
         if (tab.key === '/settings') {
           return { key: tab.key, icon: <Icon />, label: tab.title, children: settingsChildren };
         }
@@ -344,7 +377,24 @@ export default function AppSidebar() {
         }
         return { key: tab.key, icon: <Icon />, label: tab.title, title: '' };
       }),
-    [settingsChildren, xrayChildren],
+    [clientsChildren, edgeChildren, settingsChildren, xrayChildren],
+  );
+
+  const groupedNavItems = useMemo<MenuProps['items']>(
+    () =>
+      SECTIONS.map((id) => {
+        const items = navItems.filter((tab) => tab.section === id);
+        if (items.length === 0) {
+          return null;
+        }
+        return {
+          type: 'group' as const,
+          key: `section-${id}`,
+          label: t(`menu.section.${id}`),
+          children: toMenuItems(items),
+        };
+      }).filter(Boolean) as MenuProps['items'],
+    [SECTIONS, navItems, toMenuItems, t],
   );
 
   const openLink = useCallback(
@@ -455,7 +505,7 @@ export default function AppSidebar() {
           openKeys={railCollapsed ? undefined : openKeys}
           onOpenChange={(keys) => setOpenKeys(keys as string[])}
           className="sider-nav"
-          items={toMenuItems(navItems)}
+          items={groupedNavItems}
           onClick={onMenuClick}
         />
         <Menu
@@ -534,7 +584,7 @@ export default function AppSidebar() {
           openKeys={openKeys}
           onOpenChange={(keys) => setOpenKeys(keys as string[])}
           className="drawer-menu drawer-nav"
-          items={toMenuItems(navItems)}
+          items={groupedNavItems}
           onClick={(info) => {
             onMenuClick(info);
             setDrawerOpen(false);

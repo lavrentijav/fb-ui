@@ -186,7 +186,9 @@ export async function httpRequest(
   if (res.status === 401) {
     if (!sessionExpired) {
       sessionExpired = true;
-      window.location.replace(window.X_UI_BASE_PATH || basePathPrefix || '/');
+      window.location.replace(
+        window.X_UI_NATIVE ? '/panel/' : window.X_UI_BASE_PATH || basePathPrefix || '/',
+      );
     }
     return new Promise<HttpResponse>(() => {});
   }

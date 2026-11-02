@@ -24,14 +24,28 @@ without it, and the UI module can be cut with `-tags no_ui`.
   app talks to a native master today.
 - `Run` on the leader prunes expired sessions.
 
+## Done in the page (2026-11-02)
+
+- The sidebar is grouped into six sections (Обзор, Доступ, Флот, Вход (443),
+  Маршрутизация, Система); `Clients` and `Edge` became submenus holding their
+  merged pages (`Groups`, `Hosts`).
+- The old `/outbound` and `/routing` aliases are gone (they were the same
+  `XrayPage`); both are now sections of `/xray` (`#routing`, `#outbound`), and
+  old paths redirect there. `/network` moved to `/cascades` with a redirect.
+- `Xray → DNS` is labelled "Core DNS" so it is not confused with certificate
+  DNS providers.
+- In native mode the master injects `window.X_UI_NATIVE`; the login page then
+  asks for an API token and posts it to `/api/v1/ui/login`, which sets the
+  session cookie (the old username/password flow stays for the main line).
+
 ## Still to do
 
-1. Point the React app's session handling at `/api/v1/ui/login` (today it
-   posts to the old `/login`); the login form and CSRF flow are replaced by
-   the cookie above.
-2. Declare `Legacy()` routes for every module so `/panel/api` covers each
-   section the interface shows (webhooks and audit are done; nodes, certs,
-   DNS, routing, clients remain).
+1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for
+   the login page; the old `/login` stays for the main-line panel.
+2. Turn the submenus into in-page tabs (Clients+Groups, Edge+Hosts) and merge
+   Settings' notification tabs; then declare `Legacy()` routes for every
+   module so `/panel/api` covers each section the interface shows (webhooks
+   and audit are done; nodes, certs, DNS, routing, clients remain).
 3. Then move the interface to `/api/v1` per section, in the order below.
 4. Build the UI in CI (`make build-fe`) and ship `dist/` beside the binary
    (`UIDir`), not inside it, so the master stays small and a UI change needs

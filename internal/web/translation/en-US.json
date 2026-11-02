@@ -114,7 +114,7 @@
     "clients": "Clients",
     "groups": "Groups",
     "nodes": "Nodes",
-    "hosts": "Hosts",
+    "hosts": "Subscription addresses",
     "settings": "Panel Settings",
     "xray": "Xray Configs",
     "routing": "Routing",
@@ -126,11 +126,19 @@
     "pinSidebar": "Pin sidebar",
     "unpinSidebar": "Unpin sidebar",
     "subFormats": "Sub Formats",
-    "network": "Network",
+    "network": "Cascades",
     "filters": "Filters",
-    "certs": "Certificates",
+    "certs": "TLS & DNS",
     "edge": "Edge (443)",
-    "templates": "Inbound templates"
+    "templates": "Inbound templates",
+    "section": {
+      "overview": "Overview",
+      "access": "Access",
+      "fleet": "Fleet",
+      "entry": "Entry (443)",
+      "routing": "Routing",
+      "system": "System"
+    }
   },
   "pages": {
     "login": {
@@ -2295,7 +2303,8 @@
         "maxUdpRelayPacketSize": "Max UDP Packet Size",
         "sni": "SNI",
         "sniHint": "Server Name Indication override"
-      }
+      },
+      "coreDns": "Core DNS"
     },
     "peers": {
       "toasts": {

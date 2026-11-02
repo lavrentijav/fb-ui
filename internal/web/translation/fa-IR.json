@@ -120,17 +120,25 @@
     "outbounds": "خروجی‌ها",
     "apiDocs": "مستندات API",
     "donate": "حمایت مالی",
-    "hosts": "میزبان‌ها",
+    "hosts": "Subscription addresses",
     "docs": "مستندات",
     "openMenu": "باز کردن منو",
     "pinSidebar": "ثابت کردن نوار کناری",
     "unpinSidebar": "برداشتن تثبیت نوار کناری",
     "subFormats": "Sub Formats",
-    "network": "شبکه",
+    "network": "Cascades",
     "filters": "فیلترها",
-    "certs": "گواهی‌ها",
+    "certs": "TLS & DNS",
     "edge": "Edge (443)",
-    "templates": "Inbound templates"
+    "templates": "Inbound templates",
+    "section": {
+      "overview": "Overview",
+      "access": "Access",
+      "fleet": "Fleet",
+      "entry": "Entry (443)",
+      "routing": "Routing",
+      "system": "System"
+    }
   },
   "pages": {
     "login": {
@@ -2177,7 +2185,8 @@
         "maxUdpRelayPacketSize": "حداکثر اندازه بسته UDP",
         "sni": "SNI",
         "sniHint": "بازنویسی نشانگر نام سرور"
-      }
+      },
+      "coreDns": "Core DNS"
     },
     "hosts": {
       "addHost": "افزودن میزبان",

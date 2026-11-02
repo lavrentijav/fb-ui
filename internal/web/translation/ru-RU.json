@@ -120,17 +120,25 @@
     "outbounds": "Исходящие",
     "apiDocs": "Документация API",
     "donate": "Поддержать",
-    "hosts": "Хосты",
+    "hosts": "Адреса подписок",
     "docs": "Документация",
     "openMenu": "Открыть меню",
     "pinSidebar": "Закрепить боковую панель",
     "unpinSidebar": "Открепить боковую панель",
     "subFormats": "Форматы подписки",
-    "network": "Сеть",
+    "network": "Каскады",
     "filters": "Фильтры",
-    "certs": "Сертификаты",
+    "certs": "TLS и DNS",
     "edge": "Порт 443 (edge)",
-    "templates": "Шаблоны инбаундов"
+    "templates": "Шаблоны инбаундов",
+    "section": {
+      "overview": "Обзор",
+      "access": "Доступ",
+      "fleet": "Флот",
+      "entry": "Вход (443)",
+      "routing": "Маршрутизация",
+      "system": "Система"
+    }
   },
   "pages": {
     "login": {
@@ -2177,7 +2185,8 @@
         "maxUdpRelayPacketSize": "Макс. размер пакета UDP",
         "sni": "SNI",
         "sniHint": "Переопределение Server Name Indication"
-      }
+      },
+      "coreDns": "DNS ядра"
     },
     "hosts": {
       "addHost": "Добавить хост",

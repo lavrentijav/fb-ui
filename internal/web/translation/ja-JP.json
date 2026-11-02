@@ -120,17 +120,25 @@
     "outbounds": "アウトバウンド",
     "apiDocs": "API ドキュメント",
     "donate": "寄付",
-    "hosts": "ホスト",
+    "hosts": "Subscription addresses",
     "docs": "ドキュメント",
     "openMenu": "メニューを開く",
     "pinSidebar": "サイドバーを固定",
     "unpinSidebar": "サイドバーの固定を解除",
     "subFormats": "Sub Formats",
-    "network": "ネットワーク",
+    "network": "Cascades",
     "filters": "フィルター",
-    "certs": "証明書",
+    "certs": "TLS & DNS",
     "edge": "Edge (443)",
-    "templates": "Inbound templates"
+    "templates": "Inbound templates",
+    "section": {
+      "overview": "Overview",
+      "access": "Access",
+      "fleet": "Fleet",
+      "entry": "Entry (443)",
+      "routing": "Routing",
+      "system": "System"
+    }
   },
   "pages": {
     "login": {
@@ -2177,7 +2185,8 @@
         "maxUdpRelayPacketSize": "最大 UDP パケットサイズ",
         "sni": "SNI",
         "sniHint": "Server Name Indication の上書き"
-      }
+      },
+      "coreDns": "Core DNS"
     },
     "hosts": {
       "addHost": "ホストを追加",
