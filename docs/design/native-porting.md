@@ -46,6 +46,7 @@ main-line commit that has been reviewed. The main line is
 | Subscription hosts | in progress: `hosts`/`hostsmod` advertise alternative addresses per node+inbound and `sub` hands them out instead of the spec's Host |
 | Interface (separate module) | in progress: `uimod` session login (cookie over `/api/v1/ui`), `UIDir` serves the built app at `/panel` with the `compat` adapter; missing: React login against the new session, per-section legacy routes, migration to `/api/v1` |
 | Multi-master core (`internal/native/{hlc,bus,pgstate,lww,master,oplog}`) | in progress: JetStream supercluster + Postgres projection, split/heal tested |
+| Production readiness | planned: `native-prod-plan.md` (safety, master entrypoint, fleet join, node delivery/self-update/sidecars, migration, release, operations); current state in `native-node-status.md` |
 
 ## Ledger
 

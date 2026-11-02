@@ -10,8 +10,10 @@ Status: 2026-11-02, branch `native` at `ec6812efb`. Verdict up front:
   tested, but there is no production binary, no bootstrap/join path for
   masters, the admin API is unauthenticated, and there is no migration from
   the panel's database. Details and a checklist below.
-- **Lite profile for sub-nodes:** designed, not built. Two honest variants; the
-  recommendation is one binary with a `profile` setting.
+- **Sub-nodes:** `lite` is the full node (complete data plane, no admin/user
+  surface) and is the default `fbnode` build; `relay` is the only reduced
+  profile (edge only, no Xray). The production plan is in
+  `native-prod-plan.md`.
 
 ## 1. What fbnode does today
 
@@ -110,67 +112,82 @@ Master (not ready → ready):
 6. Backup/restore of the JetStream directory and the Postgres schema; an
    upgrade path that replays the op log on a new binary.
 
-## 4. Lite profile for sub-nodes
+## 4. Node profiles: `lite` (the default node) and `relay`
 
-Everything above is one agent binary. A sub-node in this architecture is a node
-that does not carry users of its own: it either forwards traffic to a parent
-node/exit, or only serves a small set of users without networks. Two profiles,
-both runtime-switchable so a node can be promoted without reinstalling:
+The split is **not** "small feature set vs big one". It is **data plane vs
+control plane**:
 
-### Profile `relay` — no Xray at all
+| | `fbmaster` | `fbnode` (`lite`, default) | `fbnode --profile relay` |
+|---|---|---|---|
+| Admin UI / panel | yes | no | no |
+| Admin API, API tokens, sessions | yes | **no** | no |
+| Groups, subscriptions, settings, templates, audit, webhooks, notifications | yes | **no** | no |
+| Serves users (inbounds, edge 443, certs) | — | yes | no |
+| Cascades, balancers, routing rules | — | yes | routes only (edge splice) |
+| Virtual networks: data plane, per-network DNS, presence, routing | — | yes | no |
+| IP limits / fail2ban | — | yes | no |
+| Reports, health, journal, drain | — | yes | yes (health/edge only) |
+| Sidecars (TUIC, MTProto, AmneziaWG) | — | yes (to port) | no |
+| Self-update / Xray install | yes | yes | yes (no Xray) |
 
-The edge terminates TLS and splices to an upstream (the parent node or an
-exit's cascade inbound) with the existing `Reverse{Kind:"tcp"}` path. The agent
-still pulls state, applies `Edge`/`Certs`/`Drain`, reports health, and journals;
-it never starts Xray, never collects traffic (there is no local accounting),
-never runs vdns/presence/IP-limit.
+So **`lite` is the full node**: it does everything a node must do — every
+transport and protocol, every cascade shape, routing, certificates, virtual
+networks, limits, accounting — and only refuses the things that belong to the
+operator: no admin interaction, no user/group management, no embedded panel.
+There is nothing to cut from the data plane; `lite` is the normal `fbnode`
+build. The name is kept because it is what a sub-node gets: a node, not a
+panel.
 
-- Footprint: only the Go runtime + NATS + edge. Expect ~10–15 MB RSS versus
-  15–25 MB for the agent alone plus 25–110 MB for Xray.
-- Use: a cheap country front, a CDN-side hop, a hop in a chain of cascades.
-- Master side: the spec has no inbounds; routes are `Reverse` TCP entries.
-  Nothing to render for Xray, so `Render` must skip the Xray config (today it
-  always produces one).
+### What "no admin/user interaction" means concretely
 
-### Profile `lite` — full features minus the multi-tenant extras
+The agent must never expose a management surface:
 
-Xray and the edge as usual, but no virtual-network DNS, no presence
-publication, no IP-limit watcher/fail2ban. For nodes whose users have no
-`limitIp` and are in no network.
+- no listening HTTP port except the edge; it dials the masters outbound only;
+- no API tokens, no sessions, no audit/webhook/notification configuration;
+- no group CRUD, no subscription management, no settings/template editing;
+- state is pushed (desired state) and reported (journal); an operator changes a
+  node only through a master.
 
-- Footprint: saves the three small goroutine sets and a few MB of RSS; the real
-  win is a smaller failure surface and no loopback DNS listeners on a node that
-  does not need them.
-- Master side: refuse to render `VNet`/limits for a lite node (a clear error
-  instead of silently dropping them).
+This is already true of `cmd/fbnode`; the plan is to keep it true and to make
+the build/test enforce it (a test asserting the agent opens no listener other
+than `Listen`).
 
-### Implementation shape (one binary)
+### Profile `relay` — edge only, no Xray
 
-1. `config.json`: `"profile": "full" | "lite" | "relay"` (default `full`).
+For a cheap country front, a CDN-side hop, or a hop in a cascade chain. The
+edge terminates TLS and splices to an upstream with `Reverse{Kind:"tcp"}`; the
+agent still pulls state, applies `Edge`/`Certs`/`Drain`, reports health and
+journals. It never starts Xray, never counts traffic, never runs vdns/presence/
+IP-limit. ~10–15 MB RSS; no per-user accounting on that hop.
+
+- Master side: the spec has no inbounds and no exits; `nodespec.Render` must
+  still produce `Edge`/`Certs`/`Drain` and an empty Xray config (today it always
+  produces a full one).
+- The relay must still rotate certificates: edge/certs are applied even when
+  Xray is nil.
+
+### Implementation shape (one binary, two profiles)
+
+1. `config.json`: `"profile": "lite" | "relay"` (default `lite`).
 2. `cmd/fbnode`:
+   - `lite`: today's wiring (Xray, edge, DNS, presence, IP limits, journal).
    - `relay`: `xray.bin` optional; skip `xrayrun`, `vdns`, `presence`,
      `IPLimit`; `BundleApplier.Xray = nil`; `Node.Xray = nil`.
-   - `lite`: skip `vdns`, `presence`, `IPLimit`.
-   - `full`: today's wiring.
-3. `agent.BundleApplier`: nil-guard Xray and DNS (apply edge/certs/drain
-   always — a relay must still rotate certificates).
+3. `agent.BundleApplier`: nil-guard Xray and DNS; always apply edge/certs/drain.
 4. `agent.Node.Collect`: with nil Xray, send a heartbeat with health only.
-5. `nodespec.Render`: when a spec has no inbounds and no exits (a relay), still
-   produce `Edge`/`Certs`/`Drain` and an empty Xray config (or a marker the
-   agent ignores).
-6. Optional build tags `no_vdns`, `no_failban`, `no_xray` to cut the packages
-   for a relay-only build; a relay build should stay under ~6 MB.
-7. Tests: a unit test per profile guard (nil-safe apply/collect) and a netlab
-   `TestRelayNodeForwards` (a relay node with no Xray passes a tunnel to an
-   exit and reports health, not traffic).
+5. `nodespec.Render`: a spec with no inbounds/exits renders edge/certs/drain
+   and an empty Xray config.
+6. Enforce the no-admin rule in a test: the agent's only listener is `Listen`.
+7. Tests: nil-safe apply/collect per profile, and a netlab
+   `TestRelayNodeForwards` (a relay passes a tunnel to an exit, reports health,
+   traffic stays zero on the relay).
 
 ### Recommendation
 
-Ship one binary with the runtime profile first (low risk, no matrix of
-artifacts), and add the build tags only if a relay image needs to be
-distributed to untrusted hosts. Both profiles are additive: the full agent and
-the lab stay as they are, and the master already has everything it needs to
-render the routes — only the "no inbounds" render case is new.
+Ship `lite` as the default and only node artifact; add `relay` as a runtime
+profile of the same binary first. Build tags (`no_xray`, `no_vdns`,
+`no_failban`) only if a relay image must be handed to untrusted hosts and its
+size matters.
 
 ## 5. One-paragraph summary for the operator
 
@@ -181,7 +198,7 @@ ACME test needs Pebble). Three things remain before a fleet rollout — agent
 self-update, sidecars, and packaging/history. The native master is **not**
 ready: the code is tested, but there is no production binary, no safe way to
 join a second master or migrate the existing database, and the admin HTTP
-surface is unauthenticated today, so it must not be exposed. A sub-node can be
-made much lighter with a `relay` profile (edge only, no Xray) or a `lite`
-profile (no networks/IP limits); the design is in this file, and it is a
-contained change to `cmd/fbnode`, `agent` and `nodespec.Render`.
+surface is unauthenticated today, so it must not be exposed. A sub-node gets the
+same `lite` node build — everything except the admin and user surface — and
+only a cheap forwarding hop needs the reduced `relay` profile (edge only, no
+Xray). The step-by-step production plan is in `native-prod-plan.md`.

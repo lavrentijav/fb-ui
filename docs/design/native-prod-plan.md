@@ -1,0 +1,221 @@
+# Native production plan
+
+Status: 2026-11-02, branch `native`. Companion to `native-node-status.md`
+(what exists) and `native-core.md` (target shape). This file is the order of
+work from "tested code" to "runs the fleet", with acceptance criteria.
+
+## Definition of done
+
+A master and a node are production-ready when all of these hold:
+
+1. **Deployable:** one versioned artefact each (`fbmaster`, `fbnode`), built by
+   CI, with `--version`, a checksum and a documented config file.
+2. **Safe by default:** the admin surface is authenticated and loopback-only by
+   default; a master refuses to start exposed without saying so; no secret is
+   logged or returned twice.
+3. **Joinable:** a fresh master can join an existing fleet with one token; a
+   fresh node can enrol with one token; both work without a human copying key
+   material.
+4. **Recoverable:** the agent keeps serving when every master is down; a master
+   restart replays the op log; a JetStream directory can be backed up and
+   restored; the last known configuration is on the node's disk.
+5. **Upgradable:** a node and a master can be updated in place with a health
+   gate and automatic rollback.
+6. **Migratable:** the existing panel's SQLite can be imported with a dry-run
+   report and a cutover/rollback runbook.
+7. **Observable:** node online/offline, last error, traffic, certificate expiry
+   and master quorum are visible without SSH.
+8. **Tested:** the lab suite is green; a failure-injection run (kill a master,
+   kill a node's master link, fill a disk) has documented outcomes.
+
+## Phase 0 — Safety (do first, small)
+
+Why first: the master's admin handler has no authentication and the lab binds
+`:8080`; the status doc already says this must never be exposed. Everything
+else can wait; this cannot.
+
+- [ ] `Config.AdminListen` (default `127.0.0.1:0`); the process logs the port.
+- [ ] Refuse to bind a non-loopback admin address unless an explicit
+      `AdminAllowPublic: true` is set, and log a warning then.
+- [ ] Gate every admin route with the existing `apiauth`/`uimod` session
+      middleware (the module API already has it; the admin mux does not).
+- [ ] Audit the admin handler list: every route either authenticated or
+      explicitly public (`/healthz`, `/ready`), with a table in the docs.
+- [ ] Log redaction test: no token, password, subscription login or private key
+      in a log line (a unit test over the formatters).
+- Acceptance: `curl` from another host gets 401/403/connection refused; lab
+  masters still pass with the loopback default.
+
+## Phase 1 — Master entrypoint and first run
+
+- [ ] `cmd/fbmaster`: config file (`/etc/fbmaster/config.json`), flags for
+      `-c`, `--check`, `--version`; signal handling; structured logs; one
+      process, one directory.
+- [ ] `--check` validates config, listeners, store dirs and prints what it
+      would bind.
+- [ ] Store choice: JetStream dir always; Postgres projection optional behind a
+      DSN; document which data lives where.
+- [ ] Fleet CA: load from a file, or generate on first run and print the
+      fingerprint; persist it; never regenerate silently.
+- [ ] Bootstrap admin token: print once (to stderr and a root-only file),
+      refuse to mint a second on restart while one lives.
+- [ ] First-run wizard text: listen addresses, CA fingerprint, admin URL,
+      token, and the exact `fbnode enroll` command for the first node.
+- [ ] `GET /healthz` and `GET /ready` semantics documented (bus attached,
+      projection caught up, leader state).
+- Acceptance: a clean VM with one config file serves the admin API on
+  loopback, emits a token, and a scripted test does login → list nodes.
+
+## Phase 2 — Fleet join, CA distribution, pool
+
+- [ ] Master join token: minted by a master, redeems into a gateway
+      certificate signed by the fleet CA (mirror `enroll` for nodes).
+- [ ] CA distribution: a joining master gets the CA certificate; it must not
+      need the CA key unless it is allowed to issue (flag per master).
+- [ ] Document the trust model: which masters may issue node certificates,
+      which may issue gateway certificates.
+- [ ] Pool DNS: first-run guidance for the pool name, the DNS account
+      (`PUT /dns/{id}`) and the certificate; a check that warns when the pool
+      name has no certificate or no A record.
+- [ ] Multi-address already exists (`ips`, `iphealth`, `PUT /net/ips`); add the
+      runbook: detect → announce → verify with `GET /net/ips`.
+- Acceptance: start master A, join master B with one token, both serve
+  `/api/v1`; kill B, A keeps the fleet; DNS pool drops B after the configured
+  fraction (lab extension of `TestMastersDriveNodes`/pool tests).
+
+## Phase 3 — Node production hardening
+
+The node data plane is done (`lite` = full node). Remaining work:
+
+### 3.1 Profiles
+- [ ] `profile` in the node config: `lite` (default, today's wiring) and
+      `relay` (edge only, no Xray).
+- [ ] Nil-safe `BundleApplier`/`Node.Collect`; `nodespec.Render` for a spec
+      with no inbounds (edge/certs/drain, empty Xray config).
+- [ ] Test: the agent opens no listener except `Listen` (the no-admin rule).
+- [ ] Lab `TestRelayNodeForwards`.
+
+### 3.2 Delivery
+- [ ] `make fbnode` / `make fbmaster` with `-trimpath`, `CGO_ENABLED=0`,
+      version from git, SHA-256; artifacts in the release.
+- [ ] systemd unit template in the repo (today it is generated inside
+      `provision`); no config secrets in the unit.
+- [ ] `provision`: install Xray when missing (download, verify checksum,
+      pin a version) instead of refusing; optional core upgrade.
+
+### 3.3 Self-update
+- [ ] Signed release manifest (checksum + signature with a fleet key).
+- [ ] Agent downloads to a staging path, verifies, swaps via a `current`/
+      `previous` symlink, restarts, and rolls back if the process does not
+      stay up for N seconds or Xray fails to start.
+- [ ] `--version` and a reported version (the report already has a field).
+- [ ] Master command `POST /nodes/{node}/upgrade` and per-node version in
+      `/nodes/state`.
+- Acceptance: lab: upgrade a node to a bad build, it rolls back and keeps
+  serving; upgrade to a good build reports the new version.
+
+### 3.4 Sidecars (parity with the main line)
+- [ ] TUIC, MTProto (mtg), AmneziaWG as agent-managed processes with the same
+      hot-apply/drain/health rules as Xray (one process group per sidecar, a
+      supervised restart).
+- [ ] Their configs become part of the node bundle (renderer + `Bundle`).
+- [ ] Traffic accounting from sidecars where the sidecar exposes it; otherwise
+      document "not counted" and surface it.
+- Acceptance: lab: each sidecar carries a tunnel, a config change does not cut
+  an open one, and a crash is restarted.
+
+### 3.5 Node lifecycle
+- [ ] Provision creates the node's DNS record through `dnsacct`.
+- [ ] Drain runbook: how to take a node out, what "active" means, when it is
+      safe to stop.
+- [ ] Node history: reuse `reportdb`/history tables; a per-node chart endpoint
+      and a retention policy.
+- [ ] Certificate expiry in `/nodes/state` (the data exists in `certs`).
+
+## Phase 4 — Migration from the old panel
+
+- [ ] Importer: read the panel SQLite (inbounds, clients, hosts, settings,
+      nodes, subscriptions) into op-log records; a pure mapping package with
+      unit tests on a fixture DB.
+- [ ] Dry run: report every entity that maps, every one that does not (with the
+      reason), and every conflict (same email on two inbounds, duplicate tags).
+- [ ] Cutover runbook: old panel read-only → import → start masters → enrol
+      nodes one by one → verify traffic/subscription → retire old.
+- [ ] Rollback: keep the old DB untouched; a node can be pointed back while the
+      old panel still holds its config.
+- [ ] Dual-run period: a node may report to both (or the old panel keeps the
+      subscription while the new master serves traffic).
+- Acceptance: import the lab's or a copy of the real DB, every inbound/client
+  appears in `/api/v1` and renders the same subscription links as the old panel
+  (a diff test over link sets).
+
+## Phase 5 — UI and release
+
+- [ ] CI builds the frontend once and ships `dist/` beside the binary (no Node
+      on the server); `UIDir` documented.
+- [ ] Login UX for the bootstrap token (paste once, session cookie), and a
+      "create the first operational token" step.
+- [ ] Per-section legacy routes still missing (`nodes`, `certs`, `dns`,
+      `routing` pages call `/panel/api/*`); finish them so no page 404s.
+- [ ] Release workflow: master + node + UI, versioned, checksummed, with
+      upgrade notes.
+- Acceptance: a release tarball on a clean VM gives a working panel, a
+  subscribable client and an enrolled node with no source checkout.
+
+## Phase 6 — Operations
+
+- [ ] Backup/restore: JetStream dir snapshot, Postgres dump, a restore drill.
+- [ ] Master upgrade: new binary, replay, health gate, rollback to the previous
+      binary; document the disk-format assumption.
+- [ ] Monitoring: node up/down and certificate expiry already exist as events;
+      add a documented webhook/Telegram recipe and a `/healthz` check.
+- [ ] Failure drills: kill a master, kill the link to the node's master, fill
+      the disk, revoke a node certificate, rotate the pool certificate.
+- [ ] Security review: admin auth, token storage, session cookies, header
+      injection, path traversal on `/panel` and `/subpage.html`, secret logs.
+- [ ] Load check: N nodes × M clients reporting, the leader's event delivery,
+      subscription fetch under concurrency.
+- [ ] Documentation set: install, join, enrol, upgrade, backup, migrate,
+      troubleshoot (one page each in the operator docs).
+
+## Order and dependencies
+
+| Order | Phase | Blocks | Effort |
+|---|---|---|---|
+| 1 | 0 Safety | everything that exposes a port | days |
+| 2 | 1 Master entrypoint | any real deployment | 1 week |
+| 3 | 3.1 Profiles (lite/relay) | cheap sub-nodes | days |
+| 4 | 3.2 Delivery + 3.3 Self-update | unattended nodes | 1–2 weeks |
+| 5 | 2 Fleet join | multi-master production | 1 week |
+| 6 | 4 Migration | replacing the old panel | 1–2 weeks |
+| 7 | 3.4 Sidecars | full parity | 1–2 weeks |
+| 8 | 5 UI/release | operator-facing release | 1 week |
+| 9 | 6 Operations | sign-off | continuous |
+
+`lite` is not a phase of its own: it is the default node and the work in 3.1
+only adds `relay` and the guard rails.
+
+## What "pilot" means, precisely
+
+Allowed now on real nodes, one at a time, with an operator watching:
+
+- entry and exit nodes carrying real users, with subscriptions served by the
+  current panel or a native master;
+- traffic, quotas, IP limits, certs, drain, cascades, virtual networks;
+- rollback = point the node's config back at the old panel and restart.
+
+Not allowed yet: unattended fleet rollout, migration of the database, exposing
+the admin API, or running a master without an SSH fallback.
+
+## Open decisions
+
+1. Release signing key: where it lives, who holds it, how a node gets the
+   public half (bootstrap config vs first master push).
+2. Persistent store for nodes: keep "last state + journal" (current) or add a
+   small SQLite for history on the node? Current answer: keep it minimal, the
+   master owns history.
+3. Sidecar scope for 1.0: TUIC + AmneziaWG only, or MTProto too?
+4. Migration scope: all entities, or inbounds/clients/settings first and the
+   rest later?
+5. `fbmaster` and `fbnode` in one repository (one `go build` target each) vs
+   separate modules. Current answer: one repository, two commands.
