@@ -1,0 +1,20 @@
+[Unit]
+Description=fbui master
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/fbmaster -c /etc/fbmaster/config.json
+Restart=always
+RestartSec=5
+LimitNOFILE=1048576
+# the master owns its JetStream directory and, when configured, the fleet CA key
+StateDirectory=fbmaster
+ReadWritePaths=/var/lib/fbmaster /etc/fbmaster
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+[Unit]
+Description=fbui node agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/fbnode -c /etc/fbnode/config.json
+# fbnode upgrade swaps the binary and exits; Restart=always is what starts the
+# new build (and brings the old one back after a failed one).
+Restart=always
+RestartSec=3
+LimitNOFILE=1048576
+StateDirectory=fbnode
+ReadWritePaths=/var/lib/fbnode /etc/fbnode
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# the edge listens on 443 and may bind other low ports for a relay
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

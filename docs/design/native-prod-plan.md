@@ -201,20 +201,24 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 
 ## Phase 5 — UI and release
 
-- [ ] CI builds the frontend once and ships `dist/` beside the binary (no Node
-      on the server); `UIDir` documented.
-- [ ] Login UX for the bootstrap token (paste once, session cookie), and a
-      "create the first operational token" step.
+- [x] CI builds the frontend and ships `dist/` (no Node on the server);
+      `.github/workflows/native.yml` packages both binaries and the interface,
+      and attaches them to a `native-v*` tag. `UIDir` is documented in
+      `native-deploy.md`.
+- [x] Login UX for the bootstrap token (paste once, session cookie) — the page
+      posts it to `/api/v1/ui/login`; the "create the first operational token"
+      step is the Access page.
 - [ ] Per-section legacy routes still missing (`nodes`, `certs`, `dns`,
       `routing` pages call `/panel/api/*`); finish them so no page 404s.
-- [ ] Release workflow: master + node + UI, versioned, checksummed, with
-      upgrade notes.
+- [x] Release workflow: master + node + UI, versioned and checksummed
+      (`native.yml`); upgrade notes live in `native-deploy.md`.
 - Acceptance: a release tarball on a clean VM gives a working panel, a
   subscribable client and an enrolled node with no source checkout.
 
 ## Phase 6 — Operations
 
-- [ ] Backup/restore: JetStream dir snapshot, Postgres dump, a restore drill.
+- [ ] Backup/restore: the procedure (stop, copy the JetStream directory,
+      restart) is in `native-deploy.md`; the restore drill is still to run.
 - [ ] Master upgrade: new binary, replay, health gate, rollback to the previous
       binary; document the disk-format assumption.
 - [ ] Monitoring: node up/down and certificate expiry already exist as events;
