@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/certs"
@@ -50,9 +52,11 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/subauth"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/submeta"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/subparam"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/templates"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/usage"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/vnet"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
 )
 
 // SpecTable holds each node's spec as field "spec".
@@ -91,6 +95,13 @@ type Config struct {
 	// PoolName is the masters' shared name (master.firewalk.top), resolving to
 	// every live master; empty keeps this master out of any pool.
 	PoolName string
+	// SubNames are extra public names on the same edge and certificate that
+	// serve subscriptions only (sub.firewalk.top) and never the panel.
+	SubNames []string
+	// Reverses are extra TLS names on the same certificate that the edge
+	// proxies to an HTTP backend (for example a bot's callback host); they
+	// are not written to the pool's DNS records.
+	Reverses map[string]string
 	// PublicIP is this master's address in the pool; PublicIPs carries several
 	// (a host reached by more than one address). Empty means the master detects
 	// its own addresses and keeps them up to date.
@@ -125,22 +136,26 @@ type Config struct {
 }
 
 type Daemon struct {
-	cfg      Config
-	bus      *bus.Bus
-	edge     *edgerun.Runner
-	store    *master.Mem
-	m        atomic.Pointer[master.Master]
-	dns      atomic.Pointer[dnsacct.Accounts]
-	host     atomic.Pointer[mhost.Host]
-	vnets    atomic.Pointer[vnet.Store]
-	pool     atomic.Pointer[pool.Pool]
-	presence *presence.Map
-	api      *http.Server
+	cfg        Config
+	bus        *bus.Bus
+	edge       *edgerun.Runner
+	store      *master.Mem
+	m          atomic.Pointer[master.Master]
+	dns        atomic.Pointer[dnsacct.Accounts]
+	host       atomic.Pointer[mhost.Host]
+	apiHandler atomic.Value // http.Handler, built once the host exists
+	vnets      atomic.Pointer[vnet.Store]
+	pool       atomic.Pointer[pool.Pool]
+	presence   *presence.Map
+	api        *http.Server
 }
 
 // Start brings the master up; it serves nodes once the streams exist,
 // which needs the other masters (JetStream quorum) the first time.
 func Start(ctx context.Context, cfg Config) (*Daemon, error) {
+	if err := cfg.validateEdgeNames(); err != nil {
+		return nil, err
+	}
 	peers := cfg.Peers
 	b, err := bus.Start(bus.Config{
 		Name: cfg.Name, StoreDir: cfg.StoreDir, Host: "127.0.0.1", Port: cfg.ClientPort,
@@ -158,6 +173,24 @@ func Start(ctx context.Context, cfg Config) (*Daemon, error) {
 	}
 	go d.boot(ctx)
 	return d, nil
+}
+
+func (c Config) validateEdgeNames() error {
+	if c.PoolName == "" {
+		if len(c.SubNames) > 0 {
+			return errors.New("masterd: subNames require poolName")
+		}
+		return nil
+	}
+	if c.PoolName == c.PublicName {
+		return fmt.Errorf("masterd: pool name %q is also the public name", c.PoolName)
+	}
+	for _, name := range c.SubNames {
+		if name == c.PoolName || name == c.PublicName {
+			return fmt.Errorf("masterd: sub name %q collides with another edge name", name)
+		}
+	}
+	return nil
 }
 
 func (d *Daemon) logf(format string, args ...any) {
@@ -181,6 +214,17 @@ func (d *Daemon) boot(ctx context.Context) {
 		d.logf("master: %v", err)
 		return
 	}
+	// replay before the renewer's first tick, which would otherwise miss wanted certs
+	for ctx.Err() == nil {
+		if _, err := m.CatchUp(ctx); err == nil {
+			break
+		}
+		d.logf("catch-up: %v", err)
+		time.Sleep(500 * time.Millisecond)
+	}
+	if ctx.Err() != nil {
+		return
+	}
 	if err := d.bus.ServeProbe(probe.SystemLoad); err != nil {
 		d.logf("probe: %v", err)
 	}
@@ -196,6 +240,12 @@ func (d *Daemon) boot(ctx context.Context) {
 	d.m.Store(m)
 	d.logf("master %s ready", d.cfg.Name)
 	d.startModules(ctx, m)
+	// declare the pool certificate before the renewer's first tick, which is immediate
+	if d.cfg.PoolName != "" && d.cfg.ACME != nil {
+		if err := d.wantPoolCert(ctx, m); err != nil {
+			d.logf("pool cert: %v", err)
+		}
+	}
 	if d.cfg.ACME != nil {
 		a := *d.cfg.ACME
 		if a.DNSFor == nil {
@@ -252,20 +302,36 @@ func (d *Daemon) runPool(ctx context.Context, m *master.Master, accounts *dnsacc
 		d.logf("pool: %v", err)
 		return
 	}
+	subLn, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		_ = ln.Close()
+		d.logf("pool: %v", err)
+		return
+	}
 	srv := &http.Server{Handler: d.Public(), ReadHeaderTimeout: 10 * time.Second}
-	go func() { _ = srv.Serve(ln) }()
-	go func() { <-ctx.Done(); _ = srv.Close() }()
-	go d.serveEdge(ctx, "http://"+ln.Addr().String())
+	subSrv := &http.Server{Handler: d.SubPublic(), ReadHeaderTimeout: 10 * time.Second}
+	go network.ServeHTTP(srv, ln, "pool api")
+	go network.ServeHTTP(subSrv, subLn, "sub api")
+	go func() {
+		<-ctx.Done()
+		_ = srv.Close()
+		_ = subSrv.Close()
+	}()
+	go d.serveEdge(ctx, "http://"+ln.Addr().String(), "http://"+subLn.Addr().String())
 
 	dnsFor := accounts.For
 	if d.cfg.ACME != nil && d.cfg.ACME.DNSFor != nil {
 		dnsFor = d.cfg.ACME.DNSFor
 	}
+	if d.cfg.ACME == nil {
+		dnsFor = nil // only an issuing master writes DNS; a joined master reports health
+	}
 	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{ServerName: name, RootCAs: d.cfg.PoolRoots, MinVersion: tls.VersionTLS12},
 	}}
 	p := &pool.Pool{
-		Master: m, State: d.store.State, Name: name, DNS: dnsFor, Logf: d.cfg.Logf,
+		Master: m, State: d.store.State, Name: name, Aliases: d.cfg.SubNames,
+		DNS: dnsFor, Logf: d.cfg.Logf,
 		MaxDownFraction: d.cfg.PoolMaxDownFraction, MaxRecords: d.cfg.PoolMaxRecords,
 		Check: func(ctx context.Context, ip string) error {
 			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://"+net.JoinHostPort(ip, "443")+"/healthz", nil)
@@ -304,28 +370,78 @@ func (d *Daemon) announceIPs(ctx context.Context, m *master.Master) error {
 	}
 }
 
+// poolNames is the certificate's names: the panel plus the subscription names.
+func (d *Daemon) poolNames() []string {
+	names := []string{d.cfg.PoolName}
+	for _, name := range d.cfg.SubNames {
+		if name != "" && !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// certNames adds the reverse names in a stable order, so an unchanged
+// configuration does not re-declare the certificate on every boot.
+func (d *Daemon) certNames() []string {
+	names := d.poolNames()
+	extra := make([]string, 0, len(d.cfg.Reverses))
+	for name := range d.cfg.Reverses {
+		extra = append(extra, name)
+	}
+	slices.Sort(extra)
+	for _, name := range extra {
+		if name != "" && !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 func (d *Daemon) wantPoolCert(ctx context.Context, m *master.Master) error {
+	names := d.certNames()
 	id := poolCertID(d.cfg.PoolName)
 	if rec, ok := d.store.State.Get(certs.Table, id); ok {
-		var names []string
-		if json.Unmarshal(rec["names"], &names) == nil && slices.Equal(names, []string{d.cfg.PoolName}) {
+		var have []string
+		if json.Unmarshal(rec["names"], &have) == nil && slices.Equal(have, names) {
 			return nil
 		}
 	}
-	return certs.Want(ctx, m, id, []string{d.cfg.PoolName})
+	return certs.Want(ctx, m, id, names)
 }
 
-// serveEdge keeps the edge's routes: the bus by SNI always, the pool name
-// to the public handler once its certificate is issued or renewed.
-func (d *Daemon) serveEdge(ctx context.Context, public string) {
+// poolEdge is the edge table: the bus by SNI always, then every pool name to
+// the panel or the subscription-only handler.
+func (d *Daemon) poolEdge(public, subPublic string) nodespec.Edge {
+	e := d.busEdge()
+	for _, name := range d.poolNames() {
+		target := subPublic
+		if name == d.cfg.PoolName {
+			target = public
+		}
+		e.SNI = append(e.SNI, nodespec.SNIRoute{Match: name, Action: "handoff", Target: nodespec.Handoff})
+		e.HTTP = append(e.HTTP, nodespec.HTTPRoute{Host: name, PathPrefix: "/", Target: target})
+	}
+	names := make([]string, 0, len(d.cfg.Reverses))
+	for name := range d.cfg.Reverses {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		e.SNI = append(e.SNI, nodespec.SNIRoute{Match: name, Action: "handoff", Target: nodespec.Handoff})
+		e.HTTP = append(e.HTTP, nodespec.HTTPRoute{Host: name, PathPrefix: "/", Target: d.cfg.Reverses[name]})
+	}
+	return e
+}
+
+// serveEdge keeps the edge's routes: the bus by SNI always, the pool names
+// to their handlers once the certificate is issued or renewed.
+func (d *Daemon) serveEdge(ctx context.Context, public, subPublic string) {
 	var served string
 	for ctx.Err() == nil {
 		got := certs.Resolve(d.store.State, []string{poolCertID(d.cfg.PoolName)})
 		if len(got) == 1 && got[0].CertPEM != served {
-			e := d.busEdge()
-			e.SNI = append(e.SNI, nodespec.SNIRoute{Match: d.cfg.PoolName, Action: "handoff", Target: nodespec.Handoff})
-			e.HTTP = []nodespec.HTTPRoute{{Host: d.cfg.PoolName, PathPrefix: "/", Target: public}}
-			if err := d.edge.Apply(e, got); err != nil {
+			if err := d.edge.Apply(d.poolEdge(public, subPublic), got); err != nil {
 				d.logf("pool edge: %v", err)
 			} else {
 				served = got[0].CertPEM
@@ -344,9 +460,10 @@ func (d *Daemon) busEdge() nodespec.Edge {
 	}}}
 }
 
-// Public is what clients reach on the pool name; subscriptions and the panel
-// come here next.
-func (d *Daemon) Public() http.Handler {
+// Public is the panel and subscriptions behind the pool name.
+func (d *Daemon) Public() http.Handler { return d.publicMux() }
+
+func (d *Daemon) publicMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		if d.m.Load() == nil {
@@ -355,12 +472,40 @@ func (d *Daemon) Public() http.Handler {
 		}
 		fmt.Fprintln(w, "ok", d.cfg.Name)
 	})
+	mux.Handle("/api/v1/ui/", http.HandlerFunc(d.adminV1))
+	mux.Handle("/ws", d.uiGuard(http.HandlerFunc(d.serveWS)))
 	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
 	mux.HandleFunc("GET /sub/{token}", d.serveSub)
+	// old panel URLs reached the same subscription through these paths
+	mux.HandleFunc("GET /walksub/{token}", d.serveSub)
+	mux.HandleFunc("GET /frvpn/{token}", d.serveSub)
 	d.mountSubAPI(mux)
 	d.mountEnroll(mux)
 	d.mountMasterJoin(mux)
 	d.mountUI(mux)
+	return mux
+}
+
+// SubPublic is what subscription names expose: the links and the page, never
+// the panel. The page's assets come from the panel build.
+func (d *Daemon) SubPublic() http.Handler { return d.subMux() }
+
+func (d *Daemon) subMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		if d.m.Load() == nil {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		fmt.Fprintln(w, "ok", d.cfg.Name)
+	})
+	mux.HandleFunc("GET /sub/{token}", d.serveSub)
+	mux.HandleFunc("GET /walksub/{token}", d.serveSub)
+	mux.HandleFunc("GET /frvpn/{token}", d.serveSub)
+	d.mountSubAPI(mux)
+	if d.cfg.UIDir != "" {
+		mux.Handle("/panel/assets/", http.HandlerFunc(d.serveUI))
+	}
 	return mux
 }
 
@@ -603,7 +748,7 @@ func (d *Daemon) Handler() http.Handler {
 		ib, err := inbounds.Add(r.Context(), h, d.store.State, r.PathValue("node"), in)
 		if err != nil {
 			code := http.StatusBadRequest
-			if err == inbounds.ErrExists {
+			if errors.Is(err, inbounds.ErrExists) {
 				code = http.StatusConflict
 			}
 			http.Error(w, err.Error(), code)
@@ -628,7 +773,7 @@ func (d *Daemon) Handler() http.Handler {
 		ib, err := inbounds.Update(r.Context(), h, d.store.State, r.PathValue("node"), r.PathValue("tag"), in)
 		if err != nil {
 			code := http.StatusBadRequest
-			if err == inbounds.ErrNotFound {
+			if errors.Is(err, inbounds.ErrNotFound) {
 				code = http.StatusNotFound
 			}
 			http.Error(w, err.Error(), code)
@@ -647,7 +792,7 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		if err := inbounds.Remove(r.Context(), h, d.store.State, r.PathValue("node"), r.PathValue("tag")); err != nil {
 			code := http.StatusBadRequest
-			if err == inbounds.ErrNotFound {
+			if errors.Is(err, inbounds.ErrNotFound) {
 				code = http.StatusNotFound
 			}
 			http.Error(w, err.Error(), code)
@@ -769,8 +914,28 @@ func (d *Daemon) Handler() http.Handler {
 		}
 		_ = json.NewEncoder(w).Encode(u)
 	})
-	mux.Handle("/api/v1/", http.HandlerFunc(d.vnetAPI))
+	mux.Handle("/api/v1/", http.HandlerFunc(d.adminV1))
 	return mux
+}
+
+// adminV1 serves the module API next to the subscribers' virtual-network API.
+// Both carry their own credential check; the outer admin gate lets /api/v1
+// through so login and subscription management can reach them.
+func (d *Daemon) adminV1(w http.ResponseWriter, r *http.Request) {
+	if isSubscriberV1(r.URL.Path) {
+		d.vnetAPI(w, r)
+		return
+	}
+	if api := d.APIHandler(); api != nil {
+		api.ServeHTTP(w, r)
+		return
+	}
+	http.Error(w, "starting", http.StatusServiceUnavailable)
+}
+
+func isSubscriberV1(p string) bool {
+	return p == "/api/v1/me" || p == "/api/v1/me/name" ||
+		p == "/api/v1/network" || strings.HasPrefix(p, "/api/v1/network/")
 }
 
 // preflight inspects a server over SSH before anything is installed. It is
@@ -887,8 +1052,17 @@ func (d *Daemon) serveUI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// the modules' routes first, then the master's own aggregate read
-		// paths (inbounds/clients/nodes/status) in the old shapes
-		withLegacyFallback(module.All(), apiserver.New(h, module.All()), d.Handler()).ServeHTTP(w, r)
+		// paths (inbounds/clients/nodes/status) in the old shapes; the
+		// fallback serves fleet data, so it needs the same credential
+		mods := module.All()
+		var session module.SessionAuth
+		for _, m := range mods {
+			if sa, ok := m.(module.SessionAuth); ok {
+				session = sa
+			}
+		}
+		fallback := apiserver.RequireAuth(h, session, nil, d.Handler())
+		withLegacyFallback(mods, apiserver.New(h, mods), fallback).ServeHTTP(w, r)
 		return
 	}
 	file := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/panel"), "/")
@@ -905,8 +1079,76 @@ func (d *Daemon) serveUI(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, full)
 }
 
+// uiGuard requires the panel login (or an API token) for a browser surface.
+func (d *Daemon) uiGuard(next http.Handler) http.Handler {
+	h := d.host.Load()
+	if h == nil {
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+		})
+	}
+	var session module.SessionAuth
+	for _, m := range module.All() {
+		if sa, ok := m.(module.SessionAuth); ok {
+			session = sa
+		}
+	}
+	return apiserver.RequireAuth(h, session, nil, next)
+}
+
+// serveWS keeps the panel's live-update socket open; the page also polls the
+// status API, so a connected socket without events is enough.
+func (d *Daemon) serveWS(w http.ResponseWriter, r *http.Request) {
+	up := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	conn, err := up.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+	go func() {
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+	tick := time.NewTicker(25 * time.Second)
+	defer tick.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-tick.C:
+			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second)); err != nil {
+				return
+			}
+		}
+	}
+}
+
+// loggedIn reports whether the request carries a valid panel session.
+func (d *Daemon) loggedIn(r *http.Request) bool {
+	c, err := r.Cookie("fbui_session")
+	if err != nil || c.Value == "" {
+		return false
+	}
+	for _, m := range module.All() {
+		if sa, ok := m.(module.SessionAuth); ok {
+			_, _, ok := sa.Principal(c.Value)
+			return ok
+		}
+	}
+	return false
+}
+
 func (d *Daemon) serveIndex(w http.ResponseWriter, r *http.Request) {
-	index := filepath.Join(d.cfg.UIDir, "index.html")
+	name := "index.html"
+	if !d.loggedIn(r) {
+		if _, err := os.Stat(filepath.Join(d.cfg.UIDir, "login.html")); err == nil {
+			name = "login.html"
+		}
+	}
+	index := filepath.Join(d.cfg.UIDir, name)
 	b, err := os.ReadFile(index)
 	if err != nil {
 		http.Error(w, "no interface built in "+d.cfg.UIDir, http.StatusNotFound)
@@ -960,7 +1202,7 @@ func (d *Daemon) createClient(w http.ResponseWriter, r *http.Request) {
 	saved, err := clients.Create(r.Context(), h, c)
 	if err != nil {
 		code := http.StatusBadRequest
-		if err == clients.ErrExists {
+		if errors.Is(err, clients.ErrExists) {
 			code = http.StatusConflict
 		}
 		http.Error(w, err.Error(), code)
@@ -1027,7 +1269,7 @@ func (d *Daemon) saveGroup(w http.ResponseWriter, r *http.Request) {
 	g, err := groups.Save(r.Context(), h, groups.Group{Name: body.Name, Remark: body.Remark, Emails: body.Emails}, body.Overwrite)
 	if err != nil {
 		code := http.StatusBadRequest
-		if err == groups.ErrExists {
+		if errors.Is(err, groups.ErrExists) {
 			code = http.StatusConflict
 		}
 		http.Error(w, err.Error(), code)
@@ -1078,7 +1320,7 @@ func (d *Daemon) groupOp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		if err == groups.ErrNoGroup {
+		if errors.Is(err, groups.ErrNoGroup) {
 			code = http.StatusNotFound
 		}
 		http.Error(w, err.Error(), code)
@@ -1126,7 +1368,7 @@ func (d *Daemon) saveTemplate(w http.ResponseWriter, r *http.Request) {
 	t, err := templates.SaveTemplate(r.Context(), m, d.store.State, body)
 	if err != nil {
 		code := http.StatusBadRequest
-		if err == templates.ErrExists {
+		if errors.Is(err, templates.ErrExists) {
 			code = http.StatusConflict
 		}
 		http.Error(w, err.Error(), code)
@@ -1156,7 +1398,7 @@ func (d *Daemon) applyTemplate(w http.ResponseWriter, r *http.Request) {
 	out, err := templates.Stamp(r.Context(), d.store.State, m, name, body)
 	if err != nil {
 		code := http.StatusBadRequest
-		if err == templates.ErrNoTemplate {
+		if errors.Is(err, templates.ErrNoTemplate) {
 			code = http.StatusNotFound
 		}
 		http.Error(w, err.Error(), code)
@@ -1553,11 +1795,16 @@ func (d *Daemon) subToken(ctx context.Context, m *master.Master, email, user, pa
 	var token string
 	for _, key := range d.store.State.Keys(SubTokenTable) {
 		rec, ok := d.store.State.Get(SubTokenTable, key)
-		var have string
-		if ok && json.Unmarshal(rec["email"], &have) == nil && have == email {
-			token = key
-			break
+		var have, aliasOf string
+		if !ok || json.Unmarshal(rec["email"], &have) != nil || have != email {
+			continue
 		}
+		_ = json.Unmarshal(rec["aliasOf"], &aliasOf)
+		if aliasOf != "" {
+			continue
+		}
+		token = key
+		break
 	}
 	if token == "" {
 		buf := make([]byte, 24)
@@ -1615,6 +1862,14 @@ func (d *Daemon) serveSub(w http.ResponseWriter, r *http.Request) {
 	}
 	token := r.PathValue("token")
 	rec, ok := subauth.Get(d.store.State, token)
+	if ok && rec.AliasOf != "" {
+		primary, exists := subauth.Get(d.store.State, rec.AliasOf)
+		if exists {
+			rec, token = primary, rec.AliasOf
+		} else {
+			ok = false
+		}
+	}
 	if !ok || !rec.Enable {
 		http.NotFound(w, r)
 		return
@@ -1667,6 +1922,7 @@ type subPageData struct {
 	HwidLimit     int             `json:"hwidLimit,omitempty"`
 	Servers       []subPageServer `json:"servers,omitempty"`
 	BackupURLs    []string        `json:"backupUrls,omitempty"`
+	Params        subparam.Params `json:"params,omitempty"`
 }
 
 // subPageServer is one server's share of the traffic, for the page's list.
@@ -1691,6 +1947,7 @@ func (d *Daemon) serveSubPage(w http.ResponseWriter, r *http.Request, rendered s
 	}
 	info := rendered.info
 	rec, _ := subauth.Get(d.store.State, rendered.token)
+	params, _ := subparam.Get(d.store.State, rendered.token)
 	servers := make([]subPageServer, 0, len(info.Servers))
 	for _, name := range submeta.SortedRemarks(info.Servers) {
 		q := info.Servers[name]
@@ -1707,7 +1964,7 @@ func (d *Daemon) serveSubPage(w http.ResponseWriter, r *http.Request, rendered s
 		Announce: info.Announce.Text, AnnounceURL: info.Announce.URL,
 		AnnounceColor: info.Announce.Color, UpdateHours: info.UpdateHours,
 		RefillDate: info.RefillDate, HwidLimit: info.HwidLimit,
-		Servers: servers, BackupURLs: info.BackupURLs,
+		Servers: servers, BackupURLs: info.BackupURLs, Params: params,
 	}
 	baked, err := json.Marshal(data)
 	if err != nil {
@@ -1838,11 +2095,12 @@ func (d *Daemon) resetSubPassword(w http.ResponseWriter, r *http.Request) {
 	apiserver.JSON(w, http.StatusOK, map[string]any{"token": rec.Token, "user": rec.User, "password": gen})
 }
 
-// subByEmail finds the subscription token for an email.
+// subByEmail finds the primary subscription token for an email; alias rows are
+// extra public tokens, not a second subscription.
 func (d *Daemon) subByEmail(email string) (subauth.Record, bool) {
 	for _, token := range d.store.State.Keys(subauth.Table) {
 		rec, ok := subauth.Get(d.store.State, token)
-		if ok && rec.Email == email {
+		if ok && rec.Email == email && rec.AliasOf == "" {
 			return rec, true
 		}
 	}
@@ -1941,8 +2199,10 @@ func (d *Daemon) subMe(w http.ResponseWriter, r *http.Request) {
 		servers = append(servers, map[string]any{"name": name, "upload": q.Upload, "download": q.Download})
 	}
 	meta["servers"] = servers
+	params, _ := subparam.Get(d.store.State, rec.Token)
 	out := map[string]any{
 		"user": rec.User, "email": rec.Email, "links": rendered.links, "meta": meta,
+		"params": params,
 	}
 	if st := d.vnets.Load(); st != nil {
 		out["vnet"] = d.vnetView(r, st, rec.Email)
