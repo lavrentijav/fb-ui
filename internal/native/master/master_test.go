@@ -155,3 +155,38 @@ func TestRestartContinues(t *testing.T) {
 		t.Fatalf("after restart seq=%d stamp %v, first %v", next.Seq, next.Stamp, first.Stamp)
 	}
 }
+
+// A master that boots against a long log must rebuild it in bulk: replaying
+// hundreds of thousands of ops one request at a time never finishes.
+func TestCatchUpReplaysLongBacklog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts NATS fleets")
+	}
+	ctx := context.Background()
+	buses, _ := bustest.Fleet(t)
+	writer, err := master.New(ctx, "ru2", bustest.Masters, buses["ru2"], master.NewMem())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const backlog = 600
+	for i := range backlog {
+		ok(t)(writer.Set(ctx, "clients", fmt.Sprintf("c%d", i), map[string]any{"i": i}))
+	}
+
+	store := master.NewMem()
+	fresh, err := master.New(ctx, "ru2", bustest.Masters, buses["ru2"], store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := fresh.CatchUp(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != backlog {
+		t.Fatalf("replayed %d ops of %d", n, backlog)
+	}
+	rec, found := store.State.Get("clients", fmt.Sprintf("c%d", backlog-1))
+	if !found || string(rec["i"]) != fmt.Sprint(backlog-1) {
+		t.Fatalf("last record: %v %v", rec, found)
+	}
+}

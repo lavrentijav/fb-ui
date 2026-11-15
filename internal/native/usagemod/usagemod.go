@@ -15,8 +15,9 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/usage"
 )
 
-// tickEvery is how often the leader counts new reports (default 5 s).
-var tickEvery = 5 * time.Second
+// tickEvery is how often the leader counts new reports. Counting costs one op
+// per snapshot record, and every master replays the log at boot.
+var tickEvery = 60 * time.Second
 
 // maxPerTick caps how many reports one pass reads, so a master returning
 // after a long pause does not stall the loop.

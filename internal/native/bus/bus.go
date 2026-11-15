@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
@@ -55,6 +56,9 @@ type Bus struct {
 	probe *nats.Subscription
 	// clustered: joined to other masters, streams are placed on this one
 	clustered bool
+
+	streamMu sync.RWMutex
+	streams  map[string]jetstream.Stream
 }
 
 func Start(cfg Config) (*Bus, error) {
@@ -169,6 +173,80 @@ func (b *Bus) streamFor(origin string) string {
 	return mirrorStream(b.name, origin)
 }
 
+// stream caches the handle: opening one is an API round trip, and a boot replay
+// asks for one per op otherwise.
+func (b *Bus) stream(ctx context.Context, name string) (jetstream.Stream, error) {
+	b.streamMu.RLock()
+	st, ok := b.streams[name]
+	b.streamMu.RUnlock()
+	if ok {
+		return st, nil
+	}
+	st, err := b.js.Stream(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	b.streamMu.Lock()
+	if b.streams == nil {
+		b.streams = map[string]jetstream.Stream{}
+	}
+	b.streams[name] = st
+	b.streamMu.Unlock()
+	return st, nil
+}
+
+// Range calls fn with every op of origin from seq from through to, in order, in
+// batches: a replay of a long log must not cost one request per op.
+func (b *Bus) Range(ctx context.Context, origin string, from, to uint64, fn func(oplog.Op) error) error {
+	if from > to {
+		return nil
+	}
+	st, err := b.stream(ctx, b.streamFor(origin))
+	if err != nil {
+		return err
+	}
+	cons, err := st.OrderedConsumer(ctx, jetstream.OrderedConsumerConfig{
+		DeliverPolicy:     jetstream.DeliverByStartSequencePolicy,
+		OptStartSeq:       from,
+		InactiveThreshold: time.Minute,
+	})
+	if err != nil {
+		return err
+	}
+	next := from
+	for next <= to {
+		batch, err := cons.Fetch(512, jetstream.FetchMaxWait(2*time.Second))
+		if err != nil {
+			return err
+		}
+		n := 0
+		for msg := range batch.Messages() {
+			n++
+			var op oplog.Op
+			if err := json.Unmarshal(msg.Data(), &op); err != nil {
+				return fmt.Errorf("bus: %s#%d: %w", origin, next, err)
+			}
+			if op.Origin != origin || op.Seq != next {
+				return fmt.Errorf("bus: %s#%d holds %s#%d", origin, next, op.Origin, op.Seq)
+			}
+			if err := fn(op); err != nil {
+				return err
+			}
+			next++
+			if next > to {
+				break
+			}
+		}
+		if err := batch.Error(); err != nil && !errors.Is(err, nats.ErrTimeout) && !errors.Is(err, jetstream.ErrNoMessages) {
+			return err
+		}
+		if n == 0 {
+			return fmt.Errorf("bus: %s stops at %d of %d", origin, next-1, to)
+		}
+	}
+	return nil
+}
+
 func (b *Bus) repStreamFor(master string) string {
 	if master == b.name {
 		return repStream(master)
@@ -215,17 +293,20 @@ func (b *Bus) Ensure(ctx context.Context, masters []string) error {
 // ReportRange is the first and last report seq held locally for a master's
 // stream; first moves up as old reports age out.
 func (b *Bus) ReportRange(ctx context.Context, master string) (first, last uint64, err error) {
-	st, err := b.js.Stream(ctx, b.repStreamFor(master))
+	st, err := b.stream(ctx, b.repStreamFor(master))
 	if err != nil {
 		return 0, 0, err
 	}
-	state := st.CachedInfo().State
-	return state.FirstSeq, state.LastSeq, nil
+	info, err := st.Info(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	return info.State.FirstSeq, info.State.LastSeq, nil
 }
 
 // GetReport reads one raw report of a master's stream by seq.
 func (b *Bus) GetReport(ctx context.Context, master string, seq uint64) ([]byte, error) {
-	st, err := b.js.Stream(ctx, b.repStreamFor(master))
+	st, err := b.stream(ctx, b.repStreamFor(master))
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +341,7 @@ func (b *Bus) Publish(ctx context.Context, op oplog.Op) error {
 
 // Get reads one op of an origin by seq from the local copy.
 func (b *Bus) Get(ctx context.Context, origin string, seq uint64) (oplog.Op, error) {
-	st, err := b.js.Stream(ctx, b.streamFor(origin))
+	st, err := b.stream(ctx, b.streamFor(origin))
 	if err != nil {
 		return oplog.Op{}, err
 	}
@@ -282,11 +363,15 @@ func (b *Bus) Get(ctx context.Context, origin string, seq uint64) (oplog.Op, err
 func (b *Bus) Heads(ctx context.Context, masters []string) (oplog.Vector, error) {
 	v := oplog.Vector{}
 	for _, m := range masters {
-		st, err := b.js.Stream(ctx, b.streamFor(m))
+		st, err := b.stream(ctx, b.streamFor(m))
 		if err != nil {
 			return nil, fmt.Errorf("bus: %s: %w", m, err)
 		}
-		if last := st.CachedInfo().State.LastSeq; last > 0 {
+		info, err := st.Info(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("bus: %s: %w", m, err)
+		}
+		if last := info.State.LastSeq; last > 0 {
 			v[m] = last
 		}
 	}

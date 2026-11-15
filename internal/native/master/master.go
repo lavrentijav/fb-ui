@@ -119,6 +119,10 @@ func (m *Master) write(ctx context.Context, op oplog.Op) (oplog.Op, error) {
 	return op, nil
 }
 
+// bulkReplay is where catching up stops being incremental: from here a batched
+// read beats a direct get per op, which is what a boot after a long log needs.
+const bulkReplay = 256
+
 // CatchUp applies every op the streams hold beyond what the store has.
 func (m *Master) CatchUp(ctx context.Context) (int, error) {
 	m.catchMu.Lock()
@@ -132,17 +136,33 @@ func (m *Master) CatchUp(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	n := 0
+	apply := func(op oplog.Op) error {
+		if _, err := m.store.Apply(ctx, op); err != nil {
+			return err
+		}
+		m.clock.Observe(op.Stamp)
+		n++
+		return nil
+	}
 	for _, origin := range m.masters {
-		for seq := applied[origin] + 1; seq <= heads[origin]; seq++ {
+		from, to := applied[origin]+1, heads[origin]
+		if from > to {
+			continue
+		}
+		if to-from+1 >= bulkReplay {
+			if err := m.bus.Range(ctx, origin, from, to, apply); err != nil {
+				return n, err
+			}
+			continue
+		}
+		for seq := from; seq <= to; seq++ {
 			op, err := m.bus.Get(ctx, origin, seq)
 			if err != nil {
 				return n, err
 			}
-			if _, err := m.store.Apply(ctx, op); err != nil {
+			if err := apply(op); err != nil {
 				return n, err
 			}
-			m.clock.Observe(op.Stamp)
-			n++
 		}
 	}
 	return n, nil
