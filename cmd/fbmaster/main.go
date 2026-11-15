@@ -20,10 +20,12 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/native/certs"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/fleetca"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/masterd"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/masterjoin"
@@ -53,6 +55,19 @@ type Config struct {
 
 	// PoolName resolves to every live master (panel and subscriptions).
 	PoolName string `json:"poolName"`
+	// SubNames are the subscription names on the same edge and certificate
+	// (sub.firewalk.top and the old domains); they never serve the panel.
+	SubNames []string `json:"subNames,omitempty"`
+	// Reverses maps extra TLS names on the same certificate to an HTTP
+	// backend on this master (for example the sales bot's callback host);
+	// their DNS records are not managed by the pool.
+	Reverses map[string]string `json:"reverses,omitempty"`
+
+	// ACME issues the pool and node certificates through DNS-01; the DNS
+	// accounts are set with PUT /dns/{id} on the admin surface.
+	ACME          bool   `json:"acme,omitempty"`
+	ACMEDirectory string `json:"acmeDirectory,omitempty"`
+	ACMEEmail     string `json:"acmeEmail,omitempty"`
 
 	// APIListen serves /api/v1; empty disables it (modules still run).
 	APIListen string `json:"apiListen"`
@@ -98,6 +113,63 @@ func (c *Config) normalize() error {
 	if c.PublicName == "" {
 		c.PublicName = c.Name
 	}
+	c.PoolName = strings.ToLower(strings.TrimSpace(c.PoolName))
+	if c.PoolName != "" {
+		if strings.ContainsAny(c.PoolName, " /:") {
+			return fmt.Errorf("invalid poolName %q", c.PoolName)
+		}
+		if strings.EqualFold(c.PoolName, c.PublicName) {
+			return errors.New("poolName and publicName must differ: one SNI route may be tcp or handoff, not both")
+		}
+		if !c.ACME && len(c.Masters) <= 1 {
+			return errors.New("poolName requires acme on a single-master fleet; a joined master may rely on the issuer")
+		}
+	}
+	if len(c.SubNames) > 0 && c.PoolName == "" {
+		return errors.New("subNames require poolName")
+	}
+	var subNames []string
+	seen := map[string]bool{}
+	for _, raw := range c.SubNames {
+		name := strings.ToLower(strings.TrimSpace(raw))
+		if name == "" {
+			continue
+		}
+		if strings.ContainsAny(name, " /:") {
+			return fmt.Errorf("invalid subName %q", raw)
+		}
+		if name == c.PoolName {
+			return fmt.Errorf("subName %q is the pool name", name)
+		}
+		if strings.EqualFold(name, c.PublicName) {
+			return fmt.Errorf("subName %q is the node-facing public name", name)
+		}
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		subNames = append(subNames, name)
+	}
+	c.SubNames = subNames
+	if len(c.Reverses) > 0 && c.PoolName == "" {
+		return errors.New("reverses require poolName")
+	}
+	reverses := make(map[string]string, len(c.Reverses))
+	for raw, target := range c.Reverses {
+		name := strings.ToLower(strings.TrimSpace(raw))
+		target = strings.TrimSpace(target)
+		if name == "" || strings.ContainsAny(name, " /:") {
+			return fmt.Errorf("invalid reverse name %q", raw)
+		}
+		if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+			return fmt.Errorf("reverse %s: target must be an http:// or https:// URL", name)
+		}
+		if name == c.PoolName || strings.EqualFold(name, c.PublicName) || slices.Contains(subNames, name) {
+			return fmt.Errorf("reverse %q collides with a pool, public or subscription name", name)
+		}
+		reverses[name] = target
+	}
+	c.Reverses = reverses
 	if c.CACert == "" {
 		c.CACert = filepath.Join(c.DataDir, "ca.pem")
 	}
@@ -233,7 +305,8 @@ func checkConfig(c *Config) error {
 	}
 	if c.AdminListen != "" && !c.AdminAllowPublic {
 		host, _, err := net.SplitHostPort(c.AdminListen)
-		if err != nil || !(host == "localhost" || (net.ParseIP(host) != nil && net.ParseIP(host).IsLoopback())) {
+		ip := net.ParseIP(host)
+		if err != nil || (host != "localhost" && (ip == nil || !ip.IsLoopback())) {
 			return fmt.Errorf("adminListen %q is not loopback (set adminAllowPublic to expose it)", c.AdminListen)
 		}
 	}
@@ -242,8 +315,8 @@ func checkConfig(c *Config) error {
 			return errors.New("masters contains an empty name")
 		}
 	}
-	fmt.Printf("master %s\n  data      %s\n  store     %s\n  edge      %s (public name %s)\n  api       %s\n  admin     %s\n  peers     %d\n",
-		c.Name, c.DataDir, c.StoreDir, c.EdgeListen, c.PublicName, orDefault(c.APIListen, "(off)"), orDefault(c.AdminListen, "(loopback, free port)"), len(c.Peers))
+	fmt.Printf("master %s\n  data      %s\n  store     %s\n  edge      %s (public name %s)\n  pool      %s (sub %v, acme %v)\n  api       %s\n  admin     %s\n  peers     %d\n",
+		c.Name, c.DataDir, c.StoreDir, c.EdgeListen, c.PublicName, orDefault(c.PoolName, "(off)"), c.SubNames, c.ACME, orDefault(c.APIListen, "(off)"), orDefault(c.AdminListen, "(loopback, free port)"), len(c.Peers))
 	return nil
 }
 
@@ -272,12 +345,16 @@ func serve(ctx context.Context, c *Config, createCA bool, logger *log.Logger) er
 	for name, url := range c.Peers {
 		peers[name] = url
 	}
+	var acme *certs.ACME
+	if c.ACME {
+		acme = &certs.ACME{Directory: c.ACMEDirectory, Email: c.ACMEEmail, Logf: logger.Printf}
+	}
 	d, err := masterd.Start(ctx, masterd.Config{
 		Name: c.Name, Masters: c.Masters, StoreDir: c.StoreDir,
 		PublicName: c.PublicName, EdgeListen: c.EdgeListen, ClientPort: c.ClientPort,
 		ClientTLS: mtls, GatewayTLS: mtls, GatewayHost: c.GatewayHost, GatewayPort: c.GatewayPort,
 		Advertise: c.Advertise, Peers: peers,
-		PoolName: c.PoolName, PublicIPs: c.PublicIPs,
+		PoolName: c.PoolName, SubNames: c.SubNames, Reverses: c.Reverses, PublicIPs: c.PublicIPs, ACME: acme,
 		UIDir: c.UIDir, APIListen: c.APIListen,
 		AdminListen: c.AdminListen, AdminAllowPublic: c.AdminAllowPublic,
 		FleetCA: ca, NodeBinary: os.Getenv("FBMasterNodeBinary"),
@@ -363,7 +440,7 @@ func ensureCA(c *Config, create bool, logger *log.Logger) (*fleetca.CA, *x509.Ce
 	case errors.Is(certErr, os.ErrNotExist) && keyErr == nil:
 		return nil, nil, fmt.Errorf("the CA key exists but %s is missing; a CA is never regenerated silently", c.CACert)
 	default:
-		return nil, nil, fmt.Errorf("fleet CA is unreadable: cert=%v key=%v", certErr, keyErr)
+		return nil, nil, fmt.Errorf("fleet CA is unreadable: cert=%w key=%w", certErr, keyErr)
 	}
 }
 

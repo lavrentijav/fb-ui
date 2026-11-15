@@ -42,6 +42,38 @@ func TestLinksBelongToTheClient(t *testing.T) {
 	}
 }
 
+// A multicast pair advertises the same name and path from several nodes; the
+// client must get one link, not one per physical node.
+func TestMulticastMembersCollapseToOneLink(t *testing.T) {
+	multicast := []nodespec.Spec{
+		{Node: "ru", Inbounds: []nodespec.Inbound{
+			{Tag: "a", Host: "ru.firewalk.test", Path: "/auto",
+				Clients: []nodespec.Client{{Email: "alice", ID: uid}}},
+		}},
+		{Node: "ru1", Inbounds: []nodespec.Inbound{
+			{Tag: "b", Host: "ru.firewalk.test", Path: "/auto",
+				Clients: []nodespec.Client{{Email: "alice", ID: uid}}},
+		}},
+	}
+	if got := sub.Links(multicast, "alice"); len(got) != 1 {
+		t.Fatalf("a multicast pair must yield one link, got %d: %v", len(got), got)
+	}
+	// distinct names are distinct endpoints and must both stay.
+	distinct := []nodespec.Spec{
+		{Node: "fi1", Inbounds: []nodespec.Inbound{
+			{Tag: "a", Host: "fi1.firewalk.test", Path: "/auto",
+				Clients: []nodespec.Client{{Email: "alice", ID: uid}}},
+		}},
+		{Node: "de2", Inbounds: []nodespec.Inbound{
+			{Tag: "b", Host: "de2.firewalk.test", Path: "/auto",
+				Clients: []nodespec.Client{{Email: "alice", ID: uid}}},
+		}},
+	}
+	if got := sub.Links(distinct, "alice"); len(got) != 2 {
+		t.Fatalf("distinct hosts must stay two links, got %d: %v", len(got), got)
+	}
+}
+
 func TestLinkIsAWorkingWsTLSURL(t *testing.T) {
 	raw := sub.Link(uid, sub.Endpoint{Address: "ru.lab.test", Path: "/ws-vpn", Remark: "ru4-vpn"})
 	u, err := url.Parse(raw)

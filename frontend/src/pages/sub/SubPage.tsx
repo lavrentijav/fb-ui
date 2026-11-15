@@ -42,9 +42,7 @@ const webPageUrl = subData.webPageUrl || '';
 const refillDate = Number(subData.refillDate || 0);
 const hwidLimit = Number(subData.hwidLimit || 0);
 const backupUrls: string[] = Array.isArray(subData.backupUrls) ? subData.backupUrls : [];
-const servers: { name: string; upload: number; download: number }[] = Array.isArray(
-  subData.servers,
-)
+const servers: { name: string; upload: number; download: number }[] = Array.isArray(subData.servers)
   ? subData.servers
   : [];
 const links: string[] = Array.isArray(subData.links) ? subData.links : [];
@@ -289,7 +287,11 @@ export default function SubPage() {
               </div>
             )}
             {tabs.length > 0 && <Tabs className="sub-tabs" tabBarGutter={24} items={tabs} />}
-            {(updateHours > 0 || subSupportUrl || webPageUrl || hwidLimit > 0 || refillDate > 0) && (
+            {(updateHours > 0 ||
+              subSupportUrl ||
+              webPageUrl ||
+              hwidLimit > 0 ||
+              refillDate > 0) && (
               <footer className="sub-footer">
                 {updateHours > 0 && (
                   <span>
@@ -309,9 +311,7 @@ export default function SubPage() {
                     {t('subscription.webPage')}
                   </a>
                 )}
-                {hwidLimit > 0 && (
-                  <span>{t('subscription.hwidLimit', { count: hwidLimit })}</span>
-                )}
+                {hwidLimit > 0 && <span>{t('subscription.hwidLimit', { count: hwidLimit })}</span>}
                 {refillDate > 0 && (
                   <span>
                     {t('subscription.refillDate')}:{' '}

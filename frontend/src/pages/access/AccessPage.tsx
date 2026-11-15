@@ -145,10 +145,9 @@ export default function AccessPage() {
   const signOut = useCallback(
     async (tok: Token) => {
       try {
-        const out = await call<{ ended: number }>(
-          `/tokens/${encodeURIComponent(tok.id)}/signout`,
-          { method: 'POST' },
-        );
+        const out = await call<{ ended: number }>(`/tokens/${encodeURIComponent(tok.id)}/signout`, {
+          method: 'POST',
+        });
         messageApi.success(t('pages.access.signedOut', { count: out.ended }));
         await reload();
       } catch (e) {
@@ -317,10 +316,7 @@ export default function AccessPage() {
               }
               extra={
                 <Space>
-                  <Button
-                    icon={<ReloadOutlined />}
-                    onClick={() => void reload()}
-                  >
+                  <Button icon={<ReloadOutlined />} onClick={() => void reload()}>
                     {t('refresh')}
                   </Button>
                   <Button
@@ -408,7 +404,11 @@ export default function AccessPage() {
               ]}
             />
           </Form.Item>
-          <Form.Item name="ttlHours" label={t('pages.access.ttl')} extra={t('pages.access.ttlHint')}>
+          <Form.Item
+            name="ttlHours"
+            label={t('pages.access.ttl')}
+            extra={t('pages.access.ttlHint')}
+          >
             <Select
               options={TTL_OPTIONS.map((o) => ({
                 value: o.value,

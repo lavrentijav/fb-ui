@@ -1,17 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
-import {
-  Alert,
-  Button,
-  Card,
-  ConfigProvider,
-  Layout,
-  Space,
-  Spin,
-  Tabs,
-  message,
-} from 'antd';
+import { Alert, Button, Card, ConfigProvider, Layout, Space, Spin, Tabs, message } from 'antd';
 import { BellOutlined, DiscordOutlined, MailOutlined, MessageOutlined } from '@ant-design/icons';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -71,7 +61,12 @@ export default function NotificationsPage() {
         <AppSidebar />
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
-            <Spin spinning={spinning || !fetched} delay={200} description={t('loading')} size="large">
+            <Spin
+              spinning={spinning || !fetched}
+              delay={200}
+              description={t('loading')}
+              size="large"
+            >
               {!fetched ? (
                 <div className="loading-spacer" />
               ) : (

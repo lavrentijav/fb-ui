@@ -56,6 +56,7 @@ type HTTPRoute struct {
 	Host       string `json:"host"`
 	PathPrefix string `json:"pathPrefix"`
 	Target     string `json:"target"`
+	TargetHost string `json:"targetHost,omitempty"`
 }
 
 // Handoff is the in-process TLS server the edge hands terminated names to.
@@ -176,7 +177,7 @@ func Render(s Spec) (Bundle, error) {
 			if path == "" {
 				path = "/" // the whole site
 			}
-			edge.HTTP = append(edge.HTTP, HTTPRoute{Host: r.SNI, PathPrefix: path, Target: r.Target})
+			edge.HTTP = append(edge.HTTP, HTTPRoute{Host: r.SNI, PathPrefix: path, Target: r.Target, TargetHost: r.Host})
 			terminated[r.SNI] = true
 		}
 	}

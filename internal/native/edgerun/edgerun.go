@@ -95,7 +95,7 @@ func (r *Runner) Apply(e nodespec.Edge, certs []nodespec.Cert) error {
 	}
 	routes := make([]edge.HTTPRoute, 0, len(e.HTTP))
 	for _, h := range e.HTTP {
-		routes = append(routes, edge.HTTPRoute{Host: h.Host, PathPrefix: h.PathPrefix, Target: h.Target})
+		routes = append(routes, edge.HTTPRoute{Host: h.Host, PathPrefix: h.PathPrefix, Target: h.Target, TargetHost: h.TargetHost})
 	}
 
 	r.mu.Lock()

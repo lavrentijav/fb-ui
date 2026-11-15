@@ -50,7 +50,8 @@ type sessionView struct {
 }
 
 func str(rec map[string]json.RawMessage, k string) (v string) { _ = json.Unmarshal(rec[k], &v); return }
-func num(rec map[string]json.RawMessage, k string) (v int64)  { _ = json.Unmarshal(rec[k], &v); return }
+
+func num(rec map[string]json.RawMessage, k string) (v int64) { _ = json.Unmarshal(rec[k], &v); return }
 
 func tokens(h module.Host, now time.Time) []tokenView {
 	out := make([]tokenView, 0, len(h.Keys(apiauth.Table)))

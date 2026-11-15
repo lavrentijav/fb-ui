@@ -125,9 +125,9 @@ func TestExpiredTokenIsDropped(t *testing.T) {
 func TestForeignCAIsRefused(t *testing.T) {
 	h := newHarness(t)
 	other, _ := fleetca.New("other")
-	tok := h.mint(t, "s", "ru4", time.Hour)
+	_ = h.mint(t, "s", "ru4", time.Hour)
 	// the token is pinned to other's CA, the server has h.ca
-	tok = enroll.Token("s", other)
+	tok := enroll.Token("s", other)
 	if _, err := enroll.Exchange(context.Background(), h.srv.URL, tok, "ru4", nil); err == nil {
 		t.Fatal("accepted a certificate from another CA")
 	} else if !strings.Contains(err.Error(), "fingerprint") {

@@ -124,3 +124,24 @@ func TestWriteRefusesAnUnrenderableSpec(t *testing.T) {
 		t.Fatalf("the refused write changed the spec: %v", got.Inbounds)
 	}
 }
+
+// The old panel's friendly inbound name must survive the API round-trip.
+func TestAddKeepsRemark(t *testing.T) {
+	h, node := seed(t)
+	ctx := context.Background()
+	in := in("de", 12060)
+	in.Remark = "🇩🇪 Германия Франкфурт"
+	if _, err := inbounds.Add(ctx, h, h, node, in); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := inbounds.Spec(h, node)
+	var got string
+	for _, ib := range s.Inbounds {
+		if ib.Tag == "de" {
+			got = ib.Remark
+		}
+	}
+	if got != in.Remark {
+		t.Fatalf("remark %q", got)
+	}
+}

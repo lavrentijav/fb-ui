@@ -46,7 +46,8 @@ export default function LoginPage() {
     setMessageInstance(messageApi);
   }, [messageApi]);
 
-  const [fetched, setFetched] = useState(false);
+  // a native master has API tokens, not users; there is nothing to fetch
+  const [fetched, setFetched] = useState(native);
   const [submitting, setSubmitting] = useState(false);
   const [twoFactorEnable, setTwoFactorEnable] = useState(false);
   const [headlineIndex, setHeadlineIndex] = useState(0);
@@ -65,11 +66,7 @@ export default function LoginPage() {
   }, [headlineWords.length]);
 
   useEffect(() => {
-    if (native) {
-      // a native master has API tokens, not users; nothing to fetch
-      setFetched(true);
-      return;
-    }
+    if (native) return;
     let cancelled = false;
     (async () => {
       const msg = await HttpUtil.post('/getTwoFactorEnable');
@@ -82,30 +79,33 @@ export default function LoginPage() {
     };
   }, []);
 
-  const onSubmit = useCallback(async (values: LoginForm) => {
-    setSubmitting(true);
-    try {
-      if (native) {
-        const res = await fetch('/api/v1/ui/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ token: values.password.trim() }),
-        });
-        if (res.ok) {
-          window.location.href = '/panel/';
-        } else {
-          const body = (await res.json().catch(() => ({}))) as { error?: string };
-          messageApi.error(body.error || t('pages.login.toasts.wrongUsernameOrPassword'));
+  const onSubmit = useCallback(
+    async (values: LoginForm) => {
+      setSubmitting(true);
+      try {
+        if (native) {
+          const res = await fetch('/api/v1/ui/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ token: values.password.trim() }),
+          });
+          if (res.ok) {
+            window.location.href = '/panel/';
+          } else {
+            const body = (await res.json().catch(() => ({}))) as { error?: string };
+            messageApi.error(body.error || t('pages.login.toasts.wrongUsernameOrPassword'));
+          }
+          return;
         }
-        return;
+        const msg = await HttpUtil.post('/login', values);
+        if (msg.success) window.location.href = basePath + 'panel/';
+      } finally {
+        setSubmitting(false);
       }
-      const msg = await HttpUtil.post('/login', values);
-      if (msg.success) window.location.href = basePath + 'panel/';
-    } finally {
-      setSubmitting(false);
-    }
-  }, [messageApi, t]);
+    },
+    [messageApi, t],
+  );
 
   const onLangChange = useCallback((next: string) => {
     setLang(next);

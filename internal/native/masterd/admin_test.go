@@ -7,16 +7,19 @@ import (
 )
 
 func TestPublicAdminPathKeepsCredentialsPathsOpen(t *testing.T) {
-	open := []string{"/healthz", "/ready", "/enroll", "/enroll/tokens", "/master/join", "/sub/abc", "/panel/", "/panel/api/webhooks/list"}
+	open := []string{
+		"/healthz", "/ready", "/enroll", "/enroll/tokens", "/master/join", "/sub/abc", "/panel/", "/panel/api/webhooks/list",
+		"/api/v1/ui/login", "/api/v1/sub/login",
+	}
 	for _, p := range open {
-		r := httptest.NewRequest("GET", p, nil)
+		r := httptest.NewRequest(http.MethodGet, p, nil)
 		if !PublicAdminPath(r) {
 			t.Fatalf("%s should need no admin credential", p)
 		}
 	}
 	closed := []string{"/", "/templates", "/hosts", "/sub", "/master/tokens", "/nodes/state", "/net/ips", "/enrollx", "/panelx"}
 	for _, p := range closed {
-		r := httptest.NewRequest("GET", p, nil)
+		r := httptest.NewRequest(http.MethodGet, p, nil)
 		if PublicAdminPath(r) {
 			t.Fatalf("%s must require an admin credential", p)
 		}
@@ -66,7 +69,7 @@ func TestLoopbackHost(t *testing.T) {
 func TestAdminHandlerRefusesBeforeTheMasterIsReady(t *testing.T) {
 	d := &Daemon{}
 	rec := httptest.NewRecorder()
-	d.AdminHandler().ServeHTTP(rec, httptest.NewRequest("GET", "/templates", nil))
+	d.AdminHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/templates", nil))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("not-ready admin handler answered %d", rec.Code)
 	}

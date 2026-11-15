@@ -2,6 +2,7 @@ package subauth_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -39,10 +40,10 @@ func TestLoginAndGet(t *testing.T) {
 	if err != nil || got.Token != token {
 		t.Fatalf("login %+v %v", got, err)
 	}
-	if _, err := subauth.Login(h, "alice", "wrong"); err != subauth.ErrBadPassword {
+	if _, err := subauth.Login(h, "alice", "wrong"); !errors.Is(err, subauth.ErrBadPassword) {
 		t.Fatalf("wrong password: %v", err)
 	}
-	if _, err := subauth.Login(h, "nobody", "x"); err != subauth.ErrNoUser {
+	if _, err := subauth.Login(h, "nobody", "x"); !errors.Is(err, subauth.ErrNoUser) {
 		t.Fatalf("unknown user: %v", err)
 	}
 }
@@ -54,7 +55,7 @@ func TestDisabledSubscriptionCannotLogIn(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := subauth.Login(h, "bob", "s3cretpass"); err != subauth.ErrDisabled {
+	if _, err := subauth.Login(h, "bob", "s3cretpass"); !errors.Is(err, subauth.ErrDisabled) {
 		t.Fatalf("err %v", err)
 	}
 	if rec, ok := subauth.Get(h, token); !ok || rec.Enable {

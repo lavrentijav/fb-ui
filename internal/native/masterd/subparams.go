@@ -42,18 +42,38 @@ func (d *Daemon) renderSub(rec subauth.Record, token string, r *http.Request) su
 
 	template := settings.Get(d.store.State, settings.Fleet, "sub.remarkTemplate")
 	if strings.TrimSpace(template) == "" {
-		// a node's tag alone is not unique across nodes, so the default names
-		// the node too
-		template = "{{NODE}}-{{INBOUND}}"
+		// an inbound's remark is the human name; the node-tag fallback below
+		// names a plain inbound when it has none
+		template = "{{REMARK}}"
 	}
 	showIdentity := settings.Bool(d.store.State, settings.Fleet, "sub.showIdentity")
 	providerID := settings.Get(d.store.State, settings.Fleet, "sub.providerID")
 
 	nodes := d.nodeUsage(rec.Email)
-	remarks := map[string]string{} // link remark -> node, for Server-Userinfo
+	specs := d.effectiveSpecs()
+	// an endpoint's traffic is the sum across every node that advertises it, so a
+	// multicast pair reports one total instead of one share per physical node
+	endpointUsage := map[string]usage.NodeBytes{}
+	for _, s := range specs {
+		b, ok := nodes[s.Node]
+		if !ok {
+			continue
+		}
+		for _, ib := range s.Inbounds {
+			if ib.Host == "" {
+				continue
+			}
+			key := endpointKey(ib)
+			sum := endpointUsage[key]
+			sum.Up += b.Up
+			sum.Down += b.Down
+			endpointUsage[key] = sum
+		}
+	}
+	remarks := map[string]string{} // link remark -> endpoint key, for Server-Userinfo
 	remark := func(node string, ib nodespec.Inbound) string {
 		name := sub.ExpandRemark(template, sub.Vars{
-			Node: node, Inbound: ib.Tag, Email: rec.Email, User: rec.User,
+			Node: node, Inbound: ib.Tag, Remark: ib.Remark, Email: rec.Email, User: rec.User,
 			Protocol: "vless", Transport: ib.Network,
 			Used: quota.Used(), Total: total, Expire: expire,
 		})
@@ -63,22 +83,20 @@ func (d *Daemon) renderSub(rec subauth.Record, token string, r *http.Request) su
 		if showIdentity && !strings.Contains(name, rec.Email) {
 			name += "-" + rec.Email
 		}
-		remarks[name] = node
+		remarks[name] = endpointKey(ib)
 		return name
 	}
-	extra := func(node string, _ nodespec.Inbound) map[string]string {
+	extra := func(node string, ib nodespec.Inbound) map[string]string {
 		out := map[string]string{"node": node}
 		if providerID != "" {
 			out["providerid"] = providerID
 		}
-		if b, ok := nodes[node]; ok && (b.Up != 0 || b.Down != 0) {
+		if b := endpointUsage[endpointKey(ib)]; b.Up != 0 || b.Down != 0 {
 			// Flamix reads this per link; other clients ignore it
 			out["userinfo"] = submeta.Quota{Upload: b.Up, Download: b.Down, Total: total, Expire: expire}.String()
 		}
 		return out
 	}
-
-	specs := d.effectiveSpecs()
 	links := sub.LinksWithOpts(specs, rec.Email, sub.Options{
 		Hosts:  hosts.Endpoints(hosts.List(d.store.State)),
 		Remark: remark,
@@ -105,9 +123,9 @@ func (d *Daemon) renderSub(rec subauth.Record, token string, r *http.Request) su
 		HwidLimit:  hwidLimit(d.store.State, specs, rec.Email),
 		Servers:    map[string]submeta.Quota{},
 	}
-	for name, node := range remarks {
-		b, ok := nodes[node]
-		if !ok || (b.Up == 0 && b.Down == 0) {
+	for name, key := range remarks {
+		b := endpointUsage[key]
+		if b.Up == 0 && b.Down == 0 {
 			continue
 		}
 		info.Servers[name] = submeta.Quota{
@@ -115,6 +133,16 @@ func (d *Daemon) renderSub(rec subauth.Record, token string, r *http.Request) su
 		}
 	}
 	return subRender{token: token, links: links, info: info}
+}
+
+// endpointKey is the transport identity a multicast pair shares: the same
+// public name, path and network is one endpoint even from several nodes.
+func endpointKey(ib nodespec.Inbound) string {
+	network := ib.Network
+	if network == "" {
+		network = "ws"
+	}
+	return ib.Host + "\x00" + network + "\x00" + ib.Path
 }
 
 // subTitle is the profile name: the configured one, then the panel name with

@@ -318,6 +318,33 @@ func TestHTTPRouterRoutesByHostAndPath(t *testing.T) {
 	}
 }
 
+func TestHTTPRouterTargetHostOverride(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, r.Host)
+	}))
+	t.Cleanup(backend.Close)
+	h := NewHTTPRouter(http.NotFoundHandler(), nil)
+	if err := h.Update([]HTTPRoute{
+		{Host: "ru.firewalk.top", PathPrefix: "/walksub/", Target: backend.URL, TargetHost: "sub.firewalk.top"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	front := httptest.NewServer(h)
+	t.Cleanup(front.Close)
+
+	req, _ := http.NewRequest(http.MethodGet, front.URL+"/walksub/abc", nil)
+	req.Host = "ru.firewalk.top"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	if got := string(b); got != "sub.firewalk.top" {
+		t.Fatalf("backend Host = %q, want sub.firewalk.top", got)
+	}
+}
+
 func TestHTTPRouterOutlivesTheServerTimeouts(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for i := range 4 {

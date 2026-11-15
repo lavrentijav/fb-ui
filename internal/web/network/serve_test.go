@@ -91,16 +91,21 @@ func TestProductionHTTPServersUseServeHTTPWrapper(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		servers := httpServerNames(parsed)
 		ast.Inspect(parsed, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
 			if !ok {
 				return true
 			}
 			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if ok && selector.Sel.Name == "Serve" {
-				position := fset.Position(call.Pos())
-				t.Errorf("direct Serve call at %s; production HTTP servers must use network.ServeHTTP", position)
+			if !ok || selector.Sel.Name != "Serve" {
+				return true
 			}
+			if !isHTTPServer(selector.X, servers) {
+				return true
+			}
+			position := fset.Position(call.Pos())
+			t.Errorf("direct Serve call at %s; production HTTP servers must use network.ServeHTTP", position)
 			return true
 		})
 		return nil
@@ -108,4 +113,63 @@ func TestProductionHTTPServersUseServeHTTPWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scan production Go files: %v", err)
 	}
+}
+
+// httpServerNames collects the identifiers a file declares from an http.Server
+// literal, so a call on a raw TCP router or a package function named Serve is
+// not mistaken for a production HTTP server.
+func httpServerNames(file *ast.File) map[string]bool {
+	names := map[string]bool{}
+	ast.Inspect(file, func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.AssignStmt:
+			for i, lhs := range n.Lhs {
+				if i < len(n.Rhs) && isHTTPServer(n.Rhs[i], nil) {
+					if id, ok := lhs.(*ast.Ident); ok {
+						names[id.Name] = true
+					}
+				}
+			}
+		case *ast.ValueSpec:
+			for i, name := range n.Names {
+				if i < len(n.Values) && isHTTPServer(n.Values[i], nil) {
+					names[name.Name] = true
+				}
+			}
+		}
+		return true
+	})
+	return names
+}
+
+// isHTTPServer reports whether expr is a *http.Server literal, or an identifier
+// already collected as one.
+func isHTTPServer(expr ast.Expr, names map[string]bool) bool {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return names[e.Name]
+	case *ast.UnaryExpr:
+		return isHTTPServerLiteral(e.X)
+	case *ast.CompositeLit:
+		return isHTTPServerLiteral(e)
+	case *ast.CallExpr:
+		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "new" && len(e.Args) == 1 {
+			return isHTTPServerType(e.Args[0])
+		}
+	}
+	return false
+}
+
+func isHTTPServerLiteral(expr ast.Expr) bool {
+	lit, ok := expr.(*ast.CompositeLit)
+	return ok && isHTTPServerType(lit.Type)
+}
+
+func isHTTPServerType(expr ast.Expr) bool {
+	sel, ok := expr.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	pkg, ok := sel.X.(*ast.Ident)
+	return ok && pkg.Name == "http" && sel.Sel.Name == "Server"
 }

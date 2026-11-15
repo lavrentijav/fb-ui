@@ -115,6 +115,53 @@ email when the template does not already carry it.
 All live in the existing typed settings schema, so a bad URL or date is refused
 at write time.
 
+## Custom parameters (operator-defined)
+
+A separate op-log table, `subparam`, keeps free-form key/value strings per
+**subscription token**. They are deliberately not interpreted by the master;
+the operator, the sales bot or the subscription page can use them for flags,
+plan names, routing hints, experiments, etc.
+
+API (admin/monitor token; the token must exist in `subauth`):
+
+```
+GET    /api/v1/subs/{token}/params          -> {token, params}
+PUT    /api/v1/subs/{token}/params          replace the whole map
+POST   /api/v1/subs/{token}/params          merge keys into the map
+DELETE /api/v1/subs/{token}/params/{key}    remove one key
+DELETE /api/v1/subs/{token}/params          remove the row
+```
+
+Body: `{"params": {"flag": "on", "plan": "pro"}}`. Keys are
+`[A-Za-z0-9._-]{1,64}`, values are at most 4096 bytes, at most 64 keys per
+subscription. The same map is included in `GET /api/v1/subs` (as `params`),
+`GET /api/v1/sub/me` and `window.__SUB_PAGE_DATA__.params`, so a client page or
+the bot can read it without a second call. Deleting the subscription
+(`DELETE /api/v1/subs/{token}`) removes its params row as well.
+
+## Subscription aliases
+
+An alias is an extra public token for one subscription. It is not a second
+subscription: `GET /sub/<alias>` renders the primary's email and links, the
+management page keeps using the primary token, and deleting an alias never
+touches the primary.
+
+API (admin/monitor token; `{token}` is the primary):
+
+```
+GET    /api/v1/subs/{token}/aliases           -> {token, aliases}
+POST   /api/v1/subs/{token}/aliases           {"alias": "old-sub-id"}
+DELETE /api/v1/subs/{token}/aliases/{alias}   remove one alias
+```
+
+Aliases are listed as `aliases` in `GET /api/v1/subs` and in the master's
+`/sub` view. The importer turns every old panel `subId` into an alias of the
+new primary subscription, so `/walksub/<old-id>` and `/frvpn/<old-id>` keep
+working after the cutover. The master serves those paths itself, and on every
+`subName` host (`sub.firewalk.top`); a `subName` host never serves `/panel`.
+Tokens are `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`; an alias cannot be a primary
+token or belong to another email.
+
 ## Not sent, and why
 
 - **Reality / XTLS / gRPC / Hysteria2 / TUIC / Shadowsocks** — the native node
@@ -141,6 +188,8 @@ at write time.
 - `sub`: transport and extra parameters, that an extra cannot override
   `security`, templated remarks with and without advertised endpoints, and the
   remark grammar (empty segments, unlimited marks, status, sizes).
+- `subsmod`: params CRUD, key validation, a missing token, and that deleting a
+  subscription removes its params row.
 - Lab: `TestSubscriptionAdvertisesMetadata` (headers, `fp`/`headerType`/
   `allowInsecure`, remark, HWID limit, `?format=plain`) and the per-server
   header filling in after real traffic in `TestSubscriptionLinkConnects`.

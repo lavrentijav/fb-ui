@@ -41,8 +41,10 @@ func TestAggregateMergesSpecsAndReports(t *testing.T) {
 func TestDrainAndNodesWithoutSpecs(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	got := nodestate.Aggregate(nil, []nodestate.Report{
-		{Node: "ru4", At: now.UnixMilli(), Online: []string{"alice"},
-			Drain: &nodestate.Drain{Since: 1_699_999_000, Active: 3}},
+		{
+			Node: "ru4", At: now.UnixMilli(), Online: []string{"alice"},
+			Drain: &nodestate.Drain{Since: 1_699_999_000, Active: 3},
+		},
 	}, now, 0)
 	if len(got) != 1 {
 		t.Fatalf("got %+v", got)

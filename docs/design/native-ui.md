@@ -22,6 +22,11 @@ without it, and the UI module can be cut with `-tags no_ui`.
   served at `/panel` with a client-route fallback to `index.html`, and
   `/panel/api/*` goes to the modules' `compat` adapter, so the current React
   app talks to a native master today.
+- The admin surface hands `/api/v1/*` to the module API and the subscribers'
+  `/api/v1/me`/`network` routes; the outer gate no longer blocks
+  `/api/v1/ui/login` or `/api/v1/sub/login`, so the token login, the session
+  cookie, the Access page and the subscription's Manage tab all work on the
+  same origin as `/panel`.
 - `Run` on the leader prunes expired sessions.
 
 ## Done in the page (2026-11-02)
@@ -64,6 +69,10 @@ Two operator pages under **Доступ**:
   title, owner and members with their internal addresses. It is read-only --
   subscribers manage their own networks from the subscription page -- and
   reads `GET /vnet/networks`.
+
+Custom per-subscription parameters live in the same module
+(`GET/PUT/POST/DELETE /api/v1/subs/{token}/params`) and are returned as
+`params` in the list; the Subscriptions page does not edit them yet.
 
 Both used the master's loopback admin API, which the panel (served at
 `/panel`) cannot reach; they now go through the **subs** module:
@@ -133,6 +142,17 @@ Porting those screens means moving them to `/api/v1` against the modules above
 (or removing them, for features the native model does not have), one section
 at a time; that is the remaining work in this file.
 
+## Build and smoke (2026-11-13)
+
+`npm ci && npm run build` produces `internal/web/dist` (index, assets,
+`subpage.html`); `npm run typecheck`, `npm run lint` and `npm run format:check`
+are green. `make native-smoke` starts the real `fbmaster` with that directory
+and checks `/panel/`, `/panel/login`, `/panel/nodes`, `/panel/clients`,
+`/panel/inbounds`, `/panel/subscriptions`, the token login and the session
+cookie, then a ws+xhttp subscription and a relay enrollment. CI ships the same
+`dist/` as `fbui-dist.tar.gz` (`native.yml`); `make native-release` does it
+locally.
+
 ## Still to do
 
 1. ~~Point the React app's session handling at `/api/v1/ui/login`~~ — done for
@@ -142,15 +162,24 @@ at a time; that is the remaining work in this file.
    `Rewrite` hook for old routes that name their subject in the body (a delete
    by name), and `groups` now answers the whole `clients/groups/*` set,
    including the old summary shape (`clientCount/trafficUsed/up/down`) and
-   rename/reset/bulk add/remove. Webhooks, audit and clients are done. Hosts
-   is next but the old record (a group of addresses over `inboundIds`) does
-   not map onto the native entry (one address per node/inbound) without an
-   adapter; nodes, certs, DNS and routing have no native routes for most of
-   their old calls yet.
+   rename/reset/bulk add/remove. Webhooks, audit, clients, subscriptions and
+   access are done. Hosts is next but the old record (a group of addresses
+   over `inboundIds`) does not map onto the native entry (one address per
+   node/inbound) without an adapter; nodes, certs, DNS and routing have no
+   native routes for most of their old calls yet, so those screens show the
+   compat message instead of data.
 3. Then move the interface to `/api/v1` per section, in the order below.
-4. Build the UI in CI (`make build-fe`) and ship `dist/` beside the binary
+4. ~~Build the UI in CI (`make build-fe`) and ship `dist/` beside the binary
    (`UIDir`), not inside it, so the master stays small and a UI change needs
-   no new binary.
+   no new binary.~~ — done.
+
+## Tests
+
+`internal/native/uimod` covers login → cookie → `/ui/me`, that the answer
+never echoes the token, logout, a revoked token ending its session, and
+expiry. `internal/native/masterd` covers static serving, the client-route
+fallback, a missing build, the admin's `/api/v1` routing and a real
+`/sub/<token>` response with ws and xhttp links.
 
 ## The interface today (20 entries)
 
@@ -192,13 +221,6 @@ thinks* (**Система**). Removed: two duplicate xray aliases, two separate
 notification pages, a separate Hosts page that only edits the edge's table.
 Added: webhooks, audit, notifications, subscriptions and virtual networks;
 sessions/tokens (Access) still needs an API.
-
-## Tests
-
-`internal/native/uimod` covers login → cookie → `/ui/me`, that the answer
-never echoes the token, logout, a revoked token ending its session, and
-expiry. `internal/native/masterd` covers static serving, the client-route
-fallback and a missing build.
 
 ## Settings and notifications (done 2026-11-02)
 

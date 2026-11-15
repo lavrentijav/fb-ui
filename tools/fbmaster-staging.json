@@ -1,0 +1,22 @@
+{
+  "name": "ru2",
+  "masters": ["ru2"],
+  "storeDir": "/opt/fbui-staging/state",
+  "dataDir": "/opt/fbui-staging/data",
+  "publicName": "master.firewalk.top",
+  "edgeListen": "127.0.0.1:19443",
+  "clientPort": 14222,
+  "gatewayHost": "127.0.0.1",
+  "gatewayPort": 17222,
+  "advertise": "127.0.0.1:17222",
+  "peers": {},
+  "poolName": "",
+  "publicIPs": [],
+  "apiListen": "127.0.0.1:18443",
+  "adminListen": "127.0.0.1:18081",
+  "uiDir": "/opt/fbui-staging/dist",
+  "caCert": "/opt/fbui-staging/data/ca.pem",
+  "caKey": "/opt/fbui-staging/data/ca-key.pem",
+  "cert": "/opt/fbui-staging/data/master.pem",
+  "key": "/opt/fbui-staging/data/master-key.pem"
+}

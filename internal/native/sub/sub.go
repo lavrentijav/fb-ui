@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
@@ -44,6 +45,17 @@ func LinksWithOpts(specs []nodespec.Spec, email string, opt Options) []string {
 	specs = slices.Clone(specs)
 	slices.SortFunc(specs, func(a, b nodespec.Spec) int { return strings.Compare(a.Node, b.Node) })
 	var out []string
+	// one link per dialable endpoint, not per node: a multicast pair advertises
+	// the same name/path, so its members must collapse to a single link
+	seen := map[string]bool{}
+	emit := func(id string, e Endpoint) {
+		key := id + "\x00" + e.identity()
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, Link(id, e))
+	}
 	for _, s := range specs {
 		for _, ib := range s.Inbounds {
 			if ib.Host == "" {
@@ -66,10 +78,10 @@ func LinksWithOpts(specs []nodespec.Spec, email string, opt Options) []string {
 				}
 				adv := opt.Hosts[s.Node+"/"+ib.Tag]
 				if len(adv) == 0 {
-					out = append(out, Link(c.ID, Endpoint{
+					emit(c.ID, Endpoint{
 						Address: ib.Host, Network: ib.Network, Path: ib.Path,
 						Remark: remark, Extra: extra,
-					}))
+					})
 					continue
 				}
 				for _, e := range adv {
@@ -81,7 +93,7 @@ func LinksWithOpts(specs []nodespec.Spec, email string, opt Options) []string {
 					}
 					e.Remark = joinRemark(remark, e.Remark)
 					e.Extra = merge(extra, e.Extra)
-					out = append(out, Link(c.ID, e))
+					emit(c.ID, e)
 				}
 			}
 		}
@@ -149,6 +161,22 @@ func (e Endpoint) fingerprint() string {
 		return e.Fingerprint
 	}
 	return "chrome"
+}
+
+// identity is what a client actually dials, minus the link-only extras (node,
+// userinfo) and the remark, so the members of one multicast collapse to a key.
+func (e Endpoint) identity() string {
+	sni := e.SNI
+	if sni == "" {
+		sni = e.Address
+	}
+	host := e.Host
+	if host == "" {
+		host = sni
+	}
+	return strings.Join([]string{
+		e.Address, strconv.Itoa(e.port()), e.network(), e.Path, e.security(), sni, host,
+	}, "\x00")
 }
 
 // Link is a VLESS link for one endpoint. Extra parameters are added first, so

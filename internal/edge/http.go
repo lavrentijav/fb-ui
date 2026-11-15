@@ -21,6 +21,7 @@ type HTTPRoute struct {
 	PathPrefix  string
 	Target      string
 	StripPrefix bool
+	TargetHost  string
 }
 
 // TrustHeader marks requests that came through the edge. An Xray inbound
@@ -98,6 +99,9 @@ func compile(rt HTTPRoute, drain *Drain) (compiledRoute, error) {
 			pr.SetXForwarded()
 			pr.Out.Header.Set(TrustHeader, "fb-ui")
 			pr.Out.Host = pr.In.Host
+			if rt.TargetHost != "" {
+				pr.Out.Host = rt.TargetHost
+			}
 			if rt.StripPrefix && prefix != "" {
 				p := strings.TrimPrefix(pr.In.URL.Path, prefix)
 				if !strings.HasPrefix(p, "/") {

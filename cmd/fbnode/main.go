@@ -139,7 +139,12 @@ func main() {
 		}
 	}
 	path := flag.String("c", "/etc/fbnode/config.json", "config file")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
 	logger := log.New(os.Stderr, "fbnode ", log.LstdFlags)
 	if err := run(*path, logger); err != nil {
 		logger.Fatal(err)
@@ -247,7 +252,11 @@ func runUpgrade(args []string, stderr io.Writer) error {
 			return err
 		}
 	}
-	resp, err := http.Get(*url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, *url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -402,13 +411,16 @@ func run(path string, logger *log.Logger) error {
 		node.Sink = store
 		quota = &agent.Quota{Source: storeTraffic{store}, Target: bundles, Log: logger.Printf}
 	}
-	pr := agent.NewPresence(c.Node, xr, pres, bundles, func(ctx context.Context) (*nats.Conn, error) {
-		m := sel.Current()
-		if m == "" {
-			return nil, errors.New("no master yet")
-		}
-		return node.Sender.Conn(ctx, m)
-	}, logger.Printf)
+	var pr *agent.Presence
+	if pres != nil {
+		pr = agent.NewPresence(c.Node, xr, pres, bundles, func(ctx context.Context) (*nats.Conn, error) {
+			m := sel.Current()
+			if m == "" {
+				return nil, errors.New("no master yet")
+			}
+			return node.Sender.Conn(ctx, m)
+		}, logger.Printf)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if c.Profile != "relay" {
@@ -431,7 +443,9 @@ func run(path string, logger *log.Logger) error {
 		}
 	}()
 	logger.Printf("node %s (%s), masters %v", c.Node, c.Profile, masters)
-	go pr.Run(ctx)
+	if pr != nil {
+		go pr.Run(ctx)
+	}
 	if ipLimit != nil {
 		go ipLimit.Run(ctx)
 	}

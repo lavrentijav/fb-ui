@@ -36,7 +36,7 @@ var Fleet = Schema{
 	"sub.providerID":         {Kind: KindString, Section: "subscription"},
 	"sub.refillDate":         {Kind: KindString, Section: "subscription", Check: CheckDate},
 	"sub.backupURLs":         {Kind: KindList, Section: "subscription"},
-	"sub.remarkTemplate":     {Kind: KindString, Default: "{{NODE}}-{{INBOUND}}", Section: "subscription"},
+	"sub.remarkTemplate":     {Kind: KindString, Default: "{{REMARK}}", Section: "subscription"},
 	"sub.showIdentity":       {Kind: KindBool, Default: "false", Section: "subscription"},
 
 	"notify.discord.enable": {Kind: KindBool, Default: "false", Section: "discord"},

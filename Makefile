@@ -96,6 +96,25 @@ fbmaster: ## Build the static master into $(NATIVE_OUT)
 
 native-binaries: fbnode fbmaster ## Both native binaries, versioned and checksummed
 
+.PHONY: native-release
+native-release: native-binaries build-fe ## Binaries, UI, units, checksums and build info in $(NATIVE_OUT)
+	tar -czf $(NATIVE_OUT)/fbui-dist.tar.gz -C internal/web dist
+	cp packaging/native/fbmaster.service packaging/native/fbnode.service $(NATIVE_OUT)/
+	cd $(NATIVE_OUT) && sha256sum fbnode fbmaster fbui-dist.tar.gz > SHA256SUMS
+	@printf '# fbui native release\n\n' > $(NATIVE_OUT)/build-info.md
+	@printf -- '- built: %s\n- commit: %s\n- branch: %s\n- dirty files: %s\n- version: %s\n- go: %s\n- node: %s\n\n' \
+		"$$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$$(git rev-parse HEAD)" "$$(git rev-parse --abbrev-ref HEAD)" \
+		"$$(git status --porcelain | wc -l)" "$(NATIVE_VERSION)" "$$(go version)" "$$(node --version)" >> $(NATIVE_OUT)/build-info.md
+	@printf '| file | bytes | sha256 |\n|---|---|---|\n' >> $(NATIVE_OUT)/build-info.md
+	@for f in fbnode fbmaster fbui-dist.tar.gz; do \
+		printf '| %s | %s | %s |\n' "$$f" "$$(stat -c %s $(NATIVE_OUT)/$$f)" "$$(sha256sum $(NATIVE_OUT)/$$f | cut -d' ' -f1)"; \
+	done >> $(NATIVE_OUT)/build-info.md
+	@cat $(NATIVE_OUT)/SHA256SUMS $(NATIVE_OUT)/build-info.md
+
+.PHONY: native-smoke
+native-smoke: native-binaries build-fe ## End-to-end smoke: master, UI login, subscription, relay enroll
+	bash tools/native-smoke.sh
+
 .PHONY: build-storybook
 build-storybook: ## Build the static Storybook (compile-checks all stories)
 	cd $(FRONTEND) && npm run build-storybook

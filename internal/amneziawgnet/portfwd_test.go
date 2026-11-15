@@ -188,8 +188,8 @@ func TestPortForwardSetReconcileSurvivesPreBoundPort(t *testing.T) {
 	gs := newTestStack(t, "10.211.1.1")
 	set := NewPortForwardSet(gs, 502)
 
-	const collidingPort = 58911
-	const okPort = 58912
+	collidingPort := freePort(t)
+	okPort := freePort(t)
 	blocker, err := net.Listen("tcp", fmt.Sprintf(":%d", collidingPort))
 	if err != nil {
 		t.Fatalf("pre-bind test port: %v", err)

@@ -18,8 +18,6 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/templatesmod"
 )
 
-const uid = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
-
 func spec() nodespec.Spec {
 	return nodespec.Spec{
 		Inbounds: []nodespec.Inbound{{

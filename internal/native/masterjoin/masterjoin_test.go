@@ -24,6 +24,7 @@ func (w hostWriter) Set(ctx context.Context, table, key string, fields map[strin
 	_, err := w.h.Set(ctx, table, key, fields)
 	return err
 }
+
 func (w hostWriter) Delete(ctx context.Context, table, key string) error {
 	_, err := w.h.Delete(ctx, table, key)
 	return err

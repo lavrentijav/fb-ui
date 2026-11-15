@@ -35,6 +35,7 @@ type Input struct {
 	Network string `json:"network"`
 	Path    string `json:"path"`
 	Host    string `json:"host,omitempty"`
+	Remark  string `json:"remark,omitempty"`
 	Route   string `json:"route"`
 	VNet    bool   `json:"vnet,omitempty"`
 }
@@ -45,6 +46,7 @@ func (in Input) Inbound(existing nodespec.Inbound) nodespec.Inbound {
 	ib := existing
 	ib.Tag, ib.Port, ib.Network, ib.Path, ib.Host, ib.Route, ib.VNet =
 		in.Tag, in.Port, in.Network, in.Path, in.Host, in.Route, in.VNet
+	ib.Remark = in.Remark
 	if ib.Clients == nil {
 		ib.Clients = []nodespec.Client{}
 	}

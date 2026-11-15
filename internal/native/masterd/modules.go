@@ -37,13 +37,19 @@ func (d *Daemon) startModules(ctx context.Context, m *master.Master) {
 	}()
 }
 
-// APIHandler is /api/v1 over the registered modules; nil until the master is ready.
+// APIHandler is /api/v1 over the registered modules; nil until the master is
+// ready. The handler is built once: building it mounts every module.
 func (d *Daemon) APIHandler() http.Handler {
-	h := d.host.Load()
-	if h == nil {
+	if h, ok := d.apiHandler.Load().(http.Handler); ok {
+		return h
+	}
+	host := d.host.Load()
+	if host == nil {
 		return nil
 	}
-	return withLegacy(module.All(), apiserver.New(h, module.All()))
+	h := withLegacy(module.All(), apiserver.New(host, module.All()))
+	d.apiHandler.Store(h)
+	return h
 }
 
 // bootstrapToken gives a master with no tokens at all its first admin token.

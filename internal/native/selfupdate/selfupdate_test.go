@@ -3,6 +3,7 @@ package selfupdate
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,7 +55,7 @@ func TestApplySwapsAndKeepsThePreviousBinary(t *testing.T) {
 
 func TestApplyRefusesABadChecksumAndKeepsTheOldBinary(t *testing.T) {
 	u, _ := setup(t)
-	if err := u.Apply([]byte("new-binary"), sum([]byte("different"))); err != ErrBadChecksum {
+	if err := u.Apply([]byte("new-binary"), sum([]byte("different"))); !errors.Is(err, ErrBadChecksum) {
 		t.Fatalf("err = %v", err)
 	}
 	got, _ := os.ReadFile(u.Current)

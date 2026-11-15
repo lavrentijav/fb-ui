@@ -9,6 +9,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/clients"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/hlc"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/inboundparam"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/master"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/oplog"
@@ -54,10 +55,14 @@ func seedFleet(t *testing.T) *Daemon {
 	d := newTestDaemon(t)
 	ctx := context.Background()
 	for node, ibs := range map[string][]nodespec.Inbound{
-		"ru4": {{Tag: "vpn", Port: 12054, Network: "ws", Path: "/ws", Host: "ru.example",
-			Route: nodespec.Direct, Clients: []nodespec.Client{{Email: "alice", ID: "u1"}}}},
-		"de2": {{Tag: "xht", Port: 12055, Network: "xhttp", Path: "/xh", Host: "de.example",
-			Route: nodespec.Direct, Clients: []nodespec.Client{{Email: "alice", ID: "u1"}, {Email: "bob", ID: "u2"}}}},
+		"ru4": {{
+			Tag: "vpn", Port: 12054, Network: "ws", Path: "/ws", Host: "ru.example",
+			Route: nodespec.Direct, Clients: []nodespec.Client{{Email: "alice", ID: "u1"}},
+		}},
+		"de2": {{
+			Tag: "xht", Port: 12055, Network: "xhttp", Path: "/xh", Host: "de.example",
+			Route: nodespec.Direct, Clients: []nodespec.Client{{Email: "alice", ID: "u1"}, {Email: "bob", ID: "u2"}},
+		}},
 	} {
 		raw, err := json.Marshal(nodespec.Spec{Node: node, Inbounds: ibs})
 		if err != nil {
@@ -126,6 +131,29 @@ func contains(s, sub string) bool {
 	return false
 }
 
+// The old interface's inbound list carries the inbound's custom params, so the
+// sales bot can read the "reserved" flag and skip those inbounds.
+func TestFleetInboundCarriesParams(t *testing.T) {
+	d := newTestDaemon(t)
+	raw, err := json.Marshal(nodespec.Spec{Node: "ru", Inbounds: []nodespec.Inbound{{
+		Tag: "vpn", Port: 12054, Network: "ws", Path: "/ws", Host: "ru.example",
+		Route: nodespec.Direct,
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	set(t, d, SpecTable, "ru", map[string]any{"spec": json.RawMessage(raw)})
+	set(t, d, inboundparam.Table, inboundparam.Key("ru", "vpn"), map[string]any{"params": inboundparam.Params{"reserved": "true"}})
+
+	ins := d.fleetInbounds()
+	if len(ins) != 1 {
+		t.Fatalf("inbounds %d", len(ins))
+	}
+	if !inboundparam.Reserved(ins[0].Params) {
+		t.Fatalf("reserved params not exposed: %+v", ins[0].Params)
+	}
+}
+
 func TestFleetClientsMergePerEmail(t *testing.T) {
 	d := seedFleet(t)
 	out := d.fleetClients()
@@ -150,7 +178,7 @@ func TestFleetClientsMergePerEmail(t *testing.T) {
 
 func TestFleetClientsPagedSearchesAndPages(t *testing.T) {
 	d := seedFleet(t)
-	req := httptest.NewRequest("GET", "/clients/list/paged?search=ali&page=1&pageSize=1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/clients/list/paged?search=ali&page=1&pageSize=1", nil)
 	page := d.fleetClientsPaged(req)
 	if page["total"] != 2 || page["filtered"] != 1 || page["pageSize"] != 1 {
 		t.Fatalf("page %+v", page)
@@ -167,7 +195,7 @@ func TestCompatFallbackReachesTheFleetView(t *testing.T) {
 	d := seedFleet(t)
 	h := withLegacyFallback(nil, http.NotFoundHandler(), d.Handler())
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("GET", "/panel/api/nodes/list", nil))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/panel/api/nodes/list", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("nodes/list via compat: %d %s", rec.Code, rec.Body)
 	}

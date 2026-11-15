@@ -28,7 +28,8 @@ type Presence struct {
 func NewPresence(node string, x interface {
 	Online(context.Context) ([]string, error)
 }, m *presence.Map,
-	a *BundleApplier, conn func(ctx context.Context) (*nats.Conn, error), log func(string, ...any)) *Presence {
+	a *BundleApplier, conn func(ctx context.Context) (*nats.Conn, error), log func(string, ...any),
+) *Presence {
 	return &Presence{Node: node, Xray: x, Map: m, Conn: conn, Log: log, repatch: a.Repatch}
 }
 

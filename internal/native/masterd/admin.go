@@ -11,6 +11,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/module"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
 )
 
 // DefaultAdminListen keeps the administrative surface on loopback: the panel
@@ -25,6 +26,7 @@ const DefaultAdminListen = "127.0.0.1:0"
 //   - /healthz and /ready: liveness, no data,
 //   - /enroll: the node redeems a one-time token,
 //   - /sub/*: the subscription token is in the path,
+//   - /api/v1/*: every route checks its own token, session or public scope,
 //   - /panel/*: the built interface (its /panel/api half authenticates itself
 //     through the module API).
 //
@@ -67,6 +69,8 @@ func PublicAdminPath(r *http.Request) bool {
 	case p == "/enroll", strings.HasPrefix(p, "/enroll/"):
 		return true
 	case p == "/master/join":
+		return true
+	case strings.HasPrefix(p, "/api/v1/"):
 		return true
 	case strings.HasPrefix(p, "/sub/"):
 		return true
@@ -111,15 +115,13 @@ func (d *Daemon) ListenAdmin(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	ln, err := net.Listen("tcp", addr)
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", addr)
 	if err != nil {
 		return err
 	}
 	srv := &http.Server{Handler: d.AdminHandler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() { <-ctx.Done(); _ = srv.Close() }()
 	d.logf("admin api on http://%s", ln.Addr())
-	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
+	network.ServeHTTP(srv, ln, "admin api")
 	return nil
 }

@@ -14,15 +14,20 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/native/pool"
 )
 
-type dns struct {
-	mu     sync.Mutex
-	writes [][]string
+type write struct {
+	name   string
+	values []string
 }
 
-func (d *dns) SetRecords(_ context.Context, _, _ string, values []string, _ int) error {
+type dns struct {
+	mu     sync.Mutex
+	writes []write
+}
+
+func (d *dns) SetRecords(_ context.Context, name, _ string, values []string, _ int) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.writes = append(d.writes, slices.Clone(values))
+	d.writes = append(d.writes, write{name: name, values: slices.Clone(values)})
 	return nil
 }
 func (d *dns) DeleteRecords(context.Context, string, string) error { return nil }
@@ -34,7 +39,17 @@ func (d *dns) last() ([]string, int) {
 	if len(d.writes) == 0 {
 		return nil, 0
 	}
-	return d.writes[len(d.writes)-1], len(d.writes)
+	return d.writes[len(d.writes)-1].values, len(d.writes)
+}
+
+func (d *dns) byName() map[string][]string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	out := map[string][]string{}
+	for _, w := range d.writes {
+		out[w.name] = w.values
+	}
+	return out
 }
 
 type net struct {
@@ -195,6 +210,38 @@ func TestManyAddressesPerMaster(t *testing.T) {
 	}
 	if got, _ := d.last(); !slices.Equal(got, addrs) {
 		t.Fatalf("recovered address not back: %v", got)
+	}
+}
+
+func TestPoolWritesAliases(t *testing.T) {
+	d, n := &dns{}, &net{down: map[string]bool{}}
+	_, p, tick := oneMaster(t, "fi1", []string{"10.0.4.1"}, d, n)
+	p.Aliases = []string{"sub.firewalk.top"}
+	for range 2 {
+		tick()
+	}
+	got := d.byName()
+	for _, name := range []string{"master.firewalk.top", "sub.firewalk.top"} {
+		if !slices.Equal(got[name], []string{"10.0.4.1"}) {
+			t.Fatalf("%s = %v, want the master's addresses", name, got[name])
+		}
+	}
+	_, writes := d.last()
+	tick()
+	if _, now := d.last(); now != writes {
+		t.Fatalf("unchanged aliases written again (%d -> %d)", writes, now)
+	}
+}
+
+func TestPoolWithoutDNSReportsHealthOnly(t *testing.T) {
+	d, n := &dns{}, &net{down: map[string]bool{}}
+	ctx, p, _ := oneMaster(t, "fi1", []string{"10.0.5.1"}, d, n)
+	p.DNS = nil
+	if err := p.Tick(ctx); err != nil {
+		t.Fatalf("read-only tick: %v", err)
+	}
+	if _, writes := d.last(); writes != 0 {
+		t.Fatalf("a read-only pool wrote DNS %d times", writes)
 	}
 }
 

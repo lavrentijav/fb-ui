@@ -83,8 +83,11 @@ func httpFetch(ctx context.Context, url string) ([]byte, error) {
 }
 
 func str(rec map[string]json.RawMessage, k string) (v string) { _ = json.Unmarshal(rec[k], &v); return }
-func num(rec map[string]json.RawMessage, k string) (v int64)  { _ = json.Unmarshal(rec[k], &v); return }
-func flag(rec map[string]json.RawMessage, k string) (v bool)  { _ = json.Unmarshal(rec[k], &v); return }
+
+func num(rec map[string]json.RawMessage, k string) (v int64) { _ = json.Unmarshal(rec[k], &v); return }
+
+func flag(rec map[string]json.RawMessage, k string) (v bool) { _ = json.Unmarshal(rec[k], &v); return }
+
 func strs(rec map[string]json.RawMessage, k string) (v []string) {
 	_ = json.Unmarshal(rec[k], &v)
 	return

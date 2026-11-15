@@ -16,15 +16,16 @@ import (
 
 // subscriptionView is one row of the operator's subscription list.
 type subscriptionView struct {
-	Token      string `json:"token"`
-	Email      string `json:"email"`
-	User       string `json:"user,omitempty"`
-	Enable     bool   `json:"enable"`
-	Links      int    `json:"links"`
-	UsedBytes  int64  `json:"usedBytes"`
-	TotalBytes int64  `json:"totalBytes"`
-	Expire     int64  `json:"expire"`
-	URL        string `json:"url"`
+	Token      string   `json:"token"`
+	Email      string   `json:"email"`
+	User       string   `json:"user,omitempty"`
+	Enable     bool     `json:"enable"`
+	Links      int      `json:"links"`
+	UsedBytes  int64    `json:"usedBytes"`
+	TotalBytes int64    `json:"totalBytes"`
+	Expire     int64    `json:"expire"`
+	URL        string   `json:"url"`
+	Aliases    []string `json:"aliases,omitempty"`
 }
 
 // listSubscriptions answers every subscription with its login, link count and
@@ -38,7 +39,7 @@ func (d *Daemon) listSubscriptions(w http.ResponseWriter, r *http.Request) {
 	out := make([]subscriptionView, 0, len(d.store.State.Keys(subauth.Table)))
 	for _, token := range d.store.State.Keys(subauth.Table) {
 		rec, ok := subauth.Get(d.store.State, token)
-		if !ok {
+		if !ok || rec.AliasOf != "" {
 			continue
 		}
 		used, total, expire := d.emailUsage(rec.Email)
@@ -52,6 +53,7 @@ func (d *Daemon) listSubscriptions(w http.ResponseWriter, r *http.Request) {
 			TotalBytes: total,
 			Expire:     expire,
 			URL:        "/sub/" + token,
+			Aliases:    subauth.Aliases(d.store.State, token),
 		})
 	}
 	slices.SortFunc(out, func(a, b subscriptionView) int { return strings.Compare(a.Email, b.Email) })
@@ -85,6 +87,9 @@ func (d *Daemon) setSubEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 	if rec.PassHash != "" {
 		fields["pass"] = rec.PassHash
+	}
+	if rec.AliasOf != "" {
+		fields["aliasOf"] = rec.AliasOf
 	}
 	if _, err := m.Set(r.Context(), SubTokenTable, token, fields); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

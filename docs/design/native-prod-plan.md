@@ -132,9 +132,9 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 - [x] `make fbnode` / `make fbmaster` / `make native-binaries`: static
       (`CGO_ENABLED=0`), `-trimpath`, version from `git describe`, printed
       SHA-256, into `dist/native` (git-ignored).
-- [ ] systemd unit template in the repo (today it is generated inside
-      `provision`); no config secrets in the unit. Note the unit needs
-      `Restart=always`: `fbnode upgrade` relies on it to start the new build.
+- [x] systemd unit templates in the repo (`packaging/native/`); no config
+      secrets in the unit. Both use `Restart=always`: `fbnode upgrade` relies
+      on it to start the new build.
 - [ ] `provision`: install Xray when missing (download, verify checksum,
       pin a version) instead of refusing; optional core upgrade.
 
@@ -192,25 +192,41 @@ journal, traffic, bans, meta) and rebuilds it from the master if lost.
 - [x] Apply: `fbmaster import ... -apply -master URL -token T` posts inbounds,
       clients and groups to the authenticated admin surface; an existing
       record is kept (409) so a rerun is safe.
+- [x] Schema detection: upstream `inbounds.settings` clients, this fork's
+      `clients` + `client_inbounds`, a mixed database, and missing tables are
+      recognised and reported by `-schema`.
+- [x] Redaction (`-redact` on by default, `-with-secrets` to override) and a
+      JSON or Markdown report (`-report json|markdown`).
+- [x] `-verify` compares inbounds, clients, groups and, where a subscription
+      exists, the link count; gaps exit non-zero.
+- [x] The source is opened read-only (`mode=ro` + `query_only`); a test reads
+      the fixture and asserts the file hash and directory did not change.
+- [x] A node with no spec is registered with an empty one before the first
+      inbound; an existing spec is never replaced.
 - [x] Cutover runbook and rollback in `native-migration.md` (snapshot, plan,
       fleet, apply, verify, switch, retire; the old DB is never written).
 - [ ] Dual-run period: a node may report to both (or the old panel keeps the
       subscription while the new master serves traffic).
-- Acceptance: import the lab's or a copy of the real DB, every inbound/client
-  appears in `/api/v1` and renders the same subscription links as the old panel
-  (a diff test over link sets).
+- [ ] Acceptance: import a copy of the real DB, every inbound/client appears
+      in `/api/v1` and renders the same subscription links as the old panel
+      (a diff test over link sets).
 
 ## Phase 5 — UI and release
 
 - [x] CI builds the frontend and ships `dist/` (no Node on the server);
       `.github/workflows/native.yml` packages both binaries and the interface,
       and attaches them to a `native-v*` tag. `UIDir` is documented in
-      `native-deploy.md`.
+      `native-deploy.md`; `make native-release` does the same locally with
+      `SHA256SUMS` and `build-info.md`.
+- [x] The master serves the built interface at `/panel`; `/api/v1/ui/*` and
+      `/api/v1/access/*` reach the module API through the admin surface, so
+      the token login and session work end to end (smoke-verified).
 - [x] Login UX for the bootstrap token (paste once, session cookie) — the page
       posts it to `/api/v1/ui/login`; the "create the first operational token"
       step is the Access page.
 - [ ] Per-section legacy routes still missing (`nodes`, `certs`, `dns`,
-      `routing` pages call `/panel/api/*`); finish them so no page 404s.
+      `routing` pages call `/panel/api/*`); the compat adapter answers them
+      with a message, but the data is not native yet.
 - [x] Release workflow: master + node + UI, versioned and checksummed
       (`native.yml`); upgrade notes live in `native-deploy.md`.
 - Acceptance: a release tarball on a clean VM gives a working panel, a

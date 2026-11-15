@@ -94,8 +94,10 @@ func (m *Module) decode(w http.ResponseWriter, r *http.Request) (*input, bool) {
 }
 
 func str(rec map[string]json.RawMessage, k string) (v string) { _ = json.Unmarshal(rec[k], &v); return }
-func num(rec map[string]json.RawMessage, k string) (v int64)  { _ = json.Unmarshal(rec[k], &v); return }
-func flag(rec map[string]json.RawMessage, k string) (v bool)  { _ = json.Unmarshal(rec[k], &v); return }
+
+func num(rec map[string]json.RawMessage, k string) (v int64) { _ = json.Unmarshal(rec[k], &v); return }
+
+func flag(rec map[string]json.RawMessage, k string) (v bool) { _ = json.Unmarshal(rec[k], &v); return }
 
 // view is what the API shows of a webhook: never the secret.
 func view(h module.Host, id string) (map[string]any, bool) {

@@ -144,7 +144,7 @@ func TestSessionIsListedAndEndedWithItsToken(t *testing.T) {
 	if rec := e.do("GET", "/api/v1/access/sessions", e.admin, nil); strings.Contains(rec.Body.String(), "alice") {
 		t.Fatalf("the session outlived its token: %s", rec.Body)
 	}
-	req := httptest.NewRequest("GET", "/api/v1/ui/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ui/me", nil)
 	req.AddCookie(&http.Cookie{Name: uimod.CookieName, Value: sessionID})
 	cookieRec := httptest.NewRecorder()
 	e.api.ServeHTTP(cookieRec, req)

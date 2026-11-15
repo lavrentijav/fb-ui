@@ -48,7 +48,12 @@ export default function AuditPage() {
     setMessageInstance(messageApi);
   }, [messageApi]);
 
-  const { data: rows = [], isFetching, error, refetch } = useQuery({
+  const {
+    data: rows = [],
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['audit', filter],
     queryFn: async () => {
       const msg = await HttpUtil.get(

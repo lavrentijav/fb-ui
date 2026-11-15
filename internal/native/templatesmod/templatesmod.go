@@ -5,6 +5,7 @@ package templatesmod
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
@@ -54,7 +55,7 @@ func (m *Module) Mount(r module.Router, h module.Host) {
 		t, err := templates.SaveTemplate(req.Context(), h, h, body)
 		if err != nil {
 			code := http.StatusBadRequest
-			if err == templates.ErrExists {
+			if errors.Is(err, templates.ErrExists) {
 				code = http.StatusConflict
 			}
 			apiserver.Error(w, code, err.Error())
@@ -78,7 +79,7 @@ func (m *Module) Mount(r module.Router, h module.Host) {
 		out, err := templates.Stamp(req.Context(), h, h, req.PathValue("name"), body)
 		if err != nil {
 			code := http.StatusBadRequest
-			if err == templates.ErrNoTemplate {
+			if errors.Is(err, templates.ErrNoTemplate) {
 				code = http.StatusNotFound
 			}
 			apiserver.Error(w, code, err.Error())

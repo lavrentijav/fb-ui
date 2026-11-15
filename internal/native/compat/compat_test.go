@@ -32,7 +32,7 @@ func TestAnUnmappedRouteExplainsItself(t *testing.T) {
 	h := compat.Handler([]module.Module{mapped{}}, api)
 
 	// the mapped route still reaches the API
-	req := httptest.NewRequest("GET", "/panel/api/known/list", nil)
+	req := httptest.NewRequest(http.MethodGet, "/panel/api/known/list", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"success":true`) {
@@ -40,7 +40,7 @@ func TestAnUnmappedRouteExplainsItself(t *testing.T) {
 	}
 
 	// an unmapped one answers the old envelope with a readable refusal
-	req = httptest.NewRequest("GET", "/panel/api/server/status", nil)
+	req = httptest.NewRequest(http.MethodGet, "/panel/api/server/status", nil)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

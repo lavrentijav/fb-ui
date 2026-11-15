@@ -77,7 +77,12 @@ export default function SubscriptionsPage() {
   const [secret, setSecret] = useState<Secret | null>(null);
   const [form] = Form.useForm<{ email: string; user?: string; password?: string }>();
 
-  const { data: rows = [], isFetching: loading, error, refetch } = useQuery({
+  const {
+    data: rows = [],
+    isFetching: loading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['subscriptions'],
     queryFn: () => call<Subscription[]>('GET', '/panel/api/subscriptions/list'),
   });
@@ -155,9 +160,7 @@ export default function SubscriptionsPage() {
       key: 'status',
       width: 120,
       render: (_: unknown, r) => (
-        <Tag color={r.enable ? 'green' : 'default'}>
-          {r.enable ? t('enabled') : t('disabled')}
-        </Tag>
+        <Tag color={r.enable ? 'green' : 'default'}>{r.enable ? t('enabled') : t('disabled')}</Tag>
       ),
     },
     {
@@ -215,7 +218,10 @@ export default function SubscriptionsPage() {
                   okText: t('delete'),
                   cancelText: t('cancel'),
                   onOk: async () => {
-                    await call('POST', `/panel/api/subscriptions/del/${encodeURIComponent(r.token)}`);
+                    await call(
+                      'POST',
+                      `/panel/api/subscriptions/del/${encodeURIComponent(r.token)}`,
+                    );
                     await load();
                   },
                 })
@@ -354,10 +360,12 @@ export default function SubscriptionsPage() {
         />
         <Space direction="vertical" size={6} style={{ width: '100%' }}>
           <Typography.Text>
-            {t('pages.subscriptions.email')}: <Typography.Text strong>{secret?.email}</Typography.Text>
+            {t('pages.subscriptions.email')}:{' '}
+            <Typography.Text strong>{secret?.email}</Typography.Text>
           </Typography.Text>
           <Typography.Text>
-            {t('pages.subscriptions.user')}: <Typography.Text strong>{secret?.user}</Typography.Text>
+            {t('pages.subscriptions.user')}:{' '}
+            <Typography.Text strong>{secret?.user}</Typography.Text>
           </Typography.Text>
           {secret?.password && (
             <Typography.Text>

@@ -258,7 +258,7 @@ func dial(ctx context.Context, t Target, a Auth, pinned string) (*ssh.Client, er
 // subsystem is needed on the target.
 func (r sshRunner) Upload(ctx context.Context, path string, data []byte, mode string) error {
 	if out, err := r.Run(ctx, ": > "+sh(path)); err != nil {
-		return fmt.Errorf("create %s: %v %s", path, err, strings.TrimSpace(out))
+		return fmt.Errorf("create %s: %w %s", path, err, strings.TrimSpace(out))
 	}
 	enc := base64.StdEncoding.EncodeToString(data)
 	for len(enc) > 0 {
@@ -266,11 +266,11 @@ func (r sshRunner) Upload(ctx context.Context, path string, data []byte, mode st
 		chunk := enc[:n]
 		enc = enc[n:]
 		if out, err := r.Run(ctx, "printf %s "+sh(chunk)+" | base64 -d >> "+sh(path)); err != nil {
-			return fmt.Errorf("write %s: %v %s", path, err, strings.TrimSpace(out))
+			return fmt.Errorf("write %s: %w %s", path, err, strings.TrimSpace(out))
 		}
 	}
 	if out, err := r.Run(ctx, "chmod "+mode+" "+sh(path)); err != nil {
-		return fmt.Errorf("chmod %s: %v %s", path, err, strings.TrimSpace(out))
+		return fmt.Errorf("chmod %s: %w %s", path, err, strings.TrimSpace(out))
 	}
 	return nil
 }

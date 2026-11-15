@@ -50,7 +50,7 @@ func TestRequireAuthClosesTheAdminSurface(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			r := httptest.NewRequest("GET", c.path, nil)
+			r := httptest.NewRequest(http.MethodGet, c.path, nil)
 			if c.bearer != "" {
 				r.Header.Set("Authorization", "Bearer "+c.bearer)
 			}

@@ -93,17 +93,17 @@ func Open(path string) (*Store, error) {
 	// in this database
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(context.Background()); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("nodestore: %w", err)
 	}
-	if _, err := db.Exec(schema); err != nil {
+	if _, err := db.ExecContext(context.Background(), schema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("nodestore: schema: %w", err)
 	}
 	s := &Store{db: db}
 	var have string
-	if err := db.QueryRow(`SELECT v FROM meta WHERE k='schema'`).Scan(&have); err == sql.ErrNoRows {
+	if err := db.QueryRowContext(context.Background(), `SELECT v FROM meta WHERE k='schema'`).Scan(&have); err == sql.ErrNoRows {
 		if err := s.SetMeta(context.Background(), "schema", fmt.Sprint(SchemaVersion)); err != nil {
 			db.Close()
 			return nil, err
@@ -206,7 +206,7 @@ func (s *Store) AppendReport(ctx context.Context, at time.Time, body []byte) (ui
 	var raw string
 	err = tx.QueryRowContext(ctx, `SELECT v FROM meta WHERE k='journal.next'`).Scan(&raw)
 	switch {
-	case err == sql.ErrNoRows:
+	case errors.Is(err, sql.ErrNoRows):
 	case err != nil:
 		return 0, err
 	default:

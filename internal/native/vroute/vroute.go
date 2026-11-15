@@ -31,8 +31,10 @@ func Bans(xray []byte, bans []string) ([]byte, error) {
 	}
 	routing, _ := cfg["routing"].(obj)
 	old, _ := routing["rules"].([]any)
-	rule := obj{"type": "field", "sourceIP": slices.Sorted(slices.Values(bans)),
-		"outboundTag": nodespec.Block, "ruleTag": "bans"}
+	rule := obj{
+		"type": "field", "sourceIP": slices.Sorted(slices.Values(bans)),
+		"outboundTag": nodespec.Block, "ruleTag": "bans",
+	}
 	merged := append([]any{}, old[:min(1, len(old))]...) // the api rule stays first
 	merged = append(merged, rule)
 	merged = append(merged, old[min(1, len(old)):]...)

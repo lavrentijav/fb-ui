@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"net"
 	"slices"
@@ -40,6 +41,9 @@ type Pool struct {
 	Master *master.Master
 	State  Reader
 	Name   string // master.firewalk.top
+	// Aliases are extra names that resolve to the same live masters (the
+	// subscription names); each is written with the same addresses.
+	Aliases []string
 	// Check tells whether a master answers on ip as a client would reach it.
 	Check func(ctx context.Context, ip string) error
 	DNS   func(name string) (dnsprovider.Provider, string, error)
@@ -344,14 +348,26 @@ func Failover(ctx context.Context, ips []string, fn func(ctx context.Context, ip
 	return last
 }
 
-func (p *Pool) written() []string {
+func (p *Pool) written() ([]string, map[string][]string) {
 	rec, ok := p.State.Get(Table, p.Name)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	var ips []string
 	_ = json.Unmarshal(rec["ips"], &ips)
-	return ips
+	var aliases map[string][]string
+	_ = json.Unmarshal(rec["aliases"], &aliases)
+	return ips, aliases
+}
+
+func (p *Pool) wantedAliases(live []string) map[string][]string {
+	out := map[string][]string{}
+	for _, name := range p.Aliases {
+		if name != "" && name != p.Name {
+			out[name] = live
+		}
+	}
+	return out
 }
 
 func (p *Pool) logf(format string, args ...any) {
@@ -365,6 +381,9 @@ func (p *Pool) logf(format string, args ...any) {
 // with no master answering, clients are better off with the last good records.
 func (p *Pool) Tick(ctx context.Context) error {
 	live := p.live(ctx)
+	if p.DNS == nil {
+		return nil // a joined non-issuer reports health but never takes the DNS lease
+	}
 	l := lease.Lease{
 		Master: p.Master, State: p.State, Table: LeaseTable,
 		TTL: orDefault(p.Lease, 2*time.Minute), Settle: orDefault(p.Settle, 5*time.Second),
@@ -373,7 +392,9 @@ func (p *Pool) Tick(ctx context.Context) error {
 	if len(live) == 0 {
 		return errors.New("pool: no master answers; records left as they are")
 	}
-	if slices.Equal(live, p.written()) {
+	ips, aliases := p.written()
+	want := p.wantedAliases(live)
+	if slices.Equal(live, ips) && maps.EqualFunc(want, aliases, func(a, b []string) bool { return slices.Equal(a, b) }) {
 		if holder == p.Master.Name() {
 			_, err := l.Claim(ctx, p.Name) // the writer keeps its lease while all is well
 			return err
@@ -396,7 +417,21 @@ func (p *Pool) Tick(ctx context.Context) error {
 		return err
 	}
 	p.logf("pool: %s (%s) now %v", p.Name, zone, live)
-	_, err = p.Master.Set(ctx, Table, p.Name, map[string]any{"ips": live})
+	for name, values := range want {
+		adns, azone, err := p.DNS(name)
+		if err != nil {
+			return fmt.Errorf("pool: %s: %w", name, err)
+		}
+		if err := adns.SetRecords(ctx, name, "A", values, ttl); err != nil {
+			return fmt.Errorf("pool: %s: %w", name, err)
+		}
+		p.logf("pool: %s (%s) now %v (alias of %s)", name, azone, values, p.Name)
+	}
+	fields := map[string]any{"ips": live}
+	if len(want) > 0 {
+		fields["aliases"] = want
+	}
+	_, err = p.Master.Set(ctx, Table, p.Name, fields)
 	return err
 }
 

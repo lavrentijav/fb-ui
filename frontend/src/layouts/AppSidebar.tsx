@@ -125,7 +125,12 @@ function fullTabs(t: (k: string) => string): NavTab[] {
     { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
     { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
     { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
-    { key: '/subscriptions', icon: 'subscriptions', title: t('menu.subscriptions'), section: 'access' },
+    {
+      key: '/subscriptions',
+      icon: 'subscriptions',
+      title: t('menu.subscriptions'),
+      section: 'access',
+    },
     { key: '/vnet', icon: 'vnet', title: t('menu.vnet'), section: 'access' },
     { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
     { key: '/cascades', icon: 'network', title: t('menu.network'), section: 'fleet' },
@@ -136,7 +141,12 @@ function fullTabs(t: (k: string) => string): NavTab[] {
     { key: '/xray', icon: 'tool', title: t('menu.xray'), section: 'routing' },
     { key: '/settings', icon: 'setting', title: t('menu.settings'), section: 'system' },
     { key: '/access', icon: 'access', title: t('menu.access'), section: 'system' },
-    { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
+    {
+      key: '/notifications',
+      icon: 'notifications',
+      title: t('menu.notifications'),
+      section: 'system',
+    },
     { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
     { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },
     { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
@@ -151,7 +161,12 @@ function nativeTabs(t: (k: string) => string): NavTab[] {
     { key: '/', icon: 'dashboard', title: t('menu.dashboard'), section: 'overview' },
     { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds'), section: 'access' },
     { key: '/clients', icon: 'team', title: t('menu.clients'), section: 'access' },
-    { key: '/subscriptions', icon: 'subscriptions', title: t('menu.subscriptions'), section: 'access' },
+    {
+      key: '/subscriptions',
+      icon: 'subscriptions',
+      title: t('menu.subscriptions'),
+      section: 'access',
+    },
     { key: '/vnet', icon: 'vnet', title: t('menu.vnet'), section: 'access' },
     { key: '/nodes', icon: 'cluster', title: t('menu.nodes'), section: 'fleet' },
     { key: '/templates', icon: 'templates', title: t('menu.templates'), section: 'fleet' },
@@ -159,7 +174,12 @@ function nativeTabs(t: (k: string) => string): NavTab[] {
     { key: '/certs', icon: 'certs', title: t('menu.certs'), section: 'entry' },
     { key: '/filters', icon: 'filters', title: t('menu.filters'), section: 'routing' },
     { key: '/access', icon: 'access', title: t('menu.access'), section: 'system' },
-    { key: '/notifications', icon: 'notifications', title: t('menu.notifications'), section: 'system' },
+    {
+      key: '/notifications',
+      icon: 'notifications',
+      title: t('menu.notifications'),
+      section: 'system',
+    },
     { key: '/webhooks', icon: 'webhooks', title: t('menu.webhooks'), section: 'system' },
     { key: '/audit', icon: 'audit', title: t('menu.audit'), section: 'system' },
     { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs'), section: 'system' },
@@ -305,10 +325,7 @@ export default function AppSidebar() {
   // addresses) do, and it is its own entry in that mode because the merged
   // Edge page holds the half that is missing.
   const native = !!window.X_UI_NATIVE;
-  const tabs = useMemo<NavTab[]>(
-    () => (native ? nativeTabs(t) : fullTabs(t)),
-    [t, native],
-  );
+  const tabs = useMemo<NavTab[]>(() => (native ? nativeTabs(t) : fullTabs(t)), [t, native]);
 
   const navItems = useMemo(() => tabs.filter((tab) => tab.icon !== 'logout'), [tabs]);
   const utilItems = useMemo(() => tabs.filter((tab) => tab.icon === 'logout'), [tabs]);

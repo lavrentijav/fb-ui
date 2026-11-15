@@ -12,6 +12,7 @@ import (
 	"errors"
 	"math/big"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,22 +39,75 @@ var (
 	ErrBadPassword    = errors.New("wrong password")
 	ErrUser           = errors.New("a login name is required (3–32 chars: letters, digits, . _ -)")
 	ErrDisabled       = errors.New("this subscription is disabled")
+	ErrAlias          = errors.New("an alias must be 1–128 chars: letters, digits, . _ -")
+	ErrAliasTaken     = errors.New("that alias already belongs to another subscription")
 	validUser         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$`)
+	validToken        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 )
 
-// Record is one subscription as the management side sees it.
+// Record is one subscription as the management side sees it. Alias records
+// carry the primary token in AliasOf and have no login of their own.
 type Record struct {
 	Token    string `json:"token"`
 	Email    string `json:"email"`
 	User     string `json:"user,omitempty"`
 	PassHash string `json:"passHash,omitempty"`
 	Enable   bool   `json:"enable"`
+	AliasOf  string `json:"aliasOf,omitempty"`
 }
 
 func (r Record) Active() bool { return r.Enable }
 
 // ValidUser reports whether name can be a login.
 func ValidUser(name string) bool { return validUser.MatchString(name) }
+
+// ValidToken reports whether token can be a public subscription token.
+func ValidToken(token string) bool { return validToken.MatchString(token) }
+
+// EnsureAlias makes alias resolve to primary's email. The alias has no login
+// of its own; the primary record still owns the password and the management page.
+func EnsureAlias(ctx context.Context, h module.Host, alias, primary string, enable bool) error {
+	if !ValidToken(alias) {
+		return ErrAlias
+	}
+	p, ok := Get(h, primary)
+	if !ok || p.AliasOf != "" {
+		return ErrNoSubscription
+	}
+	if existing, ok := Get(h, alias); ok {
+		if existing.AliasOf != primary || existing.Email != p.Email {
+			return ErrAliasTaken
+		}
+		enable = enable || existing.Enable
+	}
+	_, err := h.Set(ctx, Table, alias, map[string]any{
+		"email": p.Email, "enable": enable && p.Enable, "aliasOf": primary,
+	})
+	return err
+}
+
+// Aliases lists the alias tokens of a primary subscription.
+func Aliases(r Reader, primary string) []string {
+	out := make([]string, 0)
+	for _, token := range r.Keys(Table) {
+		rec, ok := Get(r, token)
+		if ok && rec.AliasOf == primary {
+			out = append(out, token)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// DeleteAlias removes alias, but only when it belongs to primary.
+func DeleteAlias(ctx context.Context, h module.Host, alias, primary string) error {
+	rec, ok := Get(h, alias)
+	if !ok || rec.AliasOf != primary {
+		return ErrNoSubscription
+	}
+	_, err := h.Delete(ctx, Table, alias)
+	return err
+}
 
 // Hash is the session key: a cookie's value never appears in the op log.
 func Hash(cookie string) string {
@@ -105,6 +159,7 @@ func Get(r Reader, token string) (Record, bool) {
 	_ = json.Unmarshal(rec["email"], &out.Email)
 	_ = json.Unmarshal(rec["user"], &out.User)
 	_ = json.Unmarshal(rec["pass"], &out.PassHash)
+	_ = json.Unmarshal(rec["aliasOf"], &out.AliasOf)
 	if raw, ok := rec["enable"]; ok {
 		_ = json.Unmarshal(raw, &out.Enable)
 	}

@@ -265,8 +265,10 @@ func (s *Store) User(id string) (User, bool) {
 	if !ok {
 		return User{}, false
 	}
-	return User{ID: id, Email: str(rec, "email"), UUID: str(rec, "uuid"), RevUUID: str(rec, "revuuid"),
-		Token: str(rec, "token"), IP: str(rec, "ip"), Name: s.Name(id)}, true
+	return User{
+		ID: id, Email: str(rec, "email"), UUID: str(rec, "uuid"), RevUUID: str(rec, "revuuid"),
+		Token: str(rec, "token"), IP: str(rec, "ip"), Name: s.Name(id),
+	}, true
 }
 
 func (s *Store) UserByToken(token string) (User, bool) {

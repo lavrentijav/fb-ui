@@ -1,15 +1,24 @@
 # fbnode and the native master: readiness, and a lite node profile
 
-Status: 2026-11-02, branch `native` at `ec6812efb`. Verdict up front:
+Status: 2026-11-14, branch `work/native-ready` off `native` at `f6250a6c`.
+Verdict up front:
 
-- **fbnode (node agent): ready for a supervised pilot on real entry/exit nodes.**
-  It does the whole traffic plane and survives the master being down. It is
-  not yet ready for unattended fleet rollout: no self-update, no sidecars, no
-  per-node history, no packaging/versioning.
-- **native master: not ready to roll out.** The control plane exists and is
-  tested, but there is no production binary, no bootstrap/join path for
-  masters, the admin API is unauthenticated, and there is no migration from
-  the panel's database. Details and a checklist below.
+- **Cut over on 2026-11-14.** The old x-ui is stopped and disabled on ru2,
+  dns1, dns2, fi1, de3, nl3 and de2. The native master serves `:443` on ru2
+  with the ACME certificate; six data nodes run fbnode (fi1, dns1/`ru1`,
+  dns2/`ru`, de3, nl3, de2); subscriptions and the sales bot use the native
+  API. The fleet passed an end-to-end egress test through every node.
+- **fbnode (node agent): pilot-ready on real entry/exit nodes.** It does the
+  whole traffic plane and survives the master being down. Relay no longer
+  creates a presence watcher, so an edge-only hop starts cleanly. Still not
+  ready for unattended fleet rollout: no sidecars, no per-node history, no
+  core install/upgrade.
+- **native master: live for the supervised fleet.** It has a production
+  binary (`--version`, config, `-check`, `-create-ca`), authenticated
+  admin/API, bootstrap admin token, master join, a built UI and an importer
+  that handles both old database shapes with dry-run/apply/verify. Not ready
+  for unattended production: no backup drill, no master upgrade path, no
+  per-node history, and some legacy UI sections are still holes.
 - **Sub-nodes:** `lite` is the full node (complete data plane, no admin/user
   surface, dependent on the master) and is the default `fbnode` build; it
   keeps a micro SQLite (state, journal, traffic counters, bans) and never a
@@ -40,7 +49,10 @@ RSS is dominated by Xray, not by the agent.
 
 Lab: **23 tests, 22 pass, 1 skip** (the ACME test needs Pebble and
 challtestsrv binaries in the environment). No known flake after the timing
-fixes in `pool` and `sub`.
+fixes in `pool` and `sub`. Re-run on 2026-11-13 with Xray 26.9.9 built from
+the version `go.mod` pins: the full netlab suite exited 0, with the ACME test
+skipped for the missing Pebble/challtestsrv. The separate Xray API and
+`xrayrun` E2E tests also pass against that binary.
 
 ### Why it is safe for a pilot
 
@@ -73,48 +85,83 @@ fixes in `pool` and `sub`.
    `node.<zone>` record; the wizard needs an A record typed by the operator
    (the docs list this as "missing").
 
-## 2. The native master: why not yet
+## 2. The native master: what was fixed and what remains
 
 The control plane is implemented and tested (modules, `/api/v1`, sessions,
 compat `/panel/api`, subscriptions, settings, notifications, webhooks, audit,
-access, pool, vnet, certs, routing), but the deployment story is missing:
+access, pool, vnet, certs, routing). Since the last status:
+
+- the production entrypoint, loopback-by-default authenticated admin, fleet
+  CA, master join and bootstrap admin token are in place;
+- the built interface is served at `/panel`, logs in with the bootstrap/API
+  token, and gets `/api/v1/ui/*` and `/api/v1/access/*` through the admin
+  surface (the outer gate now lets `/api/v1/*` reach the routes that carry
+  their own token/session check);
+- the importer handles upstream `inbounds.settings` clients and this fork's
+  client records, with `-schema`, Markdown/JSON reports, redaction, read-only
+  source, idempotent apply and `-verify`;
+- subscriptions carry operator-defined custom parameters (`subparam` table,
+  `/api/v1/subs/{token}/params`) and extra public aliases
+  (`/api/v1/subs/{token}/aliases`); the importer keeps every old panel `subId`
+  as an alias, so old links keep resolving after the cutover;
+- the master's edge serves `poolName` (panel) and every `subNames` entry
+  (subscriptions only) from one ACME SAN certificate, and serves the old
+  `/walksub/<token>` and `/frvpn/<token>` paths natively; on 2026-11-14 the
+  ru2 staging master issued that certificate (master, sub and the two
+  `walk.boykisser.online` names, valid to 2027-02-12) through the Technitium
+  API token;
+- a two-master rehearsal (ru2 issuer, fi2 joined non-issuer) replicated all
+  70 staging subscriptions in both directions over the mTLS gateway on 17222;
+  a joined master reports pool health but never takes the DNS lease;
+- the sales bot runs the native adapter live (`XUI_BACKEND=native`), keeps
+  Platega enabled and reaches the master over loopback;
+- the live fleet is fi1, dns1 (`ru1`), dns2 (`ru`), de3, nl3 and de2; the
+  common `ru.firewalk.top` is a multicast of dns1/dns2. de2 cannot reach ru2
+  directly, so it uses fi2's bus, exposed on `fi2.firewalk.top:9443`;
+- `make native-release` produces both static binaries, the UI tarball, units,
+  `SHA256SUMS` and `build-info.md`.
+
+Remaining blockers for unattended production:
 
 | Blocker | Detail |
 |---|---|
-| ~~No production entrypoint~~ | done: `cmd/fbmaster` owns config, `--check`, `--version`, `-create-ca`, signals and logging. |
-| ~~No admin listen setting / unauthenticated admin~~ | done: `AdminListen` defaults to loopback, a public bind needs `AdminAllowPublic`, and `AdminHandler` requires a token or the panel session (phase 0). |
-| ~~Master join/bootstrap~~ | mostly done: `fbmaster` creates/persists the CA, `POST /master/tokens` + `POST /master/join` and `fbmaster join` give a new master its CA and certificate without copying keys. Open: a per-master "issuer" flag and the full trust-model write-up. |
-| ~~No DB migration~~ | partly done: `fbmaster import` plans and applies inbounds, clients and groups from the old SQLite (VLESS ws/xhttp); other protocols/transports and settings/hosts/templates are reported and re-created through their modules. See `native-migration.md`. |
-| UI not shipped | `UIDir` is a directory of built assets; nothing builds or ships it in CI, and the login needs a bootstrap API token (logged once) — an operator workflow around that is needed. |
-| Cert/ACME bootstrap | DNS accounts are created through the admin API (`PUT /dns/{id}`) and the pool certificate depends on them; there is no first-run wizard. |
-| Backup/DR | JetStream store and the optional Postgres projections have no backup/restore procedure. |
-| Upgrades | No master upgrade path at all; an in-place restart relies on JetStream replay, which works but is untested for disk-format changes. |
+| Store choice | JetStream only; the optional Postgres projection is not documented or exercised for the fleet. |
+| Cert/ACME bootstrap | `acme: true` in the master config wires issuance; DNS accounts are still created through `PUT /dns/{id}` and there is no first-run wizard. |
+| DNS API token | Resolved: the token lives in Vaultwarden `dns/dns1-technitium-api` and the staging master issued a certificate with it. The zone's secondaries lag a NOTIFY by ~12 s and Let's Encrypt caches a failed lookup for the SOA minimum (15 min), so a retry belongs at least 15 min after a failure. |
+| Public HA | ru2 serves the pool; fi2 replicates and validates the bus but its public `:443` is nginx for the old sites. Making fi2 a public pool member needs an nginx stream/SNI move. |
+| Remaining nodes | de1 and nl2 are not enrolled; fi2 is a master, not a data node. The common `de`/`fi`/`nl` names are not configured yet. |
+| Backup/DR | The stop/copy/start procedure is written, but the restore drill has not been run. |
+| Upgrades | No master upgrade/rollback path; an in-place restart relies on JetStream replay. |
+| History | Only the newest report per node is kept; charts need `reportdb`/history and a retention policy. |
+| UI holes | Nodes, certs, DNS and parts of routing still have old routes without a native mapping; the compat adapter answers them with a message, not data. |
 
 ## 3. Ship checklist
 
 Node (pilot-ready → production-ready):
 
-1. `make fbnode` with version stamping; publish a static binary + SHA-256.
-2. Agent self-update with rollback (staged binary, health gate, revert).
-3. Sidecars as agent modules (at least TUIC and AmneziaWG for parity).
-4. Report history on the master (reuse `reportdb`; the schema exists).
-5. `provision`: create the node's DNS record through `dnsacct`; optional Xray
-   install/upgrade.
+1. [x] `make fbnode` with version stamping; a static binary + SHA-256
+   (`make native-release`).
+2. [x] Agent self-update with rollback (staged binary, health gate, revert).
+3. [ ] Sidecars as agent modules (at least TUIC and AmneziaWG for parity).
+4. [ ] Report history on the master (reuse `reportdb`; the schema exists).
+5. [ ] `provision`: create the node's DNS record through `dnsacct`; optional
+   Xray install/upgrade.
 
 Master (not ready → ready):
 
-1. `cmd/fbmaster` (config file, flags, `--check`, version, signals) and a
-   `Config.AdminListen` that defaults to `127.0.0.1:0` (loopback only).
-2. First-run: generate or load the fleet CA, print the bootstrap admin token
-   and the enroll command, refuse to start with a world-open admin listener.
-3. Master join: a token that issues a master's gateway certificate from the
-   fleet CA, plus CA distribution to peers.
-4. Importer from the old panel's SQLite (inbounds, clients, settings, hosts,
-   subscriptions) with a dry-run report.
-5. CI: build the master and the node, build the UI (or ship `dist`), produce
-   the release artifacts; a `--version` on both binaries.
-6. Backup/restore of the JetStream directory and the Postgres schema; an
-   upgrade path that replays the op log on a new binary.
+1. [x] `cmd/fbmaster` (config file, flags, `--check`, `--version`, signals) and
+   a `Config.AdminListen` that defaults to `127.0.0.1:0` (loopback only).
+2. [x] First-run: generate or load the fleet CA, print the bootstrap admin
+   token, refuse to start with a world-open admin listener.
+3. [x] Master join: a token that issues a master's gateway certificate from
+   the fleet CA, plus CA distribution to peers.
+4. [x] Importer from the old panel's SQLite (inbounds, clients, groups) with a
+   dry-run report, `-schema`, redaction, idempotent apply and `-verify`. See
+   `native-migration.md`.
+5. [x] CI builds the master and the node, builds the UI, and ships versioned,
+   checksummed artifacts; `--version` works on both binaries.
+6. [ ] Backup/restore drill of the JetStream directory and the Postgres
+   schema; an upgrade path that replays the op log on a new binary.
 
 ## 4. The node is dependent: micro store, not a database
 
@@ -204,12 +251,14 @@ even when no master answers; the master's reconciler still wins.
 
 The node agent is finished enough to run a pilot on real entry and exit nodes:
 it enrolls itself, keeps serving when the masters are unreachable, applies
-changes without dropping tunnels, and the lab exercises all of it (22/23, the
-ACME test needs Pebble). Three things remain before a fleet rollout — agent
-self-update, sidecars, and packaging/history. The native master is **not**
-ready: the code is tested, but there is no production binary, no safe way to
-join a second master or migrate the existing database, and the admin HTTP
-surface is unauthenticated today, so it must not be exposed. A sub-node gets the
-same `lite` node build — everything except the admin and user surface — and
-only a cheap forwarding hop needs the reduced `relay` profile (edge only, no
-Xray). The step-by-step production plan is in `native-prod-plan.md`.
+changes without dropping tunnels, and the lab exercises the data plane (22/23;
+the ACME test needs Pebble). Relay is now validated to start without Xray or a
+presence watcher. Remaining before a fleet rollout: sidecars, per-node history
+and core install/upgrade. The native master is pilot-ready for a supervised,
+loopback-only single master: authenticated admin, bootstrap token, join, UI,
+and an importer that handles both old database shapes with dry-run/apply/verify.
+It is still not ready for unattended production: no backup drill, no master
+upgrade path, no history, and some legacy UI sections remain holes. A sub-node
+gets the same `lite` node build — everything except the admin and user surface
+— and only a cheap forwarding hop needs the reduced `relay` profile (edge only,
+no Xray). The step-by-step production plan is in `native-prod-plan.md`.

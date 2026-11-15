@@ -3,6 +3,7 @@
 package vdns
 
 import (
+	"context"
 	"encoding/binary"
 	"io"
 	"net"
@@ -275,11 +276,11 @@ func (m *Manager) Update(zone string, names []Name, rs []Resolver) {
 
 func (m *Manager) listen(network string, port int, h *Handler) error {
 	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-	pc, err := net.ListenPacket("udp", addr)
+	pc, err := (&net.ListenConfig{}).ListenPacket(context.Background(), "udp", addr)
 	if err != nil {
 		return err
 	}
-	ln, err := net.Listen("tcp", addr)
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		pc.Close()
 		return err

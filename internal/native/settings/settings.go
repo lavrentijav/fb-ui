@@ -79,7 +79,7 @@ func (s Schema) Validate(name, value string) (string, error) {
 	}
 	if spec.Check != nil {
 		if err := spec.Check(value); err != nil {
-			return "", fmt.Errorf("%w: %s: %v", ErrBadValue, name, err)
+			return "", fmt.Errorf("%w: %s: %w", ErrBadValue, name, err)
 		}
 	}
 	return value, nil
@@ -119,6 +119,7 @@ func Get(r module.Reader, s Schema, name string) string {
 
 // Bool and Int are typed readers with the schema default.
 func Bool(r module.Reader, s Schema, name string) bool { return Get(r, s, name) == "true" }
+
 func Int(r module.Reader, s Schema, name string) int {
 	n, _ := strconv.Atoi(Get(r, s, name))
 	return n

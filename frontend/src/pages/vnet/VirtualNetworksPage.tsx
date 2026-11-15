@@ -1,7 +1,18 @@
 import { useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, ConfigProvider, Layout, Space, Table, Tag, Typography, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  ConfigProvider,
+  Layout,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 
@@ -44,7 +55,12 @@ export default function VirtualNetworksPage() {
     setMessageInstance(messageApi);
   }, [messageApi]);
 
-  const { data: rows = [], isFetching: loading, error, refetch } = useQuery({
+  const {
+    data: rows = [],
+    isFetching: loading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['vnet-networks'],
     queryFn: fetchNetworks,
   });
@@ -76,7 +92,10 @@ export default function VirtualNetworksPage() {
       render: (_: unknown, r) => (
         <Space size={[4, 4]} wrap>
           {r.members.map((m) => (
-            <Tag key={m.user} color={m.role === 'owner' ? 'blue' : m.role === 'admin' ? 'gold' : 'default'}>
+            <Tag
+              key={m.user}
+              color={m.role === 'owner' ? 'blue' : m.role === 'admin' ? 'gold' : 'default'}
+            >
               {m.name || m.user}
               {m.ip ? ` · ${m.ip}` : ''}
               {m.user === r.owner ? ` · ${t('pages.vnet.owner')}` : ''}

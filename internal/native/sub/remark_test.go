@@ -74,3 +74,12 @@ func TestSizeFormatting(t *testing.T) {
 		}
 	}
 }
+
+func TestExpandRemarkRendersInboundRemark(t *testing.T) {
+	if got := ExpandRemark("{{REMARK}}", Vars{Remark: "frankfurt-de"}); got != "frankfurt-de" {
+		t.Fatalf("%q", got)
+	}
+	if got := ExpandRemark("{{REMARK}}", Vars{}); got != "" {
+		t.Fatalf("empty remark: %q", got)
+	}
+}

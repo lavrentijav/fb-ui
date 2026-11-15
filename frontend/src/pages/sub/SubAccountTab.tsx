@@ -110,7 +110,9 @@ export default function SubAccountTab() {
       <div className="sub-rows">
         <div className="sub-row">
           <div className="sub-row-main">
-            <Typography.Paragraph type="secondary">{t('subscription.accountHint')}</Typography.Paragraph>
+            <Typography.Paragraph type="secondary">
+              {t('subscription.accountHint')}
+            </Typography.Paragraph>
             {error && <Alert type="error" showIcon title={error} />}
             <Form form={form} layout="vertical" onFinish={login}>
               <Form.Item
@@ -154,10 +156,13 @@ export default function SubAccountTab() {
           <Descriptions size="small" column={1} style={{ marginTop: 12 }}>
             <Descriptions.Item label={t('pages.settings.apiToken')}>{me.email}</Descriptions.Item>
             <Descriptions.Item label={t('subscription.totalQuota')}>
-              {SizeFormatter.sizeFormat(used)} / {total > 0 ? SizeFormatter.sizeFormat(total) : t('subscription.unlimited')}
+              {SizeFormatter.sizeFormat(used)} /{' '}
+              {total > 0 ? SizeFormatter.sizeFormat(total) : t('subscription.unlimited')}
             </Descriptions.Item>
             <Descriptions.Item label={t('subscription.expiry')}>
-              {me.expire ? new Date(me.expire * 1000).toLocaleDateString() : t('subscription.noExpiry')}
+              {me.expire
+                ? new Date(me.expire * 1000).toLocaleDateString()
+                : t('subscription.noExpiry')}
             </Descriptions.Item>
           </Descriptions>
         </div>

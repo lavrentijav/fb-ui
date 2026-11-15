@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
@@ -10,12 +12,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"database/sql"
 
 	_ "modernc.org/sqlite"
 
@@ -81,6 +82,108 @@ func TestConfigDefaultsAndValidation(t *testing.T) {
 	// a missing name is refused
 	if _, err := load(writeConfig(t, t.TempDir(), map[string]any{"name": ""})); err == nil {
 		t.Fatal("an empty name was accepted")
+	}
+}
+
+func TestPoolSubNamesAndACMEConfig(t *testing.T) {
+	dir := t.TempDir()
+	c, err := load(writeConfig(t, dir, map[string]any{
+		"publicName": "ru2",
+		"poolName":   "Master.Firewalk.Top",
+		"subNames":   []string{"SUB.firewalk.top", "ru.firewalk.top", "sub.firewalk.top", ""},
+		"acme":       true,
+		"acmeEmail":  "ops@firewalk.top",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.PoolName != "master.firewalk.top" {
+		t.Fatalf("pool name %q", c.PoolName)
+	}
+	if want := []string{"sub.firewalk.top", "ru.firewalk.top"}; !slices.Equal(c.SubNames, want) {
+		t.Fatalf("sub names %v, want %v", c.SubNames, want)
+	}
+	if !c.ACME || c.ACMEEmail != "ops@firewalk.top" {
+		t.Fatalf("acme %v %q", c.ACME, c.ACMEEmail)
+	}
+	if err := checkConfig(c); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+
+	cases := []struct {
+		name  string
+		extra map[string]any
+		want  string
+	}{
+		{"sub without pool", map[string]any{"subNames": []string{"sub.firewalk.top"}}, "subNames require poolName"},
+		{"pool without acme", map[string]any{"poolName": "master.firewalk.top"}, "poolName requires acme"},
+		{"pool equals public", map[string]any{"poolName": "fi1", "acme": true}, "must differ"},
+		{"sub equals pool", map[string]any{"poolName": "master.firewalk.top", "acme": true, "subNames": []string{"master.firewalk.top"}}, "is the pool name"},
+		{"sub equals public", map[string]any{"poolName": "master.firewalk.top", "acme": true, "subNames": []string{"fi1"}}, "node-facing public name"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := load(writeConfig(t, t.TempDir(), tc.extra))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestReverseNamesOnThePoolEdge(t *testing.T) {
+	c, err := load(writeConfig(t, t.TempDir(), map[string]any{
+		"publicName": "ru2.firewalk.top",
+		"poolName":   "master.firewalk.top",
+		"subNames":   []string{"sub.firewalk.top"},
+		"acme":       true,
+		"reverses":   map[string]string{"Walk.Firewalk.Top ": " http://127.0.0.1:55004 "},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := c.Reverses, map[string]string{"walk.firewalk.top": "http://127.0.0.1:55004"}; len(got) != 1 || got["walk.firewalk.top"] != want["walk.firewalk.top"] {
+		t.Fatalf("reverses %v, want %v", got, want)
+	}
+
+	cases := []struct {
+		name  string
+		extra map[string]any
+		want  string
+	}{
+		{"without pool", map[string]any{"reverses": map[string]string{"walk.firewalk.top": "http://127.0.0.1:55004"}}, "reverses require poolName"},
+		{"equals pool", map[string]any{"poolName": "master.firewalk.top", "acme": true, "reverses": map[string]string{"master.firewalk.top": "http://x"}}, "collides"},
+		{"equals sub", map[string]any{"poolName": "master.firewalk.top", "acme": true, "subNames": []string{"sub.firewalk.top"}, "reverses": map[string]string{"sub.firewalk.top": "http://x"}}, "collides"},
+		{"equals public", map[string]any{"poolName": "master.firewalk.top", "acme": true, "reverses": map[string]string{"fi1": "http://x"}}, "collides"},
+		{"bad target", map[string]any{"poolName": "master.firewalk.top", "acme": true, "reverses": map[string]string{"walk.firewalk.top": "ftp://x"}}, "must be an http"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := load(writeConfig(t, t.TempDir(), tc.extra))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestJoinedMasterMayServeThePoolWithoutACME(t *testing.T) {
+	c, err := load(writeConfig(t, t.TempDir(), map[string]any{
+		"name":       "fi2",
+		"masters":    []string{"ru2", "fi2"},
+		"publicName": "fi2.firewalk.top",
+		"poolName":   "master.firewalk.top",
+		"subNames":   []string{"sub.firewalk.top"},
+		"hosts":      []string{"64.188.125.37"},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ACME {
+		t.Fatal("a joined master should be able to stay a non-issuer")
+	}
+	if err := checkConfig(c); err != nil {
+		t.Fatalf("check: %v", err)
 	}
 }
 
@@ -263,6 +366,7 @@ func (w writer) Set(ctx context.Context, table, key string, fields map[string]an
 	_, err := w.h.Set(ctx, table, key, fields)
 	return err
 }
+
 func (w writer) Delete(ctx context.Context, table, key string) error {
 	_, err := w.h.Delete(ctx, table, key)
 	return err
@@ -289,7 +393,7 @@ func importFixture(t *testing.T) string {
 		`INSERT INTO nodes VALUES(2,'ru4')`,
 		`INSERT INTO inbounds VALUES(1,'in-443','RU',443,'vless','{}',
 		 '{"network":"ws","wsSettings":{"path":"/ws","headers":{"Host":"ru.example"}}}',2,1,'node','')`,
-		`INSERT INTO clients VALUES(1,'alice','uuid-a',0,0,1,1,'','s1')`,
+		`INSERT INTO clients VALUES(1,'alice','11111111-1111-1111-1111-111111111111',0,0,1,1,'friends','s1')`,
 		`INSERT INTO client_inbounds VALUES(1,1)`,
 		`INSERT INTO client_groups VALUES(1,'friends')`,
 	} {
@@ -324,7 +428,15 @@ func TestImportApplySendsThePlanWithTheToken(t *testing.T) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/inbounds/") {
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
 		got = append(got, r.Method+" "+r.URL.Path)
+		if r.Method == http.MethodPut && r.URL.Path == "/sub/alice" {
+			_, _ = w.Write([]byte(`{"token":"primary"}`))
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer srv.Close()
@@ -375,8 +487,11 @@ func TestAMasterWithoutTheCAKeyVerifiesButDoesNotIssue(t *testing.T) {
 	if noCA != nil {
 		t.Fatal("a master without the CA key still reports an issuer")
 	}
-	if roots == nil || len(roots.Subjects()) == 0 {
+	if roots == nil {
 		t.Fatal("no trust pool")
+	}
+	if _, err := ca.Cert.Verify(x509.VerifyOptions{Roots: roots}); err != nil {
+		t.Fatalf("the CA is not in the trust pool: %v", err)
 	}
 	// the identity still loads, so the master serves
 	if _, err := ensureIdentity(c, noCA, logger); err != nil {
@@ -389,5 +504,18 @@ func TestAMasterWithoutTheCAKeyVerifiesButDoesNotIssue(t *testing.T) {
 	_ = os.Remove(c.CACert)
 	if _, _, err := ensureCA(c, false, logger); err == nil {
 		t.Fatal("a key without a certificate was accepted")
+	}
+}
+
+func TestParseShareHostAcceptsPerNodeNames(t *testing.T) {
+	def, hosts := parseShareHost(" cdn.example , ru=ru.firewalk.top, de2 = de2.firewalk.top ,, ")
+	if def != "cdn.example" {
+		t.Fatalf("default = %q", def)
+	}
+	if len(hosts) != 2 || hosts["ru"] != "ru.firewalk.top" || hosts["de2"] != "de2.firewalk.top" {
+		t.Fatalf("hosts = %v", hosts)
+	}
+	if def, hosts := parseShareHost(""); def != "" || hosts != nil {
+		t.Fatalf("empty = %q %v", def, hosts)
 	}
 }

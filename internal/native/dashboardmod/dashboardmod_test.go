@@ -19,6 +19,7 @@ type source struct{ reports []string }
 func (s *source) ReportRange(context.Context, string) (uint64, uint64, error) {
 	return 1, uint64(len(s.reports)), nil
 }
+
 func (s *source) GetReport(_ context.Context, _ string, seq uint64) ([]byte, error) {
 	return []byte(s.reports[seq-1]), nil
 }

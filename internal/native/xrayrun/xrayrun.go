@@ -56,7 +56,9 @@ func (r *Runner) Apply(ctx context.Context, config []byte) error {
 	}
 	test := exec.CommandContext(ctx, r.Bin, "run", "-test", "-c", tmp.Name())
 	if out, err := test.CombinedOutput(); err != nil {
-		return fmt.Errorf("xrayrun: config rejected: %s", lastLine(out))
+		// the rejected config is otherwise gone: keep it for the operator
+		_ = os.WriteFile(r.Config+".rejected", config, 0o600)
+		return fmt.Errorf("xrayrun: config rejected: %s (%w)", lastLine(out), err)
 	}
 	if cur, err := os.ReadFile(r.Config); err == nil && r.Running() && r.API != "" {
 		if plan, ok := planHot(cur, config); ok {

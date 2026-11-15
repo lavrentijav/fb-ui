@@ -6,13 +6,16 @@ import (
 	"time"
 )
 
-var timeNow = time.Now
-var timeUnix = func(sec int64) time.Time { return time.Unix(sec, 0) }
+var (
+	timeNow  = time.Now
+	timeUnix = func(sec int64) time.Time { return time.Unix(sec, 0) }
+)
 
 // Vars is what a remark template can render for one link.
 type Vars struct {
 	Node      string // the node's name
 	Inbound   string // the inbound's tag
+	Remark    string // the inbound's human name
 	Email     string // the client's email (its identity)
 	User      string // the subscription's login
 	Protocol  string // vless
@@ -47,12 +50,6 @@ func ExpandRemark(tmpl string, v Vars) string {
 		kept = append(kept, out)
 	}
 	return strings.TrimSpace(strings.Join(kept, "|"))
-}
-
-var remarkTokens = []string{
-	"NODE", "INBOUND", "EMAIL", "USERNAME", "USER", "PROTOCOL", "TRANSPORT",
-	"TRAFFIC_USED", "TRAFFIC_TOTAL", "TRAFFIC_LEFT", "DAYS_LEFT", "EXPIRE_DATE",
-	"STATUS", "STATUS_EMOJI",
 }
 
 type part struct {
@@ -137,6 +134,8 @@ func value(name string, v Vars) string {
 		return v.Node
 	case "INBOUND":
 		return v.Inbound
+	case "REMARK":
+		return v.Remark
 	case "EMAIL", "USERNAME":
 		return v.Email
 	case "USER":

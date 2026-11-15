@@ -71,11 +71,13 @@ type Probe struct {
 // Inbound is a VLESS inbound on loopback behind the edge: the edge
 // terminates TLS for Host and forwards Path to it.
 type Inbound struct {
-	Tag     string   `json:"tag"`
-	Port    int      `json:"port"`
-	Network string   `json:"network"` // ws | xhttp
-	Path    string   `json:"path"`
-	Host    string   `json:"host,omitempty"` // public name; "" = not exposed on the edge
+	Tag     string `json:"tag"`
+	Port    int    `json:"port"`
+	Network string `json:"network"` // ws | xhttp
+	Path    string `json:"path"`
+	Host    string `json:"host,omitempty"` // public name; "" = not exposed on the edge
+	// Remark is the human name a subscription shows in the link's #fragment.
+	Remark  string   `json:"remark,omitempty"`
 	Clients []Client `json:"clients"`
 	// Route is the outbound for its traffic: direct, block or proxy_<country>.
 	Route string `json:"route"`
@@ -180,6 +182,9 @@ type Reverse struct {
 	SNI    string `json:"sni"`
 	Path   string `json:"path,omitempty"`
 	Target string `json:"target"`
+	// Host overrides the Host header sent to the target; empty keeps the
+	// original request's Host.
+	Host string `json:"host,omitempty"`
 	// ProxyProtocol sends a PROXY header (1 or 2) to a tcp Target.
 	ProxyProtocol int `json:"proxyProtocol,omitempty"`
 }

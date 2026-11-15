@@ -39,7 +39,7 @@ func (e *env) post(t *testing.T, path string, body any) map[string]any {
 	if body != nil {
 		_ = json.NewEncoder(&buf).Encode(body)
 	}
-	req := httptest.NewRequest("POST", path, &buf)
+	req := httptest.NewRequest(http.MethodPost, path, &buf)
 	req.Header.Set("Authorization", "Bearer "+e.auth)
 	rec := httptest.NewRecorder()
 	e.api.ServeHTTP(rec, req)
@@ -55,7 +55,7 @@ func (e *env) post(t *testing.T, path string, body any) map[string]any {
 
 func (e *env) get(t *testing.T, path string) any {
 	t.Helper()
-	req := httptest.NewRequest("GET", path, nil)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
 	req.Header.Set("Authorization", "Bearer "+e.auth)
 	rec := httptest.NewRecorder()
 	e.api.ServeHTTP(rec, req)

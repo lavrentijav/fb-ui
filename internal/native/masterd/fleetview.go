@@ -10,6 +10,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/clients"
+	"github.com/mhsanaei/3x-ui/v3/internal/native/inboundparam"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodespec"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/nodestate"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/subauth"
@@ -42,23 +43,24 @@ func fleetInboundID(node, tag string) int {
 
 // fleetInbound is one inbound in the old table's shape.
 type fleetInbound struct {
-	ID             int               `json:"id"`
-	UserID         int               `json:"userId"`
-	Up             int64             `json:"up"`
-	Down           int64             `json:"down"`
-	Total          int64             `json:"total"`
-	Remark         string            `json:"remark"`
-	Enable         bool              `json:"enable"`
-	ExpiryTime     int64             `json:"expiryTime"`
-	Listen         string            `json:"listen"`
-	Port           int               `json:"port"`
-	Protocol       string            `json:"protocol"`
-	Settings       string            `json:"settings"`
-	StreamSettings string            `json:"streamSettings"`
-	Tag            string            `json:"tag"`
-	Sniffing       string            `json:"sniffing"`
-	NodeID         *int              `json:"nodeId"`
-	ClientStats    []fleetClientStat `json:"clientStats"`
+	ID             int                 `json:"id"`
+	UserID         int                 `json:"userId"`
+	Up             int64               `json:"up"`
+	Down           int64               `json:"down"`
+	Total          int64               `json:"total"`
+	Remark         string              `json:"remark"`
+	Enable         bool                `json:"enable"`
+	ExpiryTime     int64               `json:"expiryTime"`
+	Listen         string              `json:"listen"`
+	Port           int                 `json:"port"`
+	Protocol       string              `json:"protocol"`
+	Settings       string              `json:"settings"`
+	StreamSettings string              `json:"streamSettings"`
+	Tag            string              `json:"tag"`
+	Sniffing       string              `json:"sniffing"`
+	NodeID         *int                `json:"nodeId"`
+	Params         inboundparam.Params `json:"params,omitempty"`
+	ClientStats    []fleetClientStat   `json:"clientStats"`
 }
 
 // fleetClientStat is one client's traffic row inside an inbound.
@@ -96,6 +98,9 @@ func (d *Daemon) fleetInbounds() []fleetInbound {
 		for _, ib := range s.Inbounds {
 			id := fleetInboundID(s.Node, ib.Tag)
 			fi := fleetInbound{ID: id, Remark: s.Node + "/" + ib.Tag, Enable: true}
+			if p, ok := inboundparam.Get(d.store.State, s.Node, ib.Tag); ok {
+				fi.Params = p
+			}
 			fi.Listen = ""
 			fi.Port = ib.Port
 			fi.Protocol = "vless"

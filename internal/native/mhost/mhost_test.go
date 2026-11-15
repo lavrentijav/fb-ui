@@ -68,7 +68,7 @@ func TestLeaderIsExclusive(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts NATS fleets")
 	}
-	var clock = time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	clock := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	var mu sync.Mutex
 	now := func() time.Time { mu.Lock(); defer mu.Unlock(); return clock }
 	advance := func(d time.Duration) { mu.Lock(); clock = clock.Add(d); mu.Unlock() }

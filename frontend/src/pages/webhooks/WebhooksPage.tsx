@@ -39,7 +39,10 @@ const WebhookSchema = z.object({
   id: z.string(),
   name: z.string(),
   url: z.string(),
-  events: z.array(z.string()).nullish().transform((v) => v ?? []),
+  events: z
+    .array(z.string())
+    .nullish()
+    .transform((v) => v ?? []),
   enable: z.boolean(),
   hasSecret: z.boolean().optional(),
   createdAt: z.number().optional(),
@@ -77,7 +80,12 @@ export default function WebhooksPage() {
     setMessageInstance(messageApi);
   }, [messageApi]);
 
-  const { data: rows = [], isFetching: loading, error, refetch } = useQuery({
+  const {
+    data: rows = [],
+    isFetching: loading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => {
       const msg = await HttpUtil.get('/panel/api/webhooks/list', undefined, { silent: true });
@@ -207,9 +215,7 @@ export default function WebhooksPage() {
       key: 'status',
       width: 110,
       render: (_: unknown, w) => (
-        <Tag color={w.enable ? 'green' : 'default'}>
-          {w.enable ? t('enabled') : t('disabled')}
-        </Tag>
+        <Tag color={w.enable ? 'green' : 'default'}>{w.enable ? t('enabled') : t('disabled')}</Tag>
       ),
     },
     {
