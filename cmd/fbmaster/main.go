@@ -46,7 +46,11 @@ type Config struct {
 	// Edge serves the nodes' tunnels by SNI on PublicName.
 	PublicName string `json:"publicName"`
 	EdgeListen string `json:"edgeListen"`
-	ClientPort int    `json:"clientPort"`
+	// EdgeFallback takes every connection the edge has no route for to that
+	// address, usually the local nginx; empty refuses unknown names.
+	EdgeFallback              string `json:"edgeFallback,omitempty"`
+	EdgeFallbackProxyProtocol int    `json:"edgeFallbackProxyProtocol,omitempty"`
+	ClientPort                int    `json:"clientPort"`
 	// Gateway connects the masters.
 	GatewayHost string            `json:"gatewayHost"`
 	GatewayPort int               `json:"gatewayPort"`
@@ -352,6 +356,7 @@ func serve(ctx context.Context, c *Config, createCA bool, logger *log.Logger) er
 	d, err := masterd.Start(ctx, masterd.Config{
 		Name: c.Name, Masters: c.Masters, StoreDir: c.StoreDir,
 		PublicName: c.PublicName, EdgeListen: c.EdgeListen, ClientPort: c.ClientPort,
+		EdgeFallback: c.EdgeFallback, EdgeFallbackProxyProtocol: c.EdgeFallbackProxyProtocol,
 		ClientTLS: mtls, GatewayTLS: mtls, GatewayHost: c.GatewayHost, GatewayPort: c.GatewayPort,
 		Advertise: c.Advertise, Peers: peers,
 		PoolName: c.PoolName, SubNames: c.SubNames, Reverses: c.Reverses, PublicIPs: c.PublicIPs, ACME: acme,

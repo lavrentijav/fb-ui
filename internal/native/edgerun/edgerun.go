@@ -20,13 +20,19 @@ import (
 )
 
 type Runner struct {
-	Listen string // ":443"
+	// Listen is one or more addresses (":443" or ":443,:1443"): the fleet's
+	// nodes reach the master's edge on its own https port while the public
+	// name stays on 443.
+	Listen string
 	Logf   func(format string, args ...any)
+	// Default takes every connection no route claims. The zero value
+	// refuses them; a tcp route hands unknown names to another server.
+	Default edge.Route
 
 	mu      sync.Mutex
 	started bool
-	ln      net.Listener
-	router  *edge.Router
+	lns     []net.Listener
+	routers []*edge.Router
 	httpr   *edge.HTTPRouter
 	handoff *edge.HandoffListener
 	srv     *http.Server
@@ -76,7 +82,7 @@ func (r *Runner) Apply(e nodespec.Edge, certs []nodespec.Cert) error {
 	if err != nil {
 		return err
 	}
-	cfg := edge.Config{Default: edge.Route{Action: edge.ActionReject}}
+	cfg := edge.Config{Default: r.defaultRoute()}
 	for _, rt := range e.SNI {
 		action := edge.ActionTCP
 		if rt.Action == "handoff" {
@@ -109,22 +115,49 @@ func (r *Runner) Apply(e nodespec.Edge, certs []nodespec.Cert) error {
 		return fmt.Errorf("edgerun: %w", err)
 	}
 	r.certs.Store(table)
-	r.router.Update(cfg)
+	for _, router := range r.routers {
+		router.Update(cfg)
+	}
 	return nil
 }
 
+// listenAddrs is Listen split into the addresses to bind: a comma or space
+// separated list, so one process can serve its public 443 and the fleet's
+// own https port at once.
+func (r *Runner) listenAddrs() []string {
+	fields := strings.FieldsFunc(r.Listen, func(c rune) bool {
+		return c == ',' || c == ' ' || c == '\t'
+	})
+	if len(fields) == 0 {
+		return []string{":443"}
+	}
+	return fields
+}
+
 func (r *Runner) start() error {
-	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", r.Listen)
-	if err != nil {
-		return err
+	addrs := r.listenAddrs()
+	lns := make([]net.Listener, 0, len(addrs))
+	for _, addr := range addrs {
+		ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
+		if err != nil {
+			for _, open := range lns {
+				_ = open.Close()
+			}
+			return err
+		}
+		lns = append(lns, ln)
 	}
 	if r.Drain == nil {
 		r.Drain = edge.NewDrain()
 	}
-	r.handoff = edge.NewHandoffListener(ln.Addr())
-	r.router = edge.NewRouter(edge.Config{Default: edge.Route{Action: edge.ActionReject}},
-		map[string]*edge.HandoffListener{nodespec.Handoff: r.handoff})
-	r.router.Drain, r.router.Logf = r.Drain, r.Logf
+	// one handoff for every listener: the in-process servers see all of them
+	r.handoff = edge.NewHandoffListener(lns[0].Addr())
+	handoffs := map[string]*edge.HandoffListener{nodespec.Handoff: r.handoff}
+	for range lns {
+		router := edge.NewRouter(edge.Config{Default: r.defaultRoute()}, handoffs)
+		router.Drain, router.Logf = r.Drain, r.Logf
+		r.routers = append(r.routers, router)
+	}
 	r.httpr = edge.NewHTTPRouter(http.NotFoundHandler(), r.Drain)
 	r.srv = &http.Server{
 		Handler:           r.httpr,
@@ -142,8 +175,10 @@ func (r *Runner) start() error {
 		},
 	}
 	r.certs.Store(&certTable{})
-	r.ln, r.started = ln, true
-	go func() { _ = r.router.Serve(ln) }()
+	r.lns, r.started = lns, true
+	for i, ln := range lns {
+		go r.routers[i].Serve(ln)
+	}
 	go func() { _ = r.srv.ServeTLS(r.handoff, "", "") }()
 	return nil
 }
@@ -178,10 +213,10 @@ func (r *Runner) DrainState() edge.DrainState {
 func (r *Runner) Addr() net.Addr {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.ln == nil {
+	if len(r.lns) == 0 {
 		return nil
 	}
-	return r.ln.Addr()
+	return r.lns[0].Addr()
 }
 
 func (r *Runner) Close() error {
@@ -191,11 +226,23 @@ func (r *Runner) Close() error {
 		return nil
 	}
 	r.started = false
-	return errors.Join(r.ln.Close(), r.handoff.Close(), r.srv.Close())
+	err := r.handoff.Close()
+	for _, ln := range r.lns {
+		err = errors.Join(err, ln.Close())
+	}
+	return errors.Join(err, r.srv.Close())
 }
 
 func (r *Runner) logf(format string, args ...any) {
 	if r.Logf != nil {
 		r.Logf(format, args...)
 	}
+}
+
+// defaultRoute is the configured fallback, or a refusal when none is set.
+func (r *Runner) defaultRoute() edge.Route {
+	if r.Default.Action == "" {
+		return edge.Route{Action: edge.ActionReject}
+	}
+	return r.Default
 }

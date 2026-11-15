@@ -26,6 +26,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/edge"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/apiserver"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/bus"
 	"github.com/mhsanaei/3x-ui/v3/internal/native/certs"
@@ -77,8 +78,13 @@ type Config struct {
 	// to the bus client port.
 	PublicName string
 	EdgeListen string // ":443"
-	ClientPort int    // bus client port on 127.0.0.1
-	ClientTLS  *tls.Config
+	// EdgeFallback takes every connection the edge has no route for (a name
+	// it does not serve, such as a vhost on a local nginx); empty refuses
+	// them. EdgeFallbackProxyProtocol is what that target expects (0, 1, 2).
+	EdgeFallback              string
+	EdgeFallbackProxyProtocol int
+	ClientPort                int // bus client port on 127.0.0.1
+	ClientTLS                 *tls.Config
 	// Gateways between masters.
 	GatewayTLS  *tls.Config
 	GatewayHost string
@@ -167,6 +173,9 @@ func Start(ctx context.Context, cfg Config) (*Daemon, error) {
 	}
 	d := &Daemon{cfg: cfg, bus: b, store: master.NewMem(), presence: &presence.Map{}}
 	d.edge = &edgerun.Runner{Listen: cfg.EdgeListen, Logf: cfg.Logf}
+	if cfg.EdgeFallback != "" {
+		d.edge.Default = edge.Route{Action: edge.ActionTCP, Target: cfg.EdgeFallback, ProxyProtocol: cfg.EdgeFallbackProxyProtocol}
+	}
 	if err := d.edge.Apply(d.busEdge(), nil); err != nil {
 		b.Close()
 		return nil, err
